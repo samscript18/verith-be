@@ -116,6 +116,32 @@ export const envSchema = Joi.object({
     .min(1)
     .max(365)
     .default(30),
+  VERIFICATION_MAX_TEXT_LENGTH: Joi.number()
+    .integer()
+    .min(1000)
+    .max(200000)
+    .default(50000),
+  VERIFICATION_MAX_CLAIMS: Joi.number().integer().min(1).max(50).default(20),
+  VERIFICATION_MAX_SEARCH_QUERIES_PER_CLAIM: Joi.number()
+    .integer()
+    .min(1)
+    .max(10)
+    .default(5),
+  URL_FETCH_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(60000)
+    .default(15000),
+  URL_FETCH_MAX_BYTES: Joi.number()
+    .integer()
+    .min(65536)
+    .max(10485760)
+    .default(2097152),
+  URL_FETCH_MAX_REDIRECTS: Joi.number().integer().min(0).max(10).default(3),
+  URL_FETCH_USER_AGENT: Joi.string()
+    .trim()
+    .min(10)
+    .default('VerithBot/1.0 (+https://verith.example/bot)'),
   WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   WHATSAPP_PHONE_NUMBER_ID: Joi.string()
     .trim()

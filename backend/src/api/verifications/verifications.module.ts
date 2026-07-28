@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import type { RedisOptions } from 'ioredis';
 import type { RedisConfig } from '../../shared/config';
 import { UploadsModule } from '../uploads/uploads.module';
+import { AiModule } from '../ai/ai.module';
 import { VerificationStreamController } from './controllers/verification-stream.controller';
 import { VerificationsController } from './controllers/verifications.controller';
 import { VerificationRepository } from './repositories/verification.repository';
@@ -25,6 +26,16 @@ import { VerificationOrchestratorService } from './services/verification-orchest
 import { VerificationService } from './services/verification.service';
 import { VERIFICATION_QUEUE } from './verification.constants';
 import { VerificationWorker } from './workers/verification.worker';
+import { Claim, ClaimSchema } from './schemas/claim.schema';
+import {
+  ExtractedContent,
+  ExtractedContentSchema,
+} from './schemas/extracted-content.schema';
+import { ArticleExtractionService } from './services/article-extraction.service';
+import { ClaimExtractionService } from './services/claim-extraction.service';
+import { ContentProcessingService } from './services/content-processing.service';
+import { LanguageDetectionService } from './services/language-detection.service';
+import { TextNormalizationService } from './services/text-normalization.service';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -44,10 +55,13 @@ const redisOptions = (value: string): RedisOptions => {
 @Module({
   imports: [
     UploadsModule,
+    AiModule,
     MongooseModule.forFeature([
       { name: Verification.name, schema: VerificationSchema },
       { name: VerificationEvent.name, schema: VerificationEventSchema },
       { name: IdempotencyRecord.name, schema: IdempotencyRecordSchema },
+      { name: Claim.name, schema: ClaimSchema },
+      { name: ExtractedContent.name, schema: ExtractedContentSchema },
     ]),
     BullModule.forRootAsync({
       inject: [ConfigService],
@@ -67,6 +81,11 @@ const redisOptions = (value: string): RedisOptions => {
     VerificationOrchestratorService,
     VerificationService,
     VerificationWorker,
+    TextNormalizationService,
+    LanguageDetectionService,
+    ArticleExtractionService,
+    ClaimExtractionService,
+    ContentProcessingService,
   ],
   exports: [VerificationService, VerificationEventService, MongooseModule],
 })

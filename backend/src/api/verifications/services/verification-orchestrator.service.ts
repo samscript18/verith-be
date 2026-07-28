@@ -5,12 +5,14 @@ import { VerificationStatus } from '../enums/verification-status.enum';
 import type { VerificationJobData } from '../interfaces/verification-job.interface';
 import { VerificationRepository } from '../repositories/verification.repository';
 import { VerificationEventService } from './verification-event.service';
+import { ContentProcessingService } from './content-processing.service';
 
 @Injectable()
 export class VerificationOrchestratorService {
   constructor(
     private readonly repository: VerificationRepository,
     private readonly events: VerificationEventService,
+    private readonly contentProcessing: ContentProcessingService,
   ) {}
 
   async initialize(job: VerificationJobData): Promise<void> {
@@ -73,5 +75,10 @@ export class VerificationOrchestratorService {
       requestId: job.requestId,
       jobId: job.jobId,
     });
+    await this.contentProcessing.process(
+      verification,
+      job.requestId,
+      job.jobId,
+    );
   }
 }

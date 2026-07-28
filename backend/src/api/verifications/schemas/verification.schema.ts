@@ -44,6 +44,12 @@ export class Verification {
   @Prop({ maxlength: 20 })
   requestedLanguage?: string;
 
+  @Prop({ maxlength: 50 })
+  detectedLanguage?: string;
+
+  @Prop({ type: Object })
+  urlMetadata?: Record<string, unknown>;
+
   @Prop({ type: [Types.ObjectId], default: [] })
   mediaAssetIds!: Types.ObjectId[];
 

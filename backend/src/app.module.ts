@@ -14,6 +14,7 @@ import {
   cloudinaryConfig,
   databaseConfig,
   mailConfig,
+  processingConfig,
   redisConfig,
   type AppConfig,
 } from './shared/config';
@@ -38,6 +39,7 @@ import { RedisThrottlerStorage } from './core/services/redis-throttler-storage.s
         cloudinaryConfig,
         databaseConfig,
         mailConfig,
+        processingConfig,
         redisConfig,
       ],
       validationSchema: envSchema,

@@ -15,3 +15,7 @@ export {
   type AiConfig,
   type AiProviderConfig,
 } from './ai.config';
+export {
+  default as processingConfig,
+  type ProcessingConfig,
+} from './processing.config';

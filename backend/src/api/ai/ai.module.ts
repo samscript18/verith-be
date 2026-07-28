@@ -16,6 +16,7 @@ import {
 import { AiRouterService } from './services/ai-router.service';
 import { PromptRegistryService } from './services/prompt-registry.service';
 import { ProviderHealthService } from './services/provider-health.service';
+import { CorePromptSeedService } from './services/core-prompt-seed.service';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ProviderHealthService } from './services/provider-health.service';
     PromptRegistryService,
     ProviderHealthService,
     AiRouterService,
+    CorePromptSeedService,
   ],
   exports: [
     AI_PROVIDERS,

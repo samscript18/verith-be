@@ -38,5 +38,15 @@
 | `*_RATE_LIMITED` | 429 | The selected provider reported rate limiting. |
 | `*_TIMEOUT` | 503 | The selected provider exceeded its configured timeout. |
 | `*_INVALID_JSON` | 503 | The selected provider returned malformed JSON. |
+| `VALIDATION_ERROR` | 400 | A submitted URL may violate protocol, host, port, or network policy. |
+| `URL_DNS_LOOKUP_FAILED` | 503 | The public hostname could not be safely resolved. |
+| `URL_FETCH_TIMEOUT` | 503 | The article request exceeded its configured timeout. |
+| `URL_NOT_FOUND` | 503 | The remote server reported that the page does not exist. |
+| `URL_ACCESS_BLOCKED` | 503 | The remote server requires authorization or refused access. |
+| `URL_CONTENT_TYPE_UNSUPPORTED` | 503 | The resource is not HTML. |
+| `URL_RESPONSE_TOO_LARGE` | 503 | The response exceeded the configured byte limit. |
+| `URL_REDIRECT_LIMIT_EXCEEDED` | 503 | Redirects exceeded the configured safe limit. |
+| `URL_PAYWALLED` | 422 | The article appears to require a subscription. |
+| `URL_LOGIN_REQUIRED` | 422 | The article appears to require login. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

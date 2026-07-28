@@ -39,6 +39,8 @@ describe('AI prompt registry persistence (integration)', () => {
         supportedProviders: [AiProviderName.GROQ],
         supportedModels: [],
         outputSchemaVersion: '1',
+        createdBy: 'SYSTEM',
+        publishedBy: 'SYSTEM',
         changeSummary: 'old',
       },
       {
@@ -51,6 +53,8 @@ describe('AI prompt registry persistence (integration)', () => {
         supportedProviders: [AiProviderName.GROQ],
         supportedModels: ['configured-model'],
         outputSchemaVersion: '1',
+        createdBy: 'SYSTEM',
+        publishedBy: 'SYSTEM',
         publishedAt: new Date(),
         changeSummary: 'published',
       },

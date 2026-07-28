@@ -12,7 +12,33 @@ The current worker performs only the lifecycle initialization owned by Phase 4:
 4. Move to `CONTENT_EXTRACTION`.
 5. Persist `CONTENT_EXTRACTION_PENDING`.
 
-Content extraction and later analysis are intentionally not simulated. Their implementation belongs to later phases, so a Phase 4 verification remains at the pending extraction stage.
+## Phase 6 text and URL processing
+
+Text and URL inputs now continue from content extraction through:
+
+1. Unicode and whitespace normalization.
+2. Safe article retrieval and main-content extraction for URLs.
+3. Deterministic language detection.
+4. Schema-constrained factual claim extraction.
+5. Deterministic source-span validation and claim normalization.
+6. Schema-constrained evidence-search query generation.
+7. Transition to `EVIDENCE_SEARCH` as pending.
+
+The pipeline does not search for evidence or generate a verdict in this phase. If no AI provider/model is configured, claim extraction is recorded as unavailable and the verification fails with an explicit provider code.
+
+Claims are stored separately with type, importance, verifiability, time sensitivity, entities, dates, locations, quantities, exact source span, current-information requirement, search hints, and bounded categorized queries. Opinions, predictions, value judgments, and insufficient-context statements remain distinct from externally verifiable claims.
+
+`GET /api/v1/verifications/:id/claims` returns the authenticated owner's extracted claims and planned queries.
+
+Media inputs remain at content extraction until Phase 9. Text and URL inputs stop honestly at evidence search until Phase 7.
+
+## Safe URL retrieval
+
+URL retrieval is performed only by the dedicated safe-fetch service. It permits HTTP and HTTPS on their standard ports, rejects credentials and local hostnames, resolves DNS before connecting, rejects every private/loopback/link-local/reserved answer, and pins the connection to the validated address. Every redirect repeats the full validation.
+
+Responses use manual redirects, bounded redirect count, timeout, byte limit, HTML-only content types, and an identified bot user agent. Article parsing removes scripts, styles, frames, navigation, forms, advertisements, and other non-content elements; only extracted plain text and safe metadata are persisted.
+
+Unavailable URL states are preserved as `LOGIN_REQUIRED`, `PAYWALLED`, `BLOCKED`, `UNSUPPORTED`, `NOT_FOUND`, `TIMEOUT`, or `UNSAFE_URL`. The fetcher does not bypass access controls or paywalls. Operators remain responsible for configuring a truthful bot URL and complying with publisher robots and legal policies.
 
 ## Inputs and ownership
 

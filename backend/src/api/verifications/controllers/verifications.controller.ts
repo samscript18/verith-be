@@ -33,6 +33,7 @@ import {
 } from '../dto/verification.dto';
 import { VerificationEventService } from '../services/verification-event.service';
 import { VerificationService } from '../services/verification.service';
+import { ClaimExtractionService } from '../services/claim-extraction.service';
 
 @ApiTags('Verifications')
 @ApiBearerAuth()
@@ -42,6 +43,7 @@ export class VerificationsController {
   constructor(
     private readonly verifications: VerificationService,
     private readonly events: VerificationEventService,
+    private readonly claims: ClaimExtractionService,
   ) {}
 
   @Post()
@@ -83,6 +85,16 @@ export class VerificationsController {
     await this.verifications.findOwned(user.userId, id);
     const events = await this.events.list(id, query.after);
     return events.map((event) => this.events.toResponse(event));
+  }
+
+  @Get(':id/claims')
+  @ApiOperation({ summary: 'List extracted claims and search queries' })
+  async listClaims(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    await this.verifications.findOwned(user.userId, id);
+    return this.claims.list(id);
   }
 
   @Post(':id/cancel')

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
 import { PromptStatus } from '../enums/prompt-status.enum';
 
@@ -32,11 +32,11 @@ export class AiPrompt {
   @Prop({ required: true })
   outputSchemaVersion!: string;
 
-  @Prop({ type: Types.ObjectId })
-  createdBy?: Types.ObjectId;
+  @Prop({ required: true })
+  createdBy!: string;
 
-  @Prop({ type: Types.ObjectId })
-  publishedBy?: Types.ObjectId;
+  @Prop({ required: true })
+  publishedBy!: string;
 
   @Prop()
   publishedAt?: Date;
