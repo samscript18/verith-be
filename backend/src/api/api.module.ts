@@ -15,6 +15,8 @@ import { MediaModule } from './media/media.module';
 import { ReportsModule } from './reports/reports.module';
 import { LearningModule } from './learning/learning.module';
 import { QuizzesModule } from './quizzes/quizzes.module';
+import { GamificationModule } from './gamification/gamification.module';
+import { ChallengesModule } from './challenges/challenges.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { QuizzesModule } from './quizzes/quizzes.module';
     ReportsModule,
     LearningModule,
     QuizzesModule,
+    GamificationModule,
+    ChallengesModule,
   ],
 })
 export class ApiModule {}

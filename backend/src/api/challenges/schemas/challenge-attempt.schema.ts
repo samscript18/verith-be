@@ -1,18 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
-export type QuizAttemptDocument = HydratedDocument<QuizAttempt>;
+export type ChallengeAttemptDocument = HydratedDocument<ChallengeAttempt>;
 
-@Schema({ timestamps: true, collection: 'quiz_attempts', versionKey: false })
-export class QuizAttempt {
+@Schema({
+  timestamps: true,
+  collection: 'challenge_attempts',
+  versionKey: false,
+})
+export class ChallengeAttempt {
   @Prop({ type: Types.ObjectId, required: true, index: true })
   userId!: Types.ObjectId;
   @Prop({ type: Types.ObjectId, required: true, index: true })
-  quizId!: Types.ObjectId;
-  @Prop({ type: Types.ObjectId, required: true })
-  courseId!: Types.ObjectId;
-  @Prop({ type: Types.ObjectId, required: true })
-  lessonId!: Types.ObjectId;
+  challengeId!: Types.ObjectId;
   @Prop({ required: true })
   attemptNumber!: number;
   @Prop({ type: [Object], required: true })
@@ -27,12 +27,12 @@ export class QuizAttempt {
     correct: boolean;
     explanation: string;
   }>;
-  @Prop({ default: 'PENDING' })
+  @Prop({ required: true })
   rewardState!: string;
 }
-
-export const QuizAttemptSchema = SchemaFactory.createForClass(QuizAttempt);
-QuizAttemptSchema.index(
-  { userId: 1, quizId: 1, attemptNumber: 1 },
+export const ChallengeAttemptSchema =
+  SchemaFactory.createForClass(ChallengeAttempt);
+ChallengeAttemptSchema.index(
+  { userId: 1, challengeId: 1, attemptNumber: 1 },
   { unique: true },
 );

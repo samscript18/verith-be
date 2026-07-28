@@ -77,5 +77,11 @@
 | `QUIZ_PUBLISHING_INCOMPLETE` | 409 | The quiz lesson is not published. |
 | `QUIZ_ATTEMPT_LIMIT_REACHED` | 409 | The learner exhausted the configured attempt count. |
 | `QUIZ_ATTEMPT_CONFLICT` | 409 | A concurrent attempt already reserved the attempt number. |
+| `CHALLENGE_NOT_FOUND` | 404 | A challenge is absent or outside its availability window. |
+| `CHALLENGE_SLUG_CONFLICT` | 409 | The challenge slug already exists. |
+| `CHALLENGE_PUBLISH_WINDOW_INVALID` | 409 | Publishing was requested outside the challenge window. |
+| `CHALLENGE_ATTEMPT_LIMIT_REACHED` | 409 | The learner exhausted the configured challenge attempts. |
+| `CHALLENGE_ATTEMPT_CONFLICT` | 409 | A concurrent challenge attempt reserved the attempt number. |
+| `BADGE_SLUG_CONFLICT` | 409 | The badge slug already exists. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

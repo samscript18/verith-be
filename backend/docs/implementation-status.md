@@ -13,7 +13,7 @@
 | 9. Image and Audio | COMPLETE | Trusted Cloudinary retrieval, Gemini OCR/context, cautious AI indicators, explicit reverse-image state, Groq segment transcription, pipeline handoff, tests, audit, and image validated. |
 | 10. Reports | COMPLETE | Versioned validated reports, completion lifecycle, public privacy projection, sharing/revocation, real PDF/JSON exports, feedback, honest learning tags, tests, audit, and image validated. |
 | 11. Learning | COMPLETE | Sanitized lessons, publication workflow, monotonic progress, report-based recommendations, protected quizzes, server scoring, attempt limits, docs, tests, audit, and production image validated. |
-| 12. Challenges and Gamification | NOT_STARTED | |
+| 12. Challenges and Gamification | COMPLETE | Scheduled daily challenges, protected scoring, attempts, append-only idempotent rewards, XP, Truth Points, levels, streaks, badges, privacy-filtered leaderboards, tests, audit, and production image validated. |
 | 13. Notifications | NOT_STARTED | |
 | 14. WhatsApp | NOT_STARTED | |
 | 15. Admin and Analytics | NOT_STARTED | |

@@ -20,3 +20,13 @@ is sanitized before persistence with a narrow markup/HTTPS-link allowlist.
 Quiz answer keys and explanations are never serialized by normal quiz-read
 routes. Scoring loads the protected server document, validates submitted option
 IDs, and returns explanations only after an attempt has been persisted.
+
+# Gamification integrity and privacy
+
+Challenge answer keys follow the same protected projection and persisted-attempt
+rules as quizzes. Reward transactions have a unique per-user idempotency
+reference and are append-only in normal application flows. Cached totals are
+rebuilt from the ledger.
+
+Leaderboards query only active, non-deleted users and exclude users who disabled
+leaderboard participation. Transaction history is owner-authenticated.

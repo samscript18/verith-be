@@ -9,6 +9,8 @@ import {
 import { LessonStatus } from '../../learning/enums/learning.enum';
 import { Lesson } from '../../learning/schemas/lesson.schema';
 import { LearningService } from '../../learning/services/learning.service';
+import { RewardTransactionType } from '../../gamification/enums/gamification.enum';
+import { GamificationService } from '../../gamification/services/gamification.service';
 import type { CreateQuizDto, SubmitQuizDto } from '../dto/quiz.dto';
 import { QuizQuestionType, QuizStatus } from '../enums/quiz.enum';
 import { QuizAttempt } from '../schemas/quiz-attempt.schema';
@@ -22,6 +24,7 @@ export class QuizzesService {
     private readonly attemptModel: Model<QuizAttempt>,
     @InjectModel(Lesson.name) private readonly lessonModel: Model<Lesson>,
     private readonly learning: LearningService,
+    private readonly gamification: GamificationService,
   ) {}
 
   async create(userId: string, dto: CreateQuizDto) {
@@ -140,7 +143,7 @@ export class QuizzesService {
         score,
         passed,
         results,
-        rewardState: passed ? 'DEFERRED_TO_GAMIFICATION_PHASE' : 'NOT_ELIGIBLE',
+        rewardState: passed ? 'PENDING' : 'NOT_ELIGIBLE',
       });
     } catch (error) {
       if (this.isDuplicate(error))
@@ -150,10 +153,27 @@ export class QuizzesService {
         );
       throw error;
     }
-    if (passed)
+    let rewardState = attempt.rewardState;
+    if (passed) {
       await this.learning.updateProgress(userId, quiz.lessonId.toString(), {
         progress: 100,
       });
+      const xp = Number(quiz.rewardPolicy.xp ?? 0);
+      const truthPoints = Number(quiz.rewardPolicy.truthPoints ?? 0);
+      const reward = await this.gamification.award(userId, {
+        type: RewardTransactionType.QUIZ_PASSED,
+        idempotencyReference: `quiz:${quiz._id.toString()}:passed`,
+        xp: Number.isInteger(xp) && xp >= 0 ? xp : 0,
+        truthPoints:
+          Number.isInteger(truthPoints) && truthPoints >= 0 ? truthPoints : 0,
+        metadata: { quizId: quiz._id.toString(), score },
+      });
+      rewardState = reward.awarded ? 'AWARDED' : 'ALREADY_AWARDED';
+      await this.attemptModel.updateOne(
+        { _id: attempt._id },
+        { $set: { rewardState } },
+      );
+    }
     return {
       id: attempt.id,
       attemptNumber: attempt.attemptNumber,
@@ -161,7 +181,7 @@ export class QuizzesService {
       passed,
       passingScore: quiz.passingScore,
       results,
-      rewardState: attempt.rewardState,
+      rewardState,
     };
   }
 

@@ -108,7 +108,7 @@ describe('Learning and quiz persistence (integration)', () => {
     expect(result).toMatchObject({
       score: 100,
       passed: true,
-      rewardState: 'DEFERRED_TO_GAMIFICATION_PHASE',
+      rewardState: 'AWARDED',
     });
     expect(result.results[0]?.explanation).toContain('primary records');
     const progress = await learning.myProgress(learnerId, course.id);
