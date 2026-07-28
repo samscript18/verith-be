@@ -7,6 +7,7 @@ Verith is an explainable misinformation-verification and media-literacy platform
 Business domains live in `src/api`, request-lifecycle infrastructure in `src/core`, and reusable application components in `src/shared`. `ApiModule` composes domains; `AppModule` composes global infrastructure and the API.
 
 See [docs/architecture.md](docs/architecture.md) and [docs/implementation-status.md](docs/implementation-status.md).
+Authentication behavior is documented in [docs/authentication-flow.md](docs/authentication-flow.md).
 
 ## Requirements
 

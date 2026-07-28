@@ -5,6 +5,8 @@ describe('envSchema', () => {
     const result = envSchema.validate({
       MONGODB_URI: 'mongodb://localhost:27017/verith',
       REDIS_URL: 'redis://localhost:6379',
+      JWT_ACCESS_SECRET: 'a'.repeat(32),
+      HASHING_PEPPER: 'b'.repeat(32),
     });
 
     expect(result.error).toBeUndefined();
@@ -20,6 +22,8 @@ describe('envSchema', () => {
     const result = envSchema.validate({
       MONGODB_URI: 'mongodb://localhost:27017/verith',
       REDIS_URL: 'redis://localhost:6379',
+      JWT_ACCESS_SECRET: 'a'.repeat(32),
+      HASHING_PEPPER: 'b'.repeat(32),
       WHATSAPP_ENABLED: true,
     });
 

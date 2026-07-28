@@ -64,6 +64,11 @@ async function bootstrap() {
       )
       .setVersion('1.0.0')
       .addBearerAuth()
+      .addCookieAuth(
+        'verith_refresh',
+        { type: 'apiKey', in: 'cookie' },
+        'verith_refresh',
+      )
       .build();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api/docs', app, document, {
