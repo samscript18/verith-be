@@ -13,3 +13,8 @@ Controllers translate HTTP requests and remain thin. Services own use cases. Sub
 The API process is synchronous only for short HTTP work. BullMQ workers currently initialize verifications and process text/URL submissions through claim and query generation. Evidence, media, notification, and export workloads join the queue topology in their owning phases.
 
 Large or independently queried records are separated from the verification document. Normalized extracted content, claims, evidence, stage events, idempotency records, prompt versions, AI executions, and search executions use dedicated indexed collections. Evidence carries canonical/content lineage so duplicate or syndicated pages are not silently treated as independent sources.
+
+Claim evaluations and the verification-level analysis are separate versioned
+documents. Publisher profiles are domain-keyed shared records; discovery starts
+at `UNKNOWN`, while later manual overrides require the protected admin and
+audit workflow.

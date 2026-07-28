@@ -54,6 +54,22 @@ access, ranking, and lineage fields. Duplicate and syndicated records point to
 their earlier lineage record rather than being silently counted as independent
 corroboration.
 
+## Phase 8 verification analysis
+
+Text and URL inputs now continue from evidence normalization through claim
+evaluation, manipulation analysis, bias analysis, missing-context analysis, and
+source-credibility analysis. The current boundary stops at
+`REPORT_SYNTHESIS` as pending for Phase 10.
+
+AI output supplies schema-validated evidence relationships and bounded textual
+findings. Application code validates all IDs and offsets, computes confidence,
+derives claim and overall verdicts, and calculates risk. The complete method is
+documented in [verification-analysis.md](verification-analysis.md).
+
+`GET /api/v1/verifications/:id/analysis` is owner-scoped and returns claim
+evaluations, confidence factors, uncertainty, limitations, overall verdict,
+risk, and analysis findings.
+
 ## Safe URL retrieval
 
 URL retrieval is performed only by the dedicated safe-fetch service. It permits HTTP and HTTPS on their standard ports, rejects credentials and local hostnames, resolves DNS before connecting, rejects every private/loopback/link-local/reserved answer, and pins the connection to the validated address. Every redirect repeats the full validation.

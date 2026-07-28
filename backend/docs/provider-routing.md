@@ -16,6 +16,11 @@ All provider requests use schema-constrained JSON output. Gemini receives `respo
 
 Provider JSON is parsed and validated again with the task's Joi schema. Invalid output is recorded and may receive a bounded corrective retry. A fallback is attempted only after an explicit failure and is identified in the router result.
 
+The `verification.analysis` prompt explicitly excludes verdict, risk, and
+confidence from model authority. It returns evidence relationships and textual
+findings only; stored IDs and offsets are revalidated before deterministic
+application calculations.
+
 The wire contracts follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content), [Groq chat-completions API](https://console.groq.com/docs/api-reference), and [OpenRouter structured-output documentation](https://openrouter.ai/docs/guides/features/structured-outputs).
 
 ## Operational records and privacy

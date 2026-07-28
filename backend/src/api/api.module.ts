@@ -9,6 +9,8 @@ import { VerificationsModule } from './verifications/verifications.module';
 import { AiModule } from './ai/ai.module';
 import { SearchModule } from './search/search.module';
 import { EvidenceModule } from './evidence/evidence.module';
+import { AnalysisModule } from './analysis/analysis.module';
+import { PublishersModule } from './publishers/publishers.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { EvidenceModule } from './evidence/evidence.module';
     AiModule,
     SearchModule,
     EvidenceModule,
+    AnalysisModule,
+    PublishersModule,
   ],
 })
 export class ApiModule {}

@@ -9,7 +9,7 @@
 | 5. AI Infrastructure | COMPLETE | Gemini/Groq/OpenRouter adapters, routing, Joi output validation, prompts, execution audit, health, tests, audit, and image validated; credentialed external test is opt-in. |
 | 6. Text and URL Processing | COMPLETE | Normalization, language detection, pinned SSRF-safe extraction, claims, opinion handling, queries, lifecycle tests, audit, and image validated. |
 | 7. Search and Evidence | COMPLETE | Real Tavily routing, safe retrieval, explicit access states, ranking, duplicate/syndication lineage, owner API, tests, audit, and production image validated. |
-| 8. Verification Analysis | NOT_STARTED | |
+| 8. Verification Analysis | COMPLETE | Evidence-derived claim and overall verdicts, persisted deterministic confidence factors, risk, rhetoric/bias/context findings, publisher uncertainty, API, tests, audit, and production image validated. |
 | 9. Image and Audio | NOT_STARTED | |
 | 10. Reports | NOT_STARTED | |
 | 11. Learning | NOT_STARTED | |

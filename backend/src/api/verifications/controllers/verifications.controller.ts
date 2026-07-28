@@ -35,6 +35,7 @@ import { VerificationEventService } from '../services/verification-event.service
 import { VerificationService } from '../services/verification.service';
 import { ClaimExtractionService } from '../services/claim-extraction.service';
 import { EvidenceSearchService } from '../services/evidence-search.service';
+import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
 
 @ApiTags('Verifications')
 @ApiBearerAuth()
@@ -46,6 +47,7 @@ export class VerificationsController {
     private readonly events: VerificationEventService,
     private readonly claims: ClaimExtractionService,
     private readonly evidence: EvidenceSearchService,
+    private readonly analysis: VerificationAnalysisService,
   ) {}
 
   @Post()
@@ -63,6 +65,18 @@ export class VerificationsController {
       normalizeIdempotencyKey(key),
       request.requestId,
     );
+  }
+
+  @Get(':id/analysis')
+  @ApiOperation({
+    summary: 'Retrieve evidence-derived analysis and confidence factors',
+  })
+  async getAnalysis(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    await this.verifications.findOwned(user.userId, id);
+    return this.analysis.get(id);
   }
 
   @Get(':id/evidence')

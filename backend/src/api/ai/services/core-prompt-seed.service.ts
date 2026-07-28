@@ -42,6 +42,31 @@ export class CorePromptSeedService implements OnModuleInit {
         .exec(),
       this.model
         .updateOne(
+          { key: 'verification.analysis', version: 1 },
+          {
+            $setOnInsert: {
+              key: 'verification.analysis',
+              task: 'EVIDENCE_SYNTHESIS',
+              version: 1,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Compare only the supplied claims, retrieved evidence excerpts, and submitted content. Classify evidence relationships and identify bounded manipulation, item-level bias, and materially missing context. Never invent evidence IDs or source facts. Do not output verdicts, risk, or confidence; deterministic application code calculates them. Preserve exact text offsets and return only schema-valid JSON.',
+              userPromptTemplate:
+                'Submitted content:\n{{content}}\n\nClaims:\n{{claims}}\n\nEvidence:\n{{evidence}}',
+              supportedProviders: providers,
+              supportedModels: [],
+              outputSchemaVersion: 'verification-analysis.v1',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary: 'Initial evidence-grounded verification analysis',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
           { key: 'verification.search-query-generation', version: 1 },
           {
             $setOnInsert: {

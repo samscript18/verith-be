@@ -21,38 +21,117 @@ describe('Text and URL processing lifecycle (integration)', () => {
     const ai = {
       execute: jest
         .fn()
-        .mockImplementation((request: { promptKey: string }) => {
-          if (request.promptKey === 'verification.claim-extraction') {
+        .mockImplementation(
+          (request: {
+            promptKey: string;
+            variables?: { claims: string; evidence: string };
+          }) => {
+            if (request.promptKey === 'verification.claim-extraction') {
+              return Promise.resolve({
+                output: {
+                  claims: [
+                    {
+                      text: 'The city council approved a new tax.',
+                      claimType: 'POLICY',
+                      importance: 'HIGH',
+                      verifiability: 'VERIFIABLE',
+                      timeSensitivity: 'RECENT',
+                      entities: ['city council'],
+                      dates: [],
+                      locations: [],
+                      quantities: [],
+                      sourceSpan: { start: 0, end: 36 },
+                      requiresCurrentInformation: true,
+                      searchHints: ['city council tax approval'],
+                    },
+                    {
+                      text: 'This is a terrible idea.',
+                      claimType: 'OTHER',
+                      importance: 'LOW',
+                      verifiability: 'VALUE_JUDGMENT',
+                      timeSensitivity: 'TIMELESS',
+                      entities: [],
+                      dates: [],
+                      locations: [],
+                      quantities: [],
+                      sourceSpan: { start: 37, end: 61 },
+                      requiresCurrentInformation: false,
+                      searchHints: [],
+                    },
+                  ],
+                },
+                provider: 'GROQ',
+                primaryProvider: 'GROQ',
+                fallbackUsed: false,
+                model: 'test-model',
+                promptVersion: 1,
+                usage: {},
+              });
+            }
+            if (request.promptKey === 'verification.analysis') {
+              const variables = request.variables!;
+              const claims = JSON.parse(variables.claims) as Array<{
+                id: string;
+              }>;
+              const evidence = JSON.parse(variables.evidence) as Array<{
+                id: string;
+                claimId: string;
+              }>;
+              return Promise.resolve({
+                output: {
+                  claims: claims.map((claim) => ({
+                    claimId: claim.id,
+                    evidence: evidence
+                      .filter((item) => item.claimId === claim.id)
+                      .map((item) => ({
+                        evidenceId: item.id,
+                        relationship: 'SUPPORTS',
+                      })),
+                    explanation:
+                      'The retrieved official record supports the factual claim.',
+                    evidenceSummary:
+                      'The council minutes record the approval vote.',
+                    uncertainties: [],
+                    limitations: ['Only the supplied sources were assessed.'],
+                  })),
+                  manipulation: [],
+                  bias: [
+                    'EMOTIONAL_INTENSITY',
+                    'SENSATIONALISM',
+                    'NEUTRALITY',
+                    'EVIDENCE_BALANCE',
+                    'HEADLINE_ALIGNMENT',
+                    'LOADED_LANGUAGE',
+                    'CERTAINTY_INFLATION',
+                  ].map((metric) => ({
+                    metric,
+                    score: metric === 'NEUTRALITY' ? 0.8 : 0.2,
+                    label: metric === 'NEUTRALITY' ? 'Mostly neutral' : 'Low',
+                    explanation: 'The short item uses restrained language.',
+                    textEvidence: ['The city council approved a new tax.'],
+                    limitations: ['The sample is short.'],
+                  })),
+                  missingContext: [],
+                },
+                provider: 'OPENROUTER',
+                primaryProvider: 'OPENROUTER',
+                fallbackUsed: false,
+                model: 'test-model',
+                promptVersion: 1,
+                usage: {},
+              });
+            }
             return Promise.resolve({
               output: {
                 claims: [
                   {
-                    text: 'The city council approved a new tax.',
-                    claimType: 'POLICY',
-                    importance: 'HIGH',
-                    verifiability: 'VERIFIABLE',
-                    timeSensitivity: 'RECENT',
-                    entities: ['city council'],
-                    dates: [],
-                    locations: [],
-                    quantities: [],
-                    sourceSpan: { start: 0, end: 36 },
-                    requiresCurrentInformation: true,
-                    searchHints: ['city council tax approval'],
-                  },
-                  {
-                    text: 'This is a terrible idea.',
-                    claimType: 'OTHER',
-                    importance: 'LOW',
-                    verifiability: 'VALUE_JUDGMENT',
-                    timeSensitivity: 'TIMELESS',
-                    entities: [],
-                    dates: [],
-                    locations: [],
-                    quantities: [],
-                    sourceSpan: { start: 37, end: 61 },
-                    requiresCurrentInformation: false,
-                    searchHints: [],
+                    sequence: 1,
+                    queries: [
+                      {
+                        query: 'city council new tax official approval',
+                        category: 'OFFICIAL',
+                      },
+                    ],
                   },
                 ],
               },
@@ -63,29 +142,8 @@ describe('Text and URL processing lifecycle (integration)', () => {
               promptVersion: 1,
               usage: {},
             });
-          }
-          return Promise.resolve({
-            output: {
-              claims: [
-                {
-                  sequence: 1,
-                  queries: [
-                    {
-                      query: 'city council new tax official approval',
-                      category: 'OFFICIAL',
-                    },
-                  ],
-                },
-              ],
-            },
-            provider: 'GROQ',
-            primaryProvider: 'GROQ',
-            fallbackUsed: false,
-            model: 'test-model',
-            promptVersion: 1,
-            usage: {},
-          });
-        }),
+          },
+        ),
     };
     moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(AiRouterService)
@@ -144,6 +202,9 @@ describe('Text and URL processing lifecycle (integration)', () => {
     for (const collection of [
       'verification_claims',
       'evidence',
+      'claim_evaluations',
+      'verification_analyses',
+      'publishers',
       'verification_extracted_contents',
       'verification_events',
       'idempotency_records',
@@ -168,12 +229,12 @@ describe('Text and URL processing lifecycle (integration)', () => {
     const id = created.id as string;
     await waitUntil(async () => {
       const current = await service.get(userId, id);
-      return current.currentStage === VerificationStage.CLAIM_EVALUATION;
+      return current.currentStage === VerificationStage.REPORT_SYNTHESIS;
     });
     const current = await service.get(userId, id);
     expect(current).toMatchObject({
       status: VerificationStatus.PROCESSING,
-      currentStage: VerificationStage.CLAIM_EVALUATION,
+      currentStage: VerificationStage.REPORT_SYNTHESIS,
       claimsCount: 2,
       detectedLanguage: 'en',
     });
@@ -202,7 +263,7 @@ describe('Text and URL processing lifecycle (integration)', () => {
     expect(evidence).toHaveLength(2);
     expect(evidence[0]).toMatchObject({
       accessStatus: 'AVAILABLE',
-      relationship: 'INCONCLUSIVE',
+      relationship: 'SUPPORTS',
       lineageType: 'UNIQUE',
       metadata: { searchSnippetIsEvidence: false },
     });
@@ -212,6 +273,25 @@ describe('Text and URL processing lifecycle (integration)', () => {
     expect(evidence[1]).toMatchObject({
       lineageType: 'DUPLICATE',
       duplicateOfEvidenceId: evidence[0]?._id,
+    });
+    const evaluation = await connection
+      .collection('claim_evaluations')
+      .findOne({ verificationId: new Types.ObjectId(id) });
+    expect(evaluation).toMatchObject({
+      verdict: 'SUPPORTED',
+      confidenceFactors: {
+        structuredOutputValid: true,
+        contradictoryEvidencePresent: false,
+      },
+    });
+    expect(evaluation?.confidence).toBeGreaterThan(0);
+    const analysis = await connection
+      .collection('verification_analyses')
+      .findOne({ verificationId: new Types.ObjectId(id) });
+    expect(analysis).toMatchObject({
+      overallVerdict: 'SUPPORTED',
+      riskLevel: 'LOW',
+      methodVersion: 'verification-analysis.v1',
     });
   });
 

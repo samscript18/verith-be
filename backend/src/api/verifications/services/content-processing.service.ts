@@ -19,6 +19,7 @@ import { VerificationEventService } from './verification-event.service';
 import { LanguageDetectionService } from './language-detection.service';
 import { TextNormalizationService } from './text-normalization.service';
 import { EvidenceSearchService } from './evidence-search.service';
+import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -30,6 +31,7 @@ export class ContentProcessingService {
     private readonly languages: LanguageDetectionService,
     private readonly claims: ClaimExtractionService,
     private readonly evidence: EvidenceSearchService,
+    private readonly analysis: VerificationAnalysisService,
     private readonly events: VerificationEventService,
   ) {}
 
@@ -66,7 +68,6 @@ export class ContentProcessingService {
         requestId,
         jobId,
       });
-
       const language = this.languages.detect(extracted.record.normalizedText);
       verification.currentStage = VerificationStage.LANGUAGE_DETECTION;
       verification.progress = 25;
@@ -181,6 +182,40 @@ export class ContentProcessingService {
         progress: 60,
         messageCode: 'CLAIM_EVALUATION_PENDING',
         safeMessage: 'The verification is awaiting claim evaluation',
+        requestId,
+        jobId,
+      });
+      await this.analysis.analyze(verification.id, requestId);
+      for (const stage of [
+        VerificationStage.CLAIM_EVALUATION,
+        VerificationStage.MANIPULATION_ANALYSIS,
+        VerificationStage.BIAS_ANALYSIS,
+        VerificationStage.MISSING_CONTEXT_ANALYSIS,
+        VerificationStage.SOURCE_CREDIBILITY_ANALYSIS,
+      ]) {
+        verification.currentStage = stage;
+        verification.progress += 5;
+        await verification.save();
+        await this.events.append({
+          verificationId: verification.id,
+          stage,
+          status: VerificationEventStatus.COMPLETED,
+          progress: verification.progress,
+          messageCode: `${stage}_COMPLETED`,
+          safeMessage: 'The analysis stage was completed',
+          requestId,
+          jobId,
+        });
+      }
+      verification.currentStage = VerificationStage.REPORT_SYNTHESIS;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.REPORT_SYNTHESIS,
+        status: VerificationEventStatus.PENDING,
+        progress: verification.progress,
+        messageCode: 'REPORT_SYNTHESIS_PENDING',
+        safeMessage: 'The verification is awaiting report synthesis',
         requestId,
         jobId,
       });
