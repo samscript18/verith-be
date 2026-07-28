@@ -15,36 +15,34 @@ permissions:
   contents: read
 
 jobs:
-  quality:
+  validate:
     runs-on: ubuntu-latest
     services:
       mongodb:
         image: mongo:8
-        ports:
-          - 27017:27017
+        ports: ["27017:27017"]
         options: >-
           --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+          --health-interval 10s --health-timeout 5s --health-retries 10
       redis:
         image: redis:8-alpine
-        ports:
-          - 6379:6379
+        ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      NODE_ENV: test
-      MONGODB_URI: mongodb://127.0.0.1:27017/verith_test
-      REDIS_URL: redis://127.0.0.1:6379
-      JWT_ACCESS_SECRET: ci-access-secret-at-least-32-characters
-      HASHING_PEPPER: ci-hashing-pepper-at-least-32-characters
+          --health-interval 10s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: backend
+    env:
+      NODE_ENV: test
+      MONGODB_URI: mongodb://127.0.0.1:27017/verith_ci
+      REDIS_URL: redis://127.0.0.1:6379/1
+      JWT_ACCESS_SECRET: ci-access-secret-with-at-least-32-characters
+      HASHING_PEPPER: ci-hashing-pepper-with-at-least-32-characters
+      DATA_EXPORT_ENCRYPTION_KEY: ci-export-key-with-at-least-32-characters
+      MASTER_ENCRYPTION_KEY: ci-master-key-with-at-least-32-characters
+      WHATSAPP_ENABLED: "false"
+      PROCESS_ROLE: all
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,6 +57,6 @@ jobs:
       - run: npm test -- --runInBand
       - run: npm run test:integration -- --runInBand
       - run: npm run test:e2e -- --runInBand
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run build
-      - run: npm audit --omit=dev --audit-level=critical
-      - run: docker build .
+      - run: docker build -t verith-backend:ci .

@@ -44,6 +44,7 @@ import { MediaModule } from '../media/media.module';
 import { ReportsModule } from '../reports/reports.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { runsWorkers } from '../../shared/utils/process-role';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -95,7 +96,7 @@ const redisOptions = (value: string): RedisOptions => {
     VerificationEventService,
     VerificationOrchestratorService,
     VerificationService,
-    VerificationWorker,
+    ...(runsWorkers() ? [VerificationWorker] : []),
     TextNormalizationService,
     LanguageDetectionService,
     ArticleExtractionService,

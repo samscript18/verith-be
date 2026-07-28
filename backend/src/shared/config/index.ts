@@ -24,3 +24,4 @@ export {
   default as whatsappConfig,
   type WhatsAppConfig,
 } from './whatsapp.config';
+export { default as privacyConfig, type PrivacyConfig } from './privacy.config';

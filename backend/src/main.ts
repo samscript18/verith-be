@@ -5,6 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import type { NextFunction, Request, Response } from 'express';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { RequestValidationException } from './core/exceptions';
@@ -37,6 +38,13 @@ async function bootstrap() {
         }),
   );
   app.use(cookieParser());
+  app.use((_request: Request, response: Response, next: NextFunction) => {
+    response.setHeader(
+      'Permissions-Policy',
+      'camera=(), geolocation=(), microphone=(), payment=(), usb=()',
+    );
+    next();
+  });
   app.useBodyParser('json', { limit: '2mb' });
   app.useBodyParser('urlencoded', { limit: '2mb', extended: true });
   app.enableCors({

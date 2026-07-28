@@ -13,6 +13,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:worker": "PROCESS_ROLE=worker node dist/worker",
+    "start:scheduler": "PROCESS_ROLE=scheduler node dist/scheduler",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
@@ -22,7 +24,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:integration": "jest --config ./test/jest-integration.json",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:external": "jest --config ./test/jest-external.json"
+    "test:external": "jest --config ./test/jest-external.json",
+    "load-test": "node scripts/load-test.mjs"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",

@@ -36,3 +36,11 @@ Phase 14 unit coverage verifies raw-body HMAC signatures and constant-time
 verification-token behavior. Integration coverage proves one-time hashed linking
 codes, encrypted linkage resolution, consent status, code reuse rejection, and
 removal of lookup data on unlink without calling Meta.
+
+Phase 16 covers authenticated encrypted account exports, download-token
+validation, cross-collection erasure, audit retention, and crypto round trips.
+Run `npm run load-test` against a started API to apply the default 500-request,
+25-concurrency liveness profile. Configure `LOAD_TEST_BASE_URL`,
+`LOAD_TEST_REQUESTS`, `LOAD_TEST_CONCURRENCY`, and `LOAD_TEST_MAX_P95_MS` for
+the target environment. Load tests are read-only and fail on any HTTP error or
+p95 above the configured threshold.

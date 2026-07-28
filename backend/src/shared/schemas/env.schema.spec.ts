@@ -7,6 +7,7 @@ describe('envSchema', () => {
       REDIS_URL: 'redis://localhost:6379',
       JWT_ACCESS_SECRET: 'a'.repeat(32),
       HASHING_PEPPER: 'b'.repeat(32),
+      DATA_EXPORT_ENCRYPTION_KEY: 'd'.repeat(32),
     });
 
     expect(result.error).toBeUndefined();
@@ -24,6 +25,7 @@ describe('envSchema', () => {
       REDIS_URL: 'redis://localhost:6379',
       JWT_ACCESS_SECRET: 'a'.repeat(32),
       HASHING_PEPPER: 'b'.repeat(32),
+      DATA_EXPORT_ENCRYPTION_KEY: 'd'.repeat(32),
       MASTER_ENCRYPTION_KEY: 'c'.repeat(32),
       CLOUDINARY_CLOUD_NAME: 'test',
       CLOUDINARY_API_KEY: 'test',
@@ -40,6 +42,7 @@ describe('envSchema', () => {
       REDIS_URL: 'redis://localhost:6379',
       JWT_ACCESS_SECRET: 'a'.repeat(32),
       HASHING_PEPPER: 'b'.repeat(32),
+      DATA_EXPORT_ENCRYPTION_KEY: 'd'.repeat(32),
       CLOUDINARY_CLOUD_NAME: 'verith',
     });
 

@@ -3,11 +3,12 @@ services:
     image: mongo:8
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -15,13 +16,13 @@ services:
   redis:
     image: redis:8-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,12 +31,45 @@ services:
     build:
       context: .
     restart: unless-stopped
-    env_file: .env
+    env_file: ${ENV_FILE:-.env.local}
     environment:
       MONGODB_URI: mongodb://mongodb:27017/verith
       REDIS_URL: redis://redis:6379
+      PROCESS_ROLE: api
     ports:
-      - "4000:4000"
+      - '4000:4000'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+    restart: unless-stopped
+    command: ['node', 'dist/worker']
+    env_file: ${ENV_FILE:-.env.local}
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/verith
+      REDIS_URL: redis://redis:6379
+      PROCESS_ROLE: worker
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: .
+    restart: unless-stopped
+    command: ['node', 'dist/scheduler']
+    env_file: ${ENV_FILE:-.env.local}
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/verith
+      REDIS_URL: redis://redis:6379
+      PROCESS_ROLE: scheduler
     depends_on:
       mongodb:
         condition: service_healthy

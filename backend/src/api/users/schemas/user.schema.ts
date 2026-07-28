@@ -71,6 +71,9 @@ export class User {
   @Prop()
   deletionRequestedAt?: Date;
 
+  @Prop()
+  erasureProcessingAt?: Date;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { RequestWithId } from '../../../core/types/request-with-id.type';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../core/guards/roles.guard';
@@ -91,6 +92,7 @@ export class AdminController {
   }
 
   @Post('verifications/:id/retry')
+  @Throttle({ default: { limit: 5, ttl: 60 * 1000 } })
   @ApiOperation({ summary: 'Idempotently enqueue a failed verification retry' })
   retryVerification(
     @Param('id') id: string,

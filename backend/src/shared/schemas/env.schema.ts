@@ -24,6 +24,9 @@ export const envSchema = Joi.object({
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
     .default('debug'),
   SWAGGER_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  PROCESS_ROLE: Joi.string()
+    .valid('all', 'api', 'worker', 'scheduler')
+    .optional(),
 
   MONGODB_URI: Joi.string()
     .uri({ scheme: ['mongodb', 'mongodb+srv'] })
@@ -61,6 +64,19 @@ export const envSchema = Joi.object({
       then: Joi.string().min(32).required(),
     }),
   HASHING_PEPPER: Joi.string().min(32).required(),
+  DATA_EXPORT_ENCRYPTION_KEY: Joi.string().min(32).required(),
+  EXPORT_RETENTION_HOURS: Joi.number().integer().min(1).max(168).default(24),
+  ACCOUNT_DELETION_GRACE_DAYS: Joi.number().integer().min(0).max(30).default(7),
+  WHATSAPP_METADATA_RETENTION_DAYS: Joi.number()
+    .integer()
+    .min(1)
+    .max(3650)
+    .default(90),
+  AUDIT_LOG_RETENTION_DAYS: Joi.number()
+    .integer()
+    .min(365)
+    .max(3650)
+    .default(2555),
   CLOUDINARY_CLOUD_NAME: Joi.string()
     .trim()
     .allow('')

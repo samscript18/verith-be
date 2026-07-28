@@ -17,6 +17,6 @@
 | 13. Notifications | COMPLETE | Durable in-app notifications, cursor APIs, real SMTP states, BullMQ retries, validated preferences, security alerts, verification hooks, tests, audit, and production image validated. |
 | 14. WhatsApp | COMPLETE | Direct Meta API, signed raw-body webhooks, encrypted one-time linking, idempotent queues, text/URL/image/audio verification, cautious results, delivery states, tests, audit, and production image validated. |
 | 15. Admin and Analytics | COMPLETE | Protected user and verification operations, privilege boundaries, session revocation, append-only audit logs, real operational aggregates, docs, tests, audit, and production image validated. |
-| 16. Privacy and Production Hardening | NOT_STARTED | |
+| 16. Privacy and Production Hardening | COMPLETE | Encrypted exports, provider-confirmed erasure, distributed retention, process separation, CI, security/rate review, load validation, recovery docs, full tests, audit, and production image validated. |
 
 A phase becomes `COMPLETE` only after implementation, docs, environment configuration, tests, lint, typecheck, build, Swagger accuracy, and failure-state review all pass.

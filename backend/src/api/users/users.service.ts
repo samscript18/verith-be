@@ -233,7 +233,11 @@ export class UsersService {
   async cancelDeletion(userId: string): Promise<void> {
     await this.userModel
       .updateOne(
-        { _id: userId, status: UserStatus.DELETION_PENDING },
+        {
+          _id: userId,
+          status: UserStatus.DELETION_PENDING,
+          erasureProcessingAt: { $exists: false },
+        },
         {
           $set: { status: UserStatus.ACTIVE },
           $unset: { deletionRequestedAt: 1 },

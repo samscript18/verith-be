@@ -25,6 +25,7 @@ import { WhatsAppLinkService } from './services/whatsapp-link.service';
 import { WhatsAppService } from './services/whatsapp.service';
 import { WHATSAPP_QUEUE } from './whatsapp.constants';
 import { WhatsAppWorker } from './workers/whatsapp.worker';
+import { runsWorkers } from '../../shared/utils/process-role';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -65,7 +66,7 @@ const redisOptions = (value: string): RedisOptions => {
     MetaWhatsAppService,
     WhatsAppLinkService,
     WhatsAppService,
-    WhatsAppWorker,
+    ...(runsWorkers() ? [WhatsAppWorker] : []),
   ],
   exports: [WhatsAppService, WhatsAppLinkService],
 })

@@ -1,0 +1,12 @@
+export enum PrivacyJobType {
+  DATA_EXPORT = 'DATA_EXPORT',
+  ACCOUNT_DELETION = 'ACCOUNT_DELETION',
+}
+
+export enum PrivacyJobStatus {
+  QUEUED = 'QUEUED',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  EXPIRED = 'EXPIRED',
+}

@@ -8,6 +8,7 @@ import { MediaAsset, MediaAssetSchema } from './schemas/media-asset.schema';
 import { UploadsCleanupService } from './uploads-cleanup.service';
 import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
+import { runsScheduler } from '../../shared/utils/process-role';
 
 @Module({
   imports: [
@@ -19,12 +20,12 @@ import { UploadsService } from './uploads.service';
   controllers: [UploadsController, AvatarUploadsController],
   providers: [
     UploadsService,
-    UploadsCleanupService,
+    ...(runsScheduler() ? [UploadsCleanupService] : []),
     {
       provide: CLOUDINARY_PROVIDER,
       useClass: CloudinaryProviderAdapter,
     },
   ],
-  exports: [UploadsService, MongooseModule],
+  exports: [UploadsService, MongooseModule, CLOUDINARY_PROVIDER],
 })
 export class UploadsModule {}

@@ -4,16 +4,16 @@ import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { RedisOptions } from 'ioredis';
 import type { RedisConfig } from '../../shared/config';
-import { User, UserSchema } from '../users/schemas/user.schema';
-import { NotificationsController } from './controllers/notifications.controller';
-import { NOTIFICATION_QUEUE } from './notification.constants';
-import {
-  Notification,
-  NotificationSchema,
-} from './schemas/notification.schema';
-import { NotificationsService } from './services/notifications.service';
-import { NotificationWorker } from './workers/notification.worker';
-import { runsWorkers } from '../../shared/utils/process-role';
+import { RedisModule } from '../integrations/redis/redis.module';
+import { UploadsModule } from '../uploads/uploads.module';
+import { PrivacyController } from './controllers/privacy.controller';
+import { PRIVACY_QUEUE } from './privacy.constants';
+import { PrivacyJob, PrivacyJobSchema } from './schemas/privacy-job.schema';
+import { PrivacyCryptoService } from './services/privacy-crypto.service';
+import { PrivacyService } from './services/privacy.service';
+import { RetentionService } from './services/retention.service';
+import { PrivacyWorker } from './workers/privacy.worker';
+import { runsScheduler, runsWorkers } from '../../shared/utils/process-role';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -32,9 +32,10 @@ const redisOptions = (value: string): RedisOptions => {
 
 @Module({
   imports: [
+    UploadsModule,
+    RedisModule,
     MongooseModule.forFeature([
-      { name: Notification.name, schema: NotificationSchema },
-      { name: User.name, schema: UserSchema },
+      { name: PrivacyJob.name, schema: PrivacyJobSchema },
     ]),
     BullModule.forRootAsync({
       inject: [ConfigService],
@@ -43,13 +44,15 @@ const redisOptions = (value: string): RedisOptions => {
         prefix: 'verith:bull',
       }),
     }),
-    BullModule.registerQueue({ name: NOTIFICATION_QUEUE }),
+    BullModule.registerQueue({ name: PRIVACY_QUEUE }),
   ],
-  controllers: [NotificationsController],
+  controllers: [PrivacyController],
   providers: [
-    NotificationsService,
-    ...(runsWorkers() ? [NotificationWorker] : []),
+    PrivacyCryptoService,
+    PrivacyService,
+    ...(runsWorkers() ? [PrivacyWorker] : []),
+    ...(runsScheduler() ? [RetentionService] : []),
   ],
-  exports: [NotificationsService, MongooseModule],
+  exports: [PrivacyService],
 })
-export class NotificationsModule {}
+export class PrivacyModule {}
