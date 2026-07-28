@@ -18,6 +18,7 @@ import { ClaimExtractionService } from './claim-extraction.service';
 import { VerificationEventService } from './verification-event.service';
 import { LanguageDetectionService } from './language-detection.service';
 import { TextNormalizationService } from './text-normalization.service';
+import { EvidenceSearchService } from './evidence-search.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -28,6 +29,7 @@ export class ContentProcessingService {
     private readonly normalization: TextNormalizationService,
     private readonly languages: LanguageDetectionService,
     private readonly claims: ClaimExtractionService,
+    private readonly evidence: EvidenceSearchService,
     private readonly events: VerificationEventService,
   ) {}
 
@@ -81,7 +83,6 @@ export class ContentProcessingService {
         requestId,
         jobId,
       });
-
       verification.currentStage = VerificationStage.CLAIM_EXTRACTION;
       verification.progress = 30;
       await verification.save();
@@ -127,6 +128,59 @@ export class ContentProcessingService {
         progress: 45,
         messageCode: 'EVIDENCE_SEARCH_PENDING',
         safeMessage: 'The verification is awaiting evidence search',
+        requestId,
+        jobId,
+      });
+      const evidenceCount = await this.evidence.searchAndPersist(
+        verification.id,
+        requestId,
+      );
+      verification.evidenceCount = evidenceCount;
+      verification.currentStage = VerificationStage.EVIDENCE_NORMALIZATION;
+      verification.progress = 60;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.EVIDENCE_SEARCH,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 50,
+        messageCode: 'EVIDENCE_SEARCH_COMPLETED',
+        safeMessage: 'Potential evidence sources were searched',
+        metrics: { evidenceCount },
+        requestId,
+        jobId,
+      });
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.EVIDENCE_RETRIEVAL,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 55,
+        messageCode: 'EVIDENCE_RETRIEVAL_COMPLETED',
+        safeMessage: 'Accessible evidence pages were retrieved',
+        metrics: { evidenceCount },
+        requestId,
+        jobId,
+      });
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.EVIDENCE_NORMALIZATION,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 60,
+        messageCode: 'EVIDENCE_NORMALIZATION_COMPLETED',
+        safeMessage: 'Evidence was normalized and duplicate lineage recorded',
+        metrics: { evidenceCount },
+        requestId,
+        jobId,
+      });
+      verification.currentStage = VerificationStage.CLAIM_EVALUATION;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.CLAIM_EVALUATION,
+        status: VerificationEventStatus.PENDING,
+        progress: 60,
+        messageCode: 'CLAIM_EVALUATION_PENDING',
+        safeMessage: 'The verification is awaiting claim evaluation',
         requestId,
         jobId,
       });

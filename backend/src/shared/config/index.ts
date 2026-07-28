@@ -19,3 +19,4 @@ export {
   default as processingConfig,
   type ProcessingConfig,
 } from './processing.config';
+export { default as searchConfig, type SearchConfig } from './search.config';

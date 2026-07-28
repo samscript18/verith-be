@@ -105,6 +105,18 @@ export const envSchema = Joi.object({
     .optional(),
   OPENROUTER_APP_NAME: Joi.string().trim().default('Verith'),
   TAVILY_API_KEY: optionalSecret,
+  TAVILY_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://api.tavily.com'),
+  SEARCH_PRIMARY_PROVIDER: Joi.string().valid('tavily').default('tavily'),
+  SEARCH_FALLBACK_PROVIDER: Joi.string().valid('', 'tavily').default(''),
+  SEARCH_TIMEOUT_MS: Joi.number().integer().min(1000).max(60000).default(20000),
+  SEARCH_MAX_RETRIES: Joi.number().integer().min(0).max(5).default(2),
+  VERIFICATION_MAX_EVIDENCE_PER_CLAIM: Joi.number()
+    .integer()
+    .min(1)
+    .max(50)
+    .default(10),
   AI_MAX_RETRIES: Joi.number().integer().min(0).max(5).default(2),
   PROVIDER_HEALTH_CACHE_SECONDS: Joi.number()
     .integer()

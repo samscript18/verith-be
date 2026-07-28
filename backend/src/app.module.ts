@@ -16,6 +16,7 @@ import {
   mailConfig,
   processingConfig,
   redisConfig,
+  searchConfig,
   type AppConfig,
 } from './shared/config';
 import { envSchema } from './shared/schemas/env.schema';
@@ -41,6 +42,7 @@ import { RedisThrottlerStorage } from './core/services/redis-throttler-storage.s
         mailConfig,
         processingConfig,
         redisConfig,
+        searchConfig,
       ],
       validationSchema: envSchema,
       validationOptions: { abortEarly: false },

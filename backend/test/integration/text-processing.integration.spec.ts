@@ -7,6 +7,9 @@ import { VerificationSourceType } from '../../src/api/verifications/enums/verifi
 import { VerificationStage } from '../../src/api/verifications/enums/verification-stage.enum';
 import { VerificationStatus } from '../../src/api/verifications/enums/verification-status.enum';
 import { VerificationService } from '../../src/api/verifications/services/verification.service';
+import { SearchRouterService } from '../../src/api/search/services/search-router.service';
+import { ArticleExtractionService } from '../../src/api/verifications/services/article-extraction.service';
+import { ValidationException } from '../../src/core/exceptions';
 
 describe('Text and URL processing lifecycle (integration)', () => {
   jest.setTimeout(30000);
@@ -87,6 +90,50 @@ describe('Text and URL processing lifecycle (integration)', () => {
     moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(AiRouterService)
       .useValue(ai)
+      .overrideProvider(SearchRouterService)
+      .useValue({
+        search: jest.fn().mockResolvedValue({
+          provider: 'TAVILY',
+          results: [
+            {
+              title: 'Council record',
+              url: 'https://city.gov.example/council-tax',
+              snippet: 'Provider snippet is not evidence.',
+              providerScore: 0.9,
+            },
+            {
+              title: 'Council record copy',
+              url: 'https://mirror.example/council-tax',
+              snippet: 'A duplicate provider snippet.',
+              providerScore: 0.8,
+            },
+          ],
+        }),
+      })
+      .overrideProvider(ArticleExtractionService)
+      .useValue({
+        extract: jest.fn().mockImplementation((url: string) => {
+          if (url.includes('127.0.0.1')) {
+            throw new ValidationException('Unsafe URL', [
+              { field: 'url', message: 'resolves to a private address' },
+            ]);
+          }
+          return Promise.resolve({
+            state: 'EXTRACTED',
+            sourceUrl: url,
+            canonicalUrl: url,
+            title: 'City council official record',
+            publisher: 'City Council',
+            publishedAt: new Date('2026-07-01T00:00:00.000Z'),
+            text:
+              'The city council approved a new tax after a recorded vote. ' +
+              'The official minutes list the vote and effective date. '.repeat(
+                6,
+              ),
+            confidence: 1,
+          });
+        }),
+      })
       .compile();
     await moduleRef.init();
     connection = moduleRef.get<Connection>(getConnectionToken());
@@ -96,6 +143,7 @@ describe('Text and URL processing lifecycle (integration)', () => {
   afterAll(async () => {
     for (const collection of [
       'verification_claims',
+      'evidence',
       'verification_extracted_contents',
       'verification_events',
       'idempotency_records',
@@ -120,12 +168,12 @@ describe('Text and URL processing lifecycle (integration)', () => {
     const id = created.id as string;
     await waitUntil(async () => {
       const current = await service.get(userId, id);
-      return current.currentStage === VerificationStage.EVIDENCE_SEARCH;
+      return current.currentStage === VerificationStage.CLAIM_EVALUATION;
     });
     const current = await service.get(userId, id);
     expect(current).toMatchObject({
       status: VerificationStatus.PROCESSING,
-      currentStage: VerificationStage.EVIDENCE_SEARCH,
+      currentStage: VerificationStage.CLAIM_EVALUATION,
       claimsCount: 2,
       detectedLanguage: 'en',
     });
@@ -145,6 +193,25 @@ describe('Text and URL processing lifecycle (integration)', () => {
     expect(claims[1]).toMatchObject({
       verifiability: 'VALUE_JUDGMENT',
       searchQueries: [],
+    });
+    const evidence = await connection
+      .collection('evidence')
+      .find({ verificationId: new Types.ObjectId(id) })
+      .sort({ createdAt: 1 })
+      .toArray();
+    expect(evidence).toHaveLength(2);
+    expect(evidence[0]).toMatchObject({
+      accessStatus: 'AVAILABLE',
+      relationship: 'INCONCLUSIVE',
+      lineageType: 'UNIQUE',
+      metadata: { searchSnippetIsEvidence: false },
+    });
+    expect(evidence[0]?.relevantExcerpt).toContain(
+      'The city council approved a new tax',
+    );
+    expect(evidence[1]).toMatchObject({
+      lineageType: 'DUPLICATE',
+      duplicateOfEvidenceId: evidence[0]?._id,
     });
   });
 

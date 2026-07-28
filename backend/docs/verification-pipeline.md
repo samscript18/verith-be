@@ -30,7 +30,29 @@ Claims are stored separately with type, importance, verifiability, time sensitiv
 
 `GET /api/v1/verifications/:id/claims` returns the authenticated owner's extracted claims and planned queries.
 
-Media inputs remain at content extraction until Phase 9. Text and URL inputs stop honestly at evidence search until Phase 7.
+Media inputs remain at content extraction until Phase 9.
+
+## Phase 7 search and evidence
+
+Text and URL inputs now continue through:
+
+1. Categorized claim queries sent through the configured real search provider.
+2. Safe retrieval and extraction of selected public source pages.
+3. Canonical URL, tracking-parameter, and content-hash deduplication.
+4. Possible syndicated-copy detection using publisher, title similarity, and publication date.
+5. Deterministic relevance, directness, recency, and authority scoring.
+6. Durable evidence and source-access records.
+7. Transition to `CLAIM_EVALUATION` as pending.
+
+Search snippets are never treated as conclusive evidence. An inaccessible
+result is persisted with an explicit access status and no relevant excerpt.
+Available excerpts are selected only from retrieved page content. Every
+relationship remains `INCONCLUSIVE` until Phase 8 compares claims and evidence.
+
+`GET /api/v1/verifications/:id/evidence` is owner-scoped and returns source,
+access, ranking, and lineage fields. Duplicate and syndicated records point to
+their earlier lineage record rather than being silently counted as independent
+corroboration.
 
 ## Safe URL retrieval
 

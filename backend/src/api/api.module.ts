@@ -7,6 +7,8 @@ import { UsersModule } from './users/users.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { VerificationsModule } from './verifications/verifications.module';
 import { AiModule } from './ai/ai.module';
+import { SearchModule } from './search/search.module';
+import { EvidenceModule } from './evidence/evidence.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { AiModule } from './ai/ai.module';
     UploadsModule,
     VerificationsModule,
     AiModule,
+    SearchModule,
+    EvidenceModule,
   ],
 })
 export class ApiModule {}

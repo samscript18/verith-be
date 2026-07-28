@@ -48,5 +48,11 @@
 | `URL_REDIRECT_LIMIT_EXCEEDED` | 503 | Redirects exceeded the configured safe limit. |
 | `URL_PAYWALLED` | 422 | The article appears to require a subscription. |
 | `URL_LOGIN_REQUIRED` | 422 | The article appears to require login. |
+| `SEARCH_PROVIDER_NOT_CONFIGURED` | 503 | No configured search provider can execute the query. |
+| `SEARCH_PROVIDER_AUTHENTICATION_FAILED` | 503 | The search provider rejected its credential. |
+| `SEARCH_PROVIDER_RATE_LIMITED` | 503 | The search provider refused the request because its limit was reached. |
+| `SEARCH_PROVIDER_TIMEOUT` | 503 | The search request exceeded its configured timeout. |
+| `SEARCH_PROVIDER_UNAVAILABLE` | 503 | The search provider or its response was unavailable. |
+| `SEARCH_PROVIDER_INVALID_RESPONSE` | 503 | The search provider returned an unusable response contract. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

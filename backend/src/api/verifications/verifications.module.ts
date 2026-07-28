@@ -36,6 +36,9 @@ import { ClaimExtractionService } from './services/claim-extraction.service';
 import { ContentProcessingService } from './services/content-processing.service';
 import { LanguageDetectionService } from './services/language-detection.service';
 import { TextNormalizationService } from './services/text-normalization.service';
+import { SearchModule } from '../search/search.module';
+import { EvidenceModule } from '../evidence/evidence.module';
+import { EvidenceSearchService } from './services/evidence-search.service';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -56,6 +59,8 @@ const redisOptions = (value: string): RedisOptions => {
   imports: [
     UploadsModule,
     AiModule,
+    SearchModule,
+    EvidenceModule,
     MongooseModule.forFeature([
       { name: Verification.name, schema: VerificationSchema },
       { name: VerificationEvent.name, schema: VerificationEventSchema },
@@ -86,6 +91,7 @@ const redisOptions = (value: string): RedisOptions => {
     ArticleExtractionService,
     ClaimExtractionService,
     ContentProcessingService,
+    EvidenceSearchService,
   ],
   exports: [VerificationService, VerificationEventService, MongooseModule],
 })

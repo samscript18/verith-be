@@ -37,3 +37,30 @@ RUN_AI_EXTERNAL_TESTS=true npm run test:external
 ```
 
 They make small real requests and may incur provider charges.
+
+## Search providers
+
+Phase 7 implements Tavily behind the `SearchProvider` contract. The request
+contract supports query, language, country, recency/date bounds, domain
+allow/deny lists, result limit, and safe-search intent. Tavily receives only
+the options its API supports. Language and safe-search intent remain explicit
+in the application contract rather than being falsely represented as native
+Tavily controls.
+
+The adapter uses Tavily's official
+[Search endpoint](https://docs.tavily.com/documentation/api-reference/endpoint/search)
+with bearer authentication. It explicitly sets `include_answer: false` and
+`include_raw_content: false`. Search snippets are discovery metadata, not
+evidence; the application retrieves each selected page through its SSRF-safe
+fetch boundary before creating an available evidence record.
+
+The router retries only timeout and transient availability failures. Missing
+configuration, authentication rejection, and rate limiting remain distinct.
+`search_executions` stores a SHA-256 query fingerprint, provider request ID,
+latency, result/credit counts, and a safe failure code. It does not store the
+submitted query.
+
+`GET /api/v1/integrations/search/health` is administrator-only. A forced
+Tavily health check performs a real one-result search and therefore consumes a
+search credit. Results are cached for `PROVIDER_HEALTH_CACHE_SECONDS`; normal
+searches do not incur a separate preflight call.

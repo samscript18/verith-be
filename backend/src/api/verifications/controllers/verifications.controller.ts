@@ -34,6 +34,7 @@ import {
 import { VerificationEventService } from '../services/verification-event.service';
 import { VerificationService } from '../services/verification.service';
 import { ClaimExtractionService } from '../services/claim-extraction.service';
+import { EvidenceSearchService } from '../services/evidence-search.service';
 
 @ApiTags('Verifications')
 @ApiBearerAuth()
@@ -44,6 +45,7 @@ export class VerificationsController {
     private readonly verifications: VerificationService,
     private readonly events: VerificationEventService,
     private readonly claims: ClaimExtractionService,
+    private readonly evidence: EvidenceSearchService,
   ) {}
 
   @Post()
@@ -61,6 +63,16 @@ export class VerificationsController {
       normalizeIdempotencyKey(key),
       request.requestId,
     );
+  }
+
+  @Get(':id/evidence')
+  @ApiOperation({ summary: 'List retrieved evidence and source access states' })
+  async listEvidence(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    await this.verifications.findOwned(user.userId, id);
+    return this.evidence.list(id);
   }
 
   @Get()
