@@ -66,9 +66,11 @@ describe('Verification lifecycle (integration)', () => {
     ).rejects.toBeInstanceOf(ConflictException);
 
     await waitUntil(async () => {
-      const current = await service.get(userId, id);
-      return current.status === VerificationStatus.PROCESSING;
+      const timeline = await events.list(id);
+      return timeline.length >= 3;
     });
+    const current = await service.get(userId, id);
+    expect(current.status).toBe(VerificationStatus.PROCESSING);
     const timeline = await events.list(id);
     expect(timeline.map((event) => event.messageCode)).toEqual(
       expect.arrayContaining([

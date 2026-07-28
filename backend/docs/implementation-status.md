@@ -6,7 +6,7 @@
 | 2. Authentication and Users | COMPLETE | Real MongoDB/Redis integration flow, security controls, Swagger, tests, build, audit, and production image validated. |
 | 3. Uploads and Cloudinary | COMPLETE | Signed owner-bound uploads, provider verification, avatar attachment, cleanup, docs, tests, audit, and production image validated. |
 | 4. Verification Core | COMPLETE | Durable lifecycle, idempotency, BullMQ worker, ownership, history, cancellation/retry, SSE, tests, audit, and image validated. |
-| 5. AI Infrastructure | NOT_STARTED | |
+| 5. AI Infrastructure | COMPLETE | Gemini/Groq/OpenRouter adapters, routing, Joi output validation, prompts, execution audit, health, tests, audit, and image validated; credentialed external test is opt-in. |
 | 6. Text and URL Processing | NOT_STARTED | |
 | 7. Search and Evidence | NOT_STARTED | |
 | 8. Verification Analysis | NOT_STARTED | |

@@ -29,5 +29,14 @@
 | `VERIFICATION_NOT_RETRYABLE` | 409 | The verification is neither failed nor cancelled. |
 | `VERIFICATION_DELETE_CONFLICT` | 409 | Active processing must be cancelled before deletion. |
 | `VERIFICATION_QUEUE_UNAVAILABLE` | 503 | BullMQ could not accept the durable orchestration job. |
+| `AI_PROVIDER_NOT_CONFIGURED` | 503 | No configured provider/model supports the requested capability. |
+| `AI_OUTPUT_VALIDATION_FAILED` | 503 | A provider returned JSON that failed the task's Joi schema. |
+| `AI_PROMPT_NOT_FOUND` | 404 | No published prompt supports the selected provider and model. |
+| `GEMINI_AUTHENTICATION_FAILED` | 503 | Gemini rejected the configured credential. |
+| `GROQ_AUTHENTICATION_FAILED` | 503 | Groq rejected the configured credential. |
+| `OPENROUTER_AUTHENTICATION_FAILED` | 503 | OpenRouter rejected the configured credential. |
+| `*_RATE_LIMITED` | 429 | The selected provider reported rate limiting. |
+| `*_TIMEOUT` | 503 | The selected provider exceeded its configured timeout. |
+| `*_INVALID_JSON` | 503 | The selected provider returned malformed JSON. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

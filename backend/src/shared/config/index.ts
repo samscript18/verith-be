@@ -10,3 +10,8 @@ export {
   default as cloudinaryConfig,
   type CloudinaryConfig,
 } from './cloudinary.config';
+export {
+  default as aiConfig,
+  type AiConfig,
+  type AiProviderConfig,
+} from './ai.config';

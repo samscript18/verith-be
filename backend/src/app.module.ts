@@ -8,6 +8,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ApiModule } from './api/api.module';
 import { CoreModule } from './core/core.module';
 import {
+  aiConfig,
   appConfig,
   authConfig,
   cloudinaryConfig,
@@ -31,6 +32,7 @@ import { RedisThrottlerStorage } from './core/services/redis-throttler-storage.s
       isGlobal: true,
       cache: true,
       load: [
+        aiConfig,
         appConfig,
         authConfig,
         cloudinaryConfig,

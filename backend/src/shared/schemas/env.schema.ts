@@ -71,9 +71,51 @@ export const envSchema = Joi.object({
   MAIL_FROM_NAME: Joi.string().default('Verith'),
   MAIL_FROM_EMAIL: Joi.string().email().allow('').optional(),
   GEMINI_API_KEY: optionalSecret,
+  GEMINI_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://generativelanguage.googleapis.com'),
+  GEMINI_TEXT_MODEL: Joi.string().trim().allow('').optional(),
+  GEMINI_VISION_MODEL: Joi.string().trim().allow('').optional(),
+  GEMINI_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(120000)
+    .default(30000),
   GROQ_API_KEY: optionalSecret,
+  GROQ_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://api.groq.com/openai/v1'),
+  GROQ_TEXT_MODEL: Joi.string().trim().allow('').optional(),
+  GROQ_TRANSCRIPTION_MODEL: Joi.string().trim().allow('').optional(),
+  GROQ_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(30000),
   OPENROUTER_API_KEY: optionalSecret,
+  OPENROUTER_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://openrouter.ai/api/v1'),
+  OPENROUTER_REASONING_MODEL: Joi.string().trim().allow('').optional(),
+  OPENROUTER_REPORT_MODEL: Joi.string().trim().allow('').optional(),
+  OPENROUTER_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .max(120000)
+    .default(45000),
+  OPENROUTER_SITE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .allow('')
+    .optional(),
+  OPENROUTER_APP_NAME: Joi.string().trim().default('Verith'),
   TAVILY_API_KEY: optionalSecret,
+  AI_MAX_RETRIES: Joi.number().integer().min(0).max(5).default(2),
+  PROVIDER_HEALTH_CACHE_SECONDS: Joi.number()
+    .integer()
+    .min(5)
+    .max(3600)
+    .default(300),
+  PROVIDER_EXECUTION_RETENTION_DAYS: Joi.number()
+    .integer()
+    .min(1)
+    .max(365)
+    .default(30),
   WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   WHATSAPP_PHONE_NUMBER_ID: Joi.string()
     .trim()

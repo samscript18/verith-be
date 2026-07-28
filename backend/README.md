@@ -10,6 +10,7 @@ See [docs/architecture.md](docs/architecture.md) and [docs/implementation-status
 Authentication behavior is documented in [docs/authentication-flow.md](docs/authentication-flow.md).
 Upload behavior is documented in [docs/uploads-and-cloudinary.md](docs/uploads-and-cloudinary.md).
 Verification lifecycle behavior is documented in [docs/verification-pipeline.md](docs/verification-pipeline.md).
+AI provider routing is documented in [docs/provider-routing.md](docs/provider-routing.md).
 
 ## Requirements
 
