@@ -77,6 +77,12 @@ export class Verification {
   @Prop({ default: 0 })
   evidenceCount!: number;
 
+  @Prop({ type: Types.ObjectId })
+  reportId?: Types.ObjectId;
+
+  @Prop({ min: 1 })
+  latestReportVersion?: number;
+
   @Prop({ default: 'WEB' })
   origin!: string;
 

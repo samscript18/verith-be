@@ -12,6 +12,7 @@ import { EvidenceModule } from './evidence/evidence.module';
 import { AnalysisModule } from './analysis/analysis.module';
 import { PublishersModule } from './publishers/publishers.module';
 import { MediaModule } from './media/media.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { MediaModule } from './media/media.module';
     AnalysisModule,
     PublishersModule,
     MediaModule,
+    ReportsModule,
   ],
 })
 export class ApiModule {}

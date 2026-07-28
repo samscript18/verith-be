@@ -81,6 +81,16 @@ Media-specific details and honest unsupported states are documented in
 [media-processing.md](media-processing.md). `GET
 /api/v1/verifications/:id/media` is owner-scoped.
 
+## Phase 10 reports
+
+The pipeline now synthesizes and validates `report.v1` after analysis. A
+verification reaches `COMPLETED` and 100% only after report validation passes.
+Invalid reports remain durable for investigation and do not complete the
+verification.
+
+Sharing, privacy projection, exports, feedback, and versioning are documented
+in [reports.md](reports.md).
+
 ## Safe URL retrieval
 
 URL retrieval is performed only by the dedicated safe-fetch service. It permits HTTP and HTTPS on their standard ports, rejects credentials and local hostnames, resolves DNS before connecting, rejects every private/loopback/link-local/reserved answer, and pins the connection to the validated address. Every redirect repeats the full validation.

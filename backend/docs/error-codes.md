@@ -65,5 +65,7 @@
 | `TRANSCRIPTION_RATE_LIMITED` | 503 | Groq rate-limited transcription. |
 | `TRANSCRIPTION_UNAVAILABLE` | 503 | The transcription provider was unavailable. |
 | `TRANSCRIPTION_INVALID_RESPONSE` | 503 | The transcription response lacked required text. |
+| `REPORT_NOT_FOUND` | 404 | The report is absent, private, revoked, deleted, or not owned by the caller. |
+| `REPORT_EXPORT_FAILED` | 400 | A real JSON or PDF export could not be generated. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

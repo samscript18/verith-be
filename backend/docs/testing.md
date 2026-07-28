@@ -13,3 +13,8 @@ Phase 9 contract tests verify the Gemini inline-image request, Groq verbose
 segment transcription request and quality proxy, missing transcription
 configuration, and strict Cloudinary delivery-namespace validation. Normal
 tests never upload media or call paid providers.
+
+Phase 10 integration coverage completes a verification through report
+validation, checks citation persistence, renders a PDF with a real `%PDF`
+signature, parses the JSON export, verifies provider internals are absent from
+public output, and proves a revoked slug no longer resolves.

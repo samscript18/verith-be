@@ -1,0 +1,50 @@
+export enum ReportStatus {
+  DRAFT = 'DRAFT',
+  VALIDATING = 'VALIDATING',
+  COMPLETE = 'COMPLETE',
+  PARTIAL = 'PARTIAL',
+  INVALID = 'INVALID',
+  SUPERSEDED = 'SUPERSEDED',
+  REVOKED = 'REVOKED',
+  DELETED = 'DELETED',
+}
+
+export enum ReportVisibility {
+  PRIVATE = 'PRIVATE',
+  UNLISTED = 'UNLISTED',
+  PUBLIC = 'PUBLIC',
+}
+
+export enum ReportExportFormat {
+  PDF = 'PDF',
+  JSON = 'JSON',
+}
+
+export enum ReportExportStatus {
+  PROCESSING = 'PROCESSING',
+  COMPLETE = 'COMPLETE',
+  FAILED = 'FAILED',
+  EXPIRED = 'EXPIRED',
+}
+
+export enum ReportFeedbackType {
+  HELPFUL = 'HELPFUL',
+  NOT_HELPFUL = 'NOT_HELPFUL',
+  PROBLEM_REPORTED = 'PROBLEM_REPORTED',
+}
+
+export enum ReportProblemCategory {
+  INCORRECT_VERDICT = 'INCORRECT_VERDICT',
+  MISSING_CONTEXT = 'MISSING_CONTEXT',
+  BROKEN_SOURCE = 'BROKEN_SOURCE',
+  UNSAFE_CONTENT = 'UNSAFE_CONTENT',
+  PRIVACY_CONCERN = 'PRIVACY_CONCERN',
+  OTHER = 'OTHER',
+}
+
+export enum ReportFeedbackStatus {
+  OPEN = 'OPEN',
+  IN_REVIEW = 'IN_REVIEW',
+  RESOLVED = 'RESOLVED',
+  DISMISSED = 'DISMISSED',
+}

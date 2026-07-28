@@ -21,6 +21,7 @@ import { TextNormalizationService } from './text-normalization.service';
 import { EvidenceSearchService } from './evidence-search.service';
 import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
 import { MediaProcessingService } from '../../media/services/media-processing.service';
+import { ReportService } from '../../reports/services/report.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -34,6 +35,7 @@ export class ContentProcessingService {
     private readonly evidence: EvidenceSearchService,
     private readonly analysis: VerificationAnalysisService,
     private readonly media: MediaProcessingService,
+    private readonly reports: ReportService,
     private readonly events: VerificationEventService,
   ) {}
 
@@ -123,6 +125,7 @@ export class ContentProcessingService {
           requestId,
           jobId,
         });
+        await this.finalizeReport(verification, requestId, jobId);
         return;
       }
       const language = this.languages.detect(extracted.record.normalizedText);
@@ -276,6 +279,7 @@ export class ContentProcessingService {
         requestId,
         jobId,
       });
+      await this.finalizeReport(verification, requestId, jobId);
     } catch (error) {
       const code =
         error instanceof ApplicationException
@@ -428,5 +432,44 @@ export class ContentProcessingService {
       extractionState: state,
       failureCode: code,
     };
+  }
+
+  private async finalizeReport(
+    verification: VerificationDocument,
+    requestId: string,
+    jobId: string,
+  ): Promise<void> {
+    const report = await this.reports.synthesize(verification);
+    await this.events.append({
+      verificationId: verification.id,
+      stage: VerificationStage.REPORT_SYNTHESIS,
+      status: VerificationEventStatus.COMPLETED,
+      progress: 90,
+      messageCode: 'REPORT_SYNTHESIS_COMPLETED',
+      safeMessage: 'The explainable report was synthesized',
+      metrics: { reportVersion: report.version },
+      requestId,
+      jobId,
+    });
+    await this.events.append({
+      verificationId: verification.id,
+      stage: VerificationStage.REPORT_VALIDATION,
+      status: VerificationEventStatus.COMPLETED,
+      progress: 95,
+      messageCode: 'REPORT_VALIDATION_COMPLETED',
+      safeMessage: 'Report references and limitations were validated',
+      requestId,
+      jobId,
+    });
+    await this.events.append({
+      verificationId: verification.id,
+      stage: VerificationStage.COMPLETED,
+      status: VerificationEventStatus.COMPLETED,
+      progress: 100,
+      messageCode: 'VERIFICATION_COMPLETED',
+      safeMessage: 'Verification processing completed',
+      requestId,
+      jobId,
+    });
   }
 }

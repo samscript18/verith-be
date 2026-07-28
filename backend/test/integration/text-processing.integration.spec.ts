@@ -10,12 +10,18 @@ import { VerificationService } from '../../src/api/verifications/services/verifi
 import { SearchRouterService } from '../../src/api/search/services/search-router.service';
 import { ArticleExtractionService } from '../../src/api/verifications/services/article-extraction.service';
 import { ValidationException } from '../../src/core/exceptions';
+import { ReportService } from '../../src/api/reports/services/report.service';
+import {
+  ReportExportFormat,
+  ReportVisibility,
+} from '../../src/api/reports/enums/report.enum';
 
 describe('Text and URL processing lifecycle (integration)', () => {
   jest.setTimeout(30000);
   let moduleRef: TestingModule;
   let connection: Connection;
   let service: VerificationService;
+  let reports: ReportService;
 
   beforeAll(async () => {
     const ai = {
@@ -196,6 +202,7 @@ describe('Text and URL processing lifecycle (integration)', () => {
     await moduleRef.init();
     connection = moduleRef.get<Connection>(getConnectionToken());
     service = moduleRef.get(VerificationService);
+    reports = moduleRef.get(ReportService);
   });
 
   afterAll(async () => {
@@ -205,6 +212,9 @@ describe('Text and URL processing lifecycle (integration)', () => {
       'claim_evaluations',
       'verification_analyses',
       'publishers',
+      'reports',
+      'report_feedback',
+      'report_exports',
       'verification_extracted_contents',
       'verification_events',
       'idempotency_records',
@@ -229,12 +239,12 @@ describe('Text and URL processing lifecycle (integration)', () => {
     const id = created.id as string;
     await waitUntil(async () => {
       const current = await service.get(userId, id);
-      return current.currentStage === VerificationStage.REPORT_SYNTHESIS;
+      return current.currentStage === VerificationStage.COMPLETED;
     });
     const current = await service.get(userId, id);
     expect(current).toMatchObject({
-      status: VerificationStatus.PROCESSING,
-      currentStage: VerificationStage.REPORT_SYNTHESIS,
+      status: VerificationStatus.COMPLETED,
+      currentStage: VerificationStage.COMPLETED,
       claimsCount: 2,
       detectedLanguage: 'en',
     });
@@ -276,7 +286,10 @@ describe('Text and URL processing lifecycle (integration)', () => {
     });
     const evaluation = await connection
       .collection('claim_evaluations')
-      .findOne({ verificationId: new Types.ObjectId(id) });
+      .findOne({
+        verificationId: new Types.ObjectId(id),
+        claimId: claims[0]?._id,
+      });
     expect(evaluation).toMatchObject({
       verdict: 'SUPPORTED',
       confidenceFactors: {
@@ -293,6 +306,46 @@ describe('Text and URL processing lifecycle (integration)', () => {
       riskLevel: 'LOW',
       methodVersion: 'verification-analysis.v1',
     });
+    const report = await connection
+      .collection('reports')
+      .findOne({ verificationId: new Types.ObjectId(id) });
+    expect(report).toMatchObject({
+      version: 1,
+      status: 'COMPLETE',
+      visibility: 'PRIVATE',
+      schemaVersion: 'report.v1',
+      overallVerdict: 'SUPPORTED',
+    });
+    const reportClaims = report?.claims as
+      Array<{ supportingEvidenceIds: unknown[] }> | undefined;
+    expect(reportClaims?.[0]?.supportingEvidenceIds).toHaveLength(1);
+    const pdf = await reports.export(
+      userId,
+      report!._id.toString(),
+      ReportExportFormat.PDF,
+    );
+    expect(pdf.bytes.subarray(0, 4).toString()).toBe('%PDF');
+    const json = await reports.export(
+      userId,
+      report!._id.toString(),
+      ReportExportFormat.JSON,
+    );
+    const exported = JSON.parse(json.bytes.toString()) as Record<
+      string,
+      unknown
+    >;
+    expect(exported.providerSummary).toBeUndefined();
+    const shared = await reports.setVisibility(
+      userId,
+      report!._id.toString(),
+      ReportVisibility.UNLISTED,
+    );
+    const publicReport = await reports.publicBySlug(String(shared.publicSlug));
+    expect(publicReport.providerSummary).toBeUndefined();
+    await reports.revoke(userId, report!._id.toString());
+    await expect(
+      reports.publicBySlug(String(shared.publicSlug)),
+    ).rejects.toMatchObject({ code: 'REPORT_NOT_FOUND' });
   });
 
   it('rejects an unsafe URL asynchronously with an honest state', async () => {
