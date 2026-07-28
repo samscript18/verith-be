@@ -15,7 +15,7 @@
 | 11. Learning | COMPLETE | Sanitized lessons, publication workflow, monotonic progress, report-based recommendations, protected quizzes, server scoring, attempt limits, docs, tests, audit, and production image validated. |
 | 12. Challenges and Gamification | COMPLETE | Scheduled daily challenges, protected scoring, attempts, append-only idempotent rewards, XP, Truth Points, levels, streaks, badges, privacy-filtered leaderboards, tests, audit, and production image validated. |
 | 13. Notifications | COMPLETE | Durable in-app notifications, cursor APIs, real SMTP states, BullMQ retries, validated preferences, security alerts, verification hooks, tests, audit, and production image validated. |
-| 14. WhatsApp | NOT_STARTED | |
+| 14. WhatsApp | COMPLETE | Direct Meta API, signed raw-body webhooks, encrypted one-time linking, idempotent queues, text/URL/image/audio verification, cautious results, delivery states, tests, audit, and production image validated. |
 | 15. Admin and Analytics | NOT_STARTED | |
 | 16. Privacy and Production Hardening | NOT_STARTED | |
 

@@ -48,6 +48,7 @@ export class VerificationService {
     dto: CreateVerificationDto,
     idempotencyKey: string,
     requestId: string,
+    trustedWhatsApp = false,
   ): Promise<Record<string, unknown>> {
     if (!idempotencyKey) {
       throw new ValidationException(
@@ -60,7 +61,7 @@ export class VerificationService {
         ],
       );
     }
-    const input = this.buildInput(dto);
+    const input = this.buildInput(dto, trustedWhatsApp);
     if (dto.mediaAssetId) {
       await this.uploads.assertVerificationAsset(
         userId,
@@ -311,18 +312,38 @@ export class VerificationService {
     );
   }
 
-  private buildInput(dto: CreateVerificationDto): Record<string, unknown> {
-    if (dto.sourceType === VerificationSourceType.TEXT && dto.text)
+  private buildInput(
+    dto: CreateVerificationDto,
+    trustedWhatsApp: boolean,
+  ): Record<string, unknown> {
+    if (
+      [
+        VerificationSourceType.TEXT,
+        VerificationSourceType.WHATSAPP_TEXT,
+      ].includes(dto.sourceType) &&
+      dto.text &&
+      (dto.sourceType === VerificationSourceType.TEXT || trustedWhatsApp)
+    )
       return { text: dto.text.trim() };
-    if (dto.sourceType === VerificationSourceType.URL && dto.url)
+    if (
+      [
+        VerificationSourceType.URL,
+        VerificationSourceType.WHATSAPP_URL,
+      ].includes(dto.sourceType) &&
+      dto.url &&
+      (dto.sourceType === VerificationSourceType.URL || trustedWhatsApp)
+    )
       return { url: dto.url };
     if (
       [
         VerificationSourceType.IMAGE,
         VerificationSourceType.SCREENSHOT,
         VerificationSourceType.AUDIO,
+        VerificationSourceType.WHATSAPP_IMAGE,
+        VerificationSourceType.WHATSAPP_AUDIO,
       ].includes(dto.sourceType) &&
-      dto.mediaAssetId
+      dto.mediaAssetId &&
+      (!dto.sourceType.startsWith('WHATSAPP_') || trustedWhatsApp)
     ) {
       return { mediaAssetId: dto.mediaAssetId };
     }
@@ -337,7 +358,12 @@ export class VerificationService {
   }
 
   private allowedAssetTypes(sourceType: VerificationSourceType): AssetType[] {
-    if (sourceType === VerificationSourceType.AUDIO)
+    if (
+      [
+        VerificationSourceType.AUDIO,
+        VerificationSourceType.WHATSAPP_AUDIO,
+      ].includes(sourceType)
+    )
       return [AssetType.VERIFICATION_AUDIO];
     if (sourceType === VerificationSourceType.SCREENSHOT)
       return [AssetType.VERIFICATION_SCREENSHOT];

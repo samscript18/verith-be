@@ -53,11 +53,26 @@ export const envSchema = Joi.object({
     .default(30),
   PASSWORD_RESET_TOKEN_TTL_MINUTES: Joi.number().integer().min(5).default(20),
   BCRYPT_ROUNDS: Joi.number().integer().min(10).max(15).default(12),
-  MASTER_ENCRYPTION_KEY: optionalSecret,
+  MASTER_ENCRYPTION_KEY: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', {
+      is: true,
+      then: Joi.string().min(32).required(),
+    }),
   HASHING_PEPPER: Joi.string().min(32).required(),
-  CLOUDINARY_CLOUD_NAME: optionalSecret,
-  CLOUDINARY_API_KEY: optionalSecret,
-  CLOUDINARY_API_SECRET: optionalSecret,
+  CLOUDINARY_CLOUD_NAME: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
+  CLOUDINARY_API_KEY: Joi.string().trim().allow('').when('WHATSAPP_ENABLED', {
+    is: true,
+    then: Joi.string().required(),
+  }),
+  CLOUDINARY_API_SECRET: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
   CLOUDINARY_UPLOAD_FOLDER: Joi.string().trim().default('verith'),
   MAX_IMAGE_UPLOAD_BYTES: Joi.number().integer().min(1024).default(10485760),
   MAX_AUDIO_UPLOAD_BYTES: Joi.number().integer().min(1024).default(26214400),
@@ -184,6 +199,16 @@ export const envSchema = Joi.object({
       is: true,
       then: Joi.required(),
     }),
+  WHATSAPP_API_VERSION: Joi.string()
+    .pattern(/^v\d+\.\d+$/)
+    .default('v23.0'),
+  WHATSAPP_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://graph.facebook.com'),
+  WHATSAPP_REPORT_DEEP_LINK_BASE: Joi.string()
+    .uri({ scheme: ['https'] })
+    .allow('')
+    .optional(),
 })
   .and('CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET')
   .unknown(true);

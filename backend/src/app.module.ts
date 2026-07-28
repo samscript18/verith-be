@@ -17,6 +17,7 @@ import {
   processingConfig,
   redisConfig,
   searchConfig,
+  whatsappConfig,
   type AppConfig,
 } from './shared/config';
 import { envSchema } from './shared/schemas/env.schema';
@@ -43,6 +44,7 @@ import { RedisThrottlerStorage } from './core/services/redis-throttler-storage.s
         processingConfig,
         redisConfig,
         searchConfig,
+        whatsappConfig,
       ],
       validationSchema: envSchema,
       validationOptions: { abortEarly: false },

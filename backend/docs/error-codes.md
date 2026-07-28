@@ -84,5 +84,14 @@
 | `CHALLENGE_ATTEMPT_CONFLICT` | 409 | A concurrent challenge attempt reserved the attempt number. |
 | `BADGE_SLUG_CONFLICT` | 409 | The badge slug already exists. |
 | `NOTIFICATION_NOT_FOUND` | 404 | The notification is absent, deleted, or not owned by the caller. |
+| `WHATSAPP_NOT_CONFIGURED` | 409/503 | The Meta WhatsApp integration is disabled or incomplete. |
+| `WHATSAPP_WEBHOOK_VERIFICATION_FAILED` | 401 | The Meta verification token is invalid. |
+| `WHATSAPP_WEBHOOK_SIGNATURE_INVALID` | 401 | The raw webhook signature is absent or invalid. |
+| `WHATSAPP_LINK_NOT_FOUND` | 404 | No active WhatsApp linkage exists for the user. |
+| `WHATSAPP_PROVIDER_UNAVAILABLE` | 503 | A real Meta Graph API request failed. |
+| `WHATSAPP_RATE_LIMITED` | 503 | Meta rate-limited the Graph API request. |
+| `WHATSAPP_MEDIA_UNAVAILABLE` | 503 | Authenticated Meta media retrieval failed. |
+| `WHATSAPP_MEDIA_INVALID_RESPONSE` | 503 | Meta returned malformed media metadata. |
+| `WHATSAPP_INVALID_RESPONSE` | 503 | Meta returned a malformed send response. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

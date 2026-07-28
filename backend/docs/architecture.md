@@ -10,7 +10,7 @@ Verith uses a modular NestJS architecture inspired by AjoFlow's reusable organiz
 
 Controllers translate HTTP requests and remain thin. Services own use cases. Substantial persistence will use repositories. Cross-domain dependencies must be imported explicitly.
 
-The API process is synchronous only for short HTTP work. BullMQ workers currently initialize verifications and process text/URL submissions through claim and query generation. Evidence, media, notification, and export workloads join the queue topology in their owning phases.
+The API process is synchronous only for short HTTP work. BullMQ workers run verification orchestration, notification email delivery, and signed WhatsApp inbound processing. Evidence and media stages remain within the idempotent verification job; export workloads are generated on authenticated demand.
 
 Large or independently queried records are separated from the verification document. Normalized extracted content, claims, evidence, stage events, idempotency records, prompt versions, AI executions, and search executions use dedicated indexed collections. Evidence carries canonical/content lineage so duplicate or syndicated pages are not silently treated as independent sources.
 

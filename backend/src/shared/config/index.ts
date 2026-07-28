@@ -20,3 +20,7 @@ export {
   type ProcessingConfig,
 } from './processing.config';
 export { default as searchConfig, type SearchConfig } from './search.config';
+export {
+  default as whatsappConfig,
+  type WhatsAppConfig,
+} from './whatsapp.config';

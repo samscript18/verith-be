@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'node:crypto';
 import { Model, Types } from 'mongoose';
@@ -24,6 +24,7 @@ import { MediaProcessingService } from '../../media/services/media-processing.se
 import { ReportService } from '../../reports/services/report.service';
 import { NotificationType } from '../../notifications/enums/notification.enum';
 import { NotificationsService } from '../../notifications/services/notifications.service';
+import { WhatsAppService } from '../../whatsapp/services/whatsapp.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -39,6 +40,8 @@ export class ContentProcessingService {
     private readonly media: MediaProcessingService,
     private readonly reports: ReportService,
     private readonly notifications: NotificationsService,
+    @Inject(forwardRef(() => WhatsAppService))
+    private readonly whatsapp: WhatsAppService,
     private readonly events: VerificationEventService,
   ) {}
 
@@ -72,6 +75,7 @@ export class ContentProcessingService {
         [
           VerificationSourceType.IMAGE,
           VerificationSourceType.SCREENSHOT,
+          VerificationSourceType.WHATSAPP_IMAGE,
         ].includes(verification.sourceType)
       ) {
         await this.events.append({
@@ -84,7 +88,12 @@ export class ContentProcessingService {
           requestId,
           jobId,
         });
-      } else if (verification.sourceType === VerificationSourceType.AUDIO) {
+      } else if (
+        [
+          VerificationSourceType.AUDIO,
+          VerificationSourceType.WHATSAPP_AUDIO,
+        ].includes(verification.sourceType)
+      ) {
         await this.events.append({
           verificationId: verification.id,
           stage: VerificationStage.TRANSCRIPTION,
@@ -334,6 +343,8 @@ export class ContentProcessingService {
         VerificationSourceType.IMAGE,
         VerificationSourceType.SCREENSHOT,
         VerificationSourceType.AUDIO,
+        VerificationSourceType.WHATSAPP_IMAGE,
+        VerificationSourceType.WHATSAPP_AUDIO,
       ].includes(verification.sourceType)
     ) {
       const result = await this.media.process(verification, requestId);
@@ -497,6 +508,13 @@ export class ContentProcessingService {
           reportId: report.id,
         },
       })
+      .catch(() => undefined);
+    await this.whatsapp
+      .sendCompletion(
+        verification.userId.toString(),
+        verification.id,
+        report.id,
+      )
       .catch(() => undefined);
   }
 }

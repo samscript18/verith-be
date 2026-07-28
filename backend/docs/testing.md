@@ -31,3 +31,8 @@ aggregation, append-only transaction uniqueness, and leaderboard privacy.
 Phase 13 integration coverage proves preference suppression, mandatory security
 alerts, idempotent dispatch, owner-only mutation, soft deletion, and cursor-list
 behavior without sending external email.
+
+Phase 14 unit coverage verifies raw-body HMAC signatures and constant-time
+verification-token behavior. Integration coverage proves one-time hashed linking
+codes, encrypted linkage resolution, consent status, code reuse rejection, and
+removal of lookup data on unlink without calling Meta.

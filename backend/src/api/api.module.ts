@@ -18,6 +18,7 @@ import { QuizzesModule } from './quizzes/quizzes.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     GamificationModule,
     ChallengesModule,
     NotificationsModule,
+    WhatsAppModule,
   ],
 })
 export class ApiModule {}

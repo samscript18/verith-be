@@ -15,6 +15,7 @@ import type { AppConfig } from './shared/config';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    rawBody: true,
   });
   const configService = app.get(ConfigService);
   const config = configService.getOrThrow<AppConfig>('app');

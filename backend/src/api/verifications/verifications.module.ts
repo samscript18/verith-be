@@ -1,5 +1,5 @@
 import { BullModule } from '@nestjs/bullmq';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { RedisOptions } from 'ioredis';
@@ -43,6 +43,7 @@ import { AnalysisModule } from '../analysis/analysis.module';
 import { MediaModule } from '../media/media.module';
 import { ReportsModule } from '../reports/reports.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -69,6 +70,7 @@ const redisOptions = (value: string): RedisOptions => {
     MediaModule,
     ReportsModule,
     NotificationsModule,
+    forwardRef(() => WhatsAppModule),
     MongooseModule.forFeature([
       { name: Verification.name, schema: VerificationSchema },
       { name: VerificationEvent.name, schema: VerificationEventSchema },
