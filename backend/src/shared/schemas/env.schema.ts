@@ -1,0 +1,88 @@
+import Joi from 'joi';
+
+const optionalSecret = Joi.string().trim().allow('').optional();
+
+export const envSchema = Joi.object({
+  NODE_ENV: Joi.string()
+    .valid('development', 'test', 'production')
+    .default('development'),
+  APP_NAME: Joi.string().trim().default('Verith'),
+  APP_HOST: Joi.string().hostname().default('0.0.0.0'),
+  PORT: Joi.number().port().default(4000),
+  API_PREFIX: Joi.string()
+    .pattern(/^[a-z0-9/-]+$/)
+    .default('api/v1'),
+  APP_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .default('http://localhost:4000'),
+  FRONTEND_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .default('http://localhost:3000'),
+  ALLOWED_ORIGINS: Joi.string().default('http://localhost:3000'),
+  TRUST_PROXY: Joi.boolean().truthy('true').falsy('false').default(false),
+  LOG_LEVEL: Joi.string()
+    .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
+    .default('debug'),
+  SWAGGER_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+
+  MONGODB_URI: Joi.string()
+    .uri({ scheme: ['mongodb', 'mongodb+srv'] })
+    .required(),
+  MONGODB_DB_NAME: Joi.string().trim().default('verith'),
+  MONGODB_MAX_POOL_SIZE: Joi.number().integer().min(1).default(20),
+  MONGODB_MIN_POOL_SIZE: Joi.number().integer().min(0).default(2),
+  MONGODB_SERVER_SELECTION_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(100)
+    .default(10000),
+  MONGODB_SOCKET_TIMEOUT_MS: Joi.number().integer().min(1000).default(45000),
+  MONGODB_AUTO_INDEX: Joi.boolean().truthy('true').falsy('false').default(true),
+
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .required(),
+  REDIS_PREFIX: Joi.string().trim().default('verith'),
+
+  JWT_ACCESS_SECRET: optionalSecret,
+  JWT_REFRESH_SECRET: optionalSecret,
+  MASTER_ENCRYPTION_KEY: optionalSecret,
+  HASHING_PEPPER: optionalSecret,
+  CLOUDINARY_CLOUD_NAME: optionalSecret,
+  CLOUDINARY_API_KEY: optionalSecret,
+  CLOUDINARY_API_SECRET: optionalSecret,
+  MAIL_PROVIDER: optionalSecret,
+  GEMINI_API_KEY: optionalSecret,
+  GROQ_API_KEY: optionalSecret,
+  OPENROUTER_API_KEY: optionalSecret,
+  TAVILY_API_KEY: optionalSecret,
+  WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  WHATSAPP_PHONE_NUMBER_ID: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', {
+      is: true,
+      then: Joi.required(),
+    }),
+  WHATSAPP_BUSINESS_ACCOUNT_ID: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
+  WHATSAPP_ACCESS_TOKEN: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', {
+      is: true,
+      then: Joi.required(),
+    }),
+  WHATSAPP_APP_SECRET: Joi.string().trim().allow('').when('WHATSAPP_ENABLED', {
+    is: true,
+    then: Joi.required(),
+  }),
+  WHATSAPP_VERIFY_TOKEN: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', {
+      is: true,
+      then: Joi.required(),
+    }),
+}).unknown(true);
