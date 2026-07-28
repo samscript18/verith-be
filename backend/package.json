@@ -59,6 +59,7 @@
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sanitize-html": "^2.14.0",
     "undici": "^8.9.0"
   },
   "devDependencies": {
@@ -75,6 +76,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/passport-jwt": "^4.0.1",
     "@types/pdfkit": "^0.17.6",
+    "@types/sanitize-html": "^2.16.1",
     "@types/supertest": "^7.2.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

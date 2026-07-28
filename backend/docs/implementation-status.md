@@ -12,7 +12,7 @@
 | 8. Verification Analysis | COMPLETE | Evidence-derived claim and overall verdicts, persisted deterministic confidence factors, risk, rhetoric/bias/context findings, publisher uncertainty, API, tests, audit, and production image validated. |
 | 9. Image and Audio | COMPLETE | Trusted Cloudinary retrieval, Gemini OCR/context, cautious AI indicators, explicit reverse-image state, Groq segment transcription, pipeline handoff, tests, audit, and image validated. |
 | 10. Reports | COMPLETE | Versioned validated reports, completion lifecycle, public privacy projection, sharing/revocation, real PDF/JSON exports, feedback, honest learning tags, tests, audit, and image validated. |
-| 11. Learning | NOT_STARTED | |
+| 11. Learning | COMPLETE | Sanitized lessons, publication workflow, monotonic progress, report-based recommendations, protected quizzes, server scoring, attempt limits, docs, tests, audit, and production image validated. |
 | 12. Challenges and Gamification | NOT_STARTED | |
 | 13. Notifications | NOT_STARTED | |
 | 14. WhatsApp | NOT_STARTED | |

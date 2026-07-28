@@ -67,5 +67,15 @@
 | `TRANSCRIPTION_INVALID_RESPONSE` | 503 | The transcription response lacked required text. |
 | `REPORT_NOT_FOUND` | 404 | The report is absent, private, revoked, deleted, or not owned by the caller. |
 | `REPORT_EXPORT_FAILED` | 400 | A real JSON or PDF export could not be generated. |
+| `COURSE_NOT_FOUND` | 404 | A course is absent or not published for the requested audience. |
+| `LESSON_NOT_FOUND` | 404 | A lesson is absent or not published for the requested audience. |
+| `COURSE_SLUG_CONFLICT` | 409 | The requested course slug already exists. |
+| `LESSON_CONFLICT` | 409 | A course already uses the lesson slug or sequence. |
+| `COURSE_PUBLISHING_INCOMPLETE` | 409 | The course has missing or unpublished lessons. |
+| `QUIZ_NOT_FOUND` | 404 | A quiz is absent or not published. |
+| `QUIZ_LESSON_CONFLICT` | 409 | The lesson already has a quiz. |
+| `QUIZ_PUBLISHING_INCOMPLETE` | 409 | The quiz lesson is not published. |
+| `QUIZ_ATTEMPT_LIMIT_REACHED` | 409 | The learner exhausted the configured attempt count. |
+| `QUIZ_ATTEMPT_CONFLICT` | 409 | A concurrent attempt already reserved the attempt number. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

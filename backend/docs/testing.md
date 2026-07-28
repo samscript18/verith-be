@@ -18,3 +18,8 @@ Phase 10 integration coverage completes a verification through report
 validation, checks citation persistence, renders a PDF with a real `%PDF`
 signature, parses the JSON export, verifies provider internals are absent from
 public output, and proves a revoked slug no longer resolves.
+
+Phase 11 integration coverage proves malicious lesson markup and URL schemes
+are removed, publication dependencies are enforced, public quiz reads contain
+no answer key or explanation, scoring occurs server-side, passing progress
+persists, and the attempt limit is enforced.

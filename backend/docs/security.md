@@ -11,3 +11,12 @@ All application-controlled URL retrieval goes through `SafeFetchService`; contro
 Loopback, RFC1918, carrier-grade NAT, link-local, benchmark, multicast/reserved IPv4, IPv6 loopback, unique-local, link-local, localhost names, and cloud metadata addresses are rejected. Every redirect is resolved and validated again.
 
 Webhook signature controls will be implemented with their owning integration phase and are not claimed complete.
+# Learning content and answer security
+
+Learning write and publication routes require `CONTENT_EDITOR`, `ADMIN`, or
+`SUPER_ADMIN`. Public catalog reads select published content only. Lesson HTML
+is sanitized before persistence with a narrow markup/HTTPS-link allowlist.
+
+Quiz answer keys and explanations are never serialized by normal quiz-read
+routes. Scoring loads the protected server document, validates submitted option
+IDs, and returns explanations only after an attempt has been persisted.
