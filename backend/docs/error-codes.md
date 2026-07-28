@@ -83,5 +83,6 @@
 | `CHALLENGE_ATTEMPT_LIMIT_REACHED` | 409 | The learner exhausted the configured challenge attempts. |
 | `CHALLENGE_ATTEMPT_CONFLICT` | 409 | A concurrent challenge attempt reserved the attempt number. |
 | `BADGE_SLUG_CONFLICT` | 409 | The badge slug already exists. |
+| `NOTIFICATION_NOT_FOUND` | 404 | The notification is absent, deleted, or not owned by the caller. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

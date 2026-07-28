@@ -42,6 +42,7 @@ import { EvidenceSearchService } from './services/evidence-search.service';
 import { AnalysisModule } from '../analysis/analysis.module';
 import { MediaModule } from '../media/media.module';
 import { ReportsModule } from '../reports/reports.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -67,6 +68,7 @@ const redisOptions = (value: string): RedisOptions => {
     AnalysisModule,
     MediaModule,
     ReportsModule,
+    NotificationsModule,
     MongooseModule.forFeature([
       { name: Verification.name, schema: VerificationSchema },
       { name: VerificationEvent.name, schema: VerificationEventSchema },

@@ -144,12 +144,14 @@ export class UsersService {
     userId: string,
     dto: UpdatePreferencesDto,
   ): Promise<Record<string, unknown>> {
+    const updates = Object.fromEntries(
+      Object.entries(dto.preferences).map(([key, value]) => [
+        `notificationPreferences.${key}`,
+        value,
+      ]),
+    );
     const user = await this.userModel
-      .findByIdAndUpdate(
-        userId,
-        { $set: { notificationPreferences: dto.preferences } },
-        { returnDocument: 'after' },
-      )
+      .findByIdAndUpdate(userId, { $set: updates }, { returnDocument: 'after' })
       .exec();
     if (!user) {
       throw new NotFoundException(

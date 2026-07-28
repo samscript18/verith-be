@@ -1,11 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
-  IsObject,
+  IsDefined,
   IsOptional,
   IsString,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional()
@@ -48,10 +50,25 @@ export class UpdateProfileDto {
   theme?: string;
 }
 
+export class NotificationPreferencesDto {
+  @IsOptional() @IsBoolean() verificationComplete?: boolean;
+  @IsOptional() @IsBoolean() verificationFailed?: boolean;
+  @IsOptional() @IsBoolean() learningRecommendations?: boolean;
+  @IsOptional() @IsBoolean() dailyChallenges?: boolean;
+  @IsOptional() @IsBoolean() streakReminders?: boolean;
+  @IsOptional() @IsBoolean() gamification?: boolean;
+  @IsOptional() @IsBoolean() marketing?: boolean;
+  @IsOptional() @IsBoolean() security?: boolean;
+  @IsOptional() @IsBoolean() emailEnabled?: boolean;
+  @IsOptional() @IsBoolean() whatsappEnabled?: boolean;
+}
+
 export class UpdatePreferencesDto {
   @ApiPropertyOptional({ type: Object })
-  @IsObject()
-  preferences!: Record<string, boolean>;
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => NotificationPreferencesDto)
+  preferences!: NotificationPreferencesDto;
 }
 
 export class UpdatePrivacyDto {

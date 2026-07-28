@@ -61,6 +61,40 @@ export class MailService {
     }
   }
 
+  async sendNotification(
+    recipient: string,
+    subject: string,
+    message: string,
+    actionUrl?: string,
+  ): Promise<MailDeliveryResult> {
+    if (!this.transporter)
+      return {
+        state: ProviderState.NOT_CONFIGURED,
+        failureCode: 'MAIL_NOT_CONFIGURED',
+      };
+    try {
+      const safeMessage = this.escapeHtml(message);
+      const safeUrl = actionUrl ? this.escapeHtml(actionUrl) : undefined;
+      const result = (await this.transporter.sendMail({
+        from: `"${this.config.fromName}" <${this.config.fromEmail}>`,
+        to: recipient,
+        subject,
+        text: actionUrl ? `${message}\n${actionUrl}` : message,
+        html: `<p>${safeMessage}</p>${safeUrl ? `<p><a href="${safeUrl}">View in Verith</a></p>` : ''}`,
+      })) as unknown;
+      const messageId = this.getMessageId(result);
+      return {
+        state: ProviderState.OPERATIONAL,
+        ...(messageId ? { messageId } : {}),
+      };
+    } catch {
+      return {
+        state: ProviderState.UNAVAILABLE,
+        failureCode: 'MAIL_DELIVERY_FAILED',
+      };
+    }
+  }
+
   private escapeHtml(value: string): string {
     return value
       .replaceAll('&', '&amp;')

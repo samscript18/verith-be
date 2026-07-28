@@ -22,6 +22,8 @@ import { EvidenceSearchService } from './evidence-search.service';
 import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
 import { MediaProcessingService } from '../../media/services/media-processing.service';
 import { ReportService } from '../../reports/services/report.service';
+import { NotificationType } from '../../notifications/enums/notification.enum';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -36,6 +38,7 @@ export class ContentProcessingService {
     private readonly analysis: VerificationAnalysisService,
     private readonly media: MediaProcessingService,
     private readonly reports: ReportService,
+    private readonly notifications: NotificationsService,
     private readonly events: VerificationEventService,
   ) {}
 
@@ -304,6 +307,17 @@ export class ContentProcessingService {
         requestId,
         jobId,
       });
+      await this.notifications
+        .dispatch({
+          userId: verification.userId.toString(),
+          type: NotificationType.VERIFICATION_FAILED,
+          title: 'Verification could not be completed',
+          message:
+            'Your verification could not be completed. You can review its status in Verith.',
+          idempotencyReference: `verification:${verification.id}:failed`,
+          metadata: { verificationId: verification.id, failureCode: code },
+        })
+        .catch(() => undefined);
     }
   }
 
@@ -471,5 +485,18 @@ export class ContentProcessingService {
       requestId,
       jobId,
     });
+    await this.notifications
+      .dispatch({
+        userId: verification.userId.toString(),
+        type: NotificationType.VERIFICATION_COMPLETED,
+        title: 'Verification complete',
+        message: 'Your Verith verification report is ready to review.',
+        idempotencyReference: `verification:${verification.id}:completed`,
+        metadata: {
+          verificationId: verification.id,
+          reportId: report.id,
+        },
+      })
+      .catch(() => undefined);
   }
 }

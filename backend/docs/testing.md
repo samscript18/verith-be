@@ -27,3 +27,7 @@ persists, and the attempt limit is enforced.
 Phase 12 integration coverage proves challenge answer protection and
 server-side scoring, duplicate completion reward suppression, streak and badge
 aggregation, append-only transaction uniqueness, and leaderboard privacy.
+
+Phase 13 integration coverage proves preference suppression, mandatory security
+alerts, idempotent dispatch, owner-only mutation, soft deletion, and cursor-list
+behavior without sending external email.

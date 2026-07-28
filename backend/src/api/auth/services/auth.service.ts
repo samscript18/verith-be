@@ -17,6 +17,8 @@ import {
 import { UserStatus } from '../../users/enums/user-status.enum';
 import type { UserDocument } from '../../users/schemas/user.schema';
 import { UsersService } from '../../users/users.service';
+import { NotificationType } from '../../notifications/enums/notification.enum';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import type {
   ChangePasswordDto,
   LoginDto,
@@ -55,6 +57,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly tokenService: TokenService,
     private readonly mailService: MailService,
+    private readonly notifications: NotificationsService,
     configService: ConfigService,
   ) {
     this.authConfig = configService.getOrThrow<AuthConfig>('auth');
@@ -269,6 +272,16 @@ export class AuthService {
     );
     await this.usersService.updatePassword(token.userId, passwordHash);
     await this.logoutAll(token.userId.toString(), 'PASSWORD_RESET');
+    await this.notifications
+      .dispatch({
+        userId: token.userId.toString(),
+        type: NotificationType.SECURITY_ALERT,
+        title: 'Password reset completed',
+        message:
+          'Your Verith password was reset and existing sessions were revoked.',
+        idempotencyReference: `security:password-reset:${token._id.toString()}`,
+      })
+      .catch(() => undefined);
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
@@ -296,6 +309,16 @@ export class AuthService {
     );
     await this.usersService.updatePassword(user._id, passwordHash);
     await this.logoutAll(userId, 'PASSWORD_CHANGED');
+    await this.notifications
+      .dispatch({
+        userId,
+        type: NotificationType.SECURITY_ALERT,
+        title: 'Password changed',
+        message:
+          'Your Verith password changed and existing sessions were revoked.',
+        idempotencyReference: `security:password-change:${Date.now()}`,
+      })
+      .catch(() => undefined);
   }
 
   private async createSession(
