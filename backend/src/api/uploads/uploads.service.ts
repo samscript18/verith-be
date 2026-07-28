@@ -204,6 +204,53 @@ export class UploadsService {
     }
   }
 
+  async assertVerificationAsset(
+    ownerId: string,
+    assetId: string,
+    allowedTypes: AssetType[],
+  ): Promise<void> {
+    const asset = await this.assetModel
+      .exists({
+        _id: assetId,
+        ownerId: new Types.ObjectId(ownerId),
+        assetType: { $in: allowedTypes },
+        status: AssetStatus.CONFIRMED,
+        attachedResourceId: { $exists: false },
+      })
+      .exec();
+    if (!asset) throw this.notFound();
+  }
+
+  async attachToVerification(
+    ownerId: string,
+    assetId: string,
+    verificationId: string,
+  ): Promise<void> {
+    const result = await this.assetModel
+      .updateOne(
+        {
+          _id: assetId,
+          ownerId: new Types.ObjectId(ownerId),
+          status: AssetStatus.CONFIRMED,
+          attachedResourceId: { $exists: false },
+        },
+        {
+          $set: {
+            status: AssetStatus.ATTACHED,
+            attachedResourceType: 'VERIFICATION',
+            attachedResourceId: new Types.ObjectId(verificationId),
+          },
+        },
+      )
+      .exec();
+    if (result.modifiedCount !== 1) {
+      throw new ConflictException(
+        'The media asset is already attached or unavailable',
+        'UPLOAD_ATTACHMENT_CONFLICT',
+      );
+    }
+  }
+
   async get(
     ownerId: string,
     assetId: string,

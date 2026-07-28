@@ -1,0 +1,8 @@
+export enum VerificationEventStatus {
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  SKIPPED = 'SKIPPED',
+  UNAVAILABLE = 'UNAVAILABLE',
+}

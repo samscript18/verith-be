@@ -22,5 +22,12 @@
 | `CLOUDINARY_ASSET_UNAVAILABLE` | 503 | Cloudinary could not return the uploaded asset metadata. |
 | `CLOUDINARY_INVALID_RESPONSE` | 503 | Cloudinary returned an unusable response. |
 | `CLOUDINARY_DELETE_FAILED` | 503 | Cloudinary did not acknowledge asset deletion. |
+| `VERIFICATION_NOT_FOUND` | 404 | The verification is absent, deleted, or not owned by the caller. |
+| `IDEMPOTENCY_KEY_REUSED` | 409 | The key was previously used with a different request fingerprint. |
+| `IDEMPOTENCY_RESOURCE_UNAVAILABLE` | 409 | The resource reserved by a concurrent idempotent request is unavailable. |
+| `VERIFICATION_NOT_CANCELLABLE` | 409 | The verification is already in a terminal state. |
+| `VERIFICATION_NOT_RETRYABLE` | 409 | The verification is neither failed nor cancelled. |
+| `VERIFICATION_DELETE_CONFLICT` | 409 | Active processing must be cancelled before deletion. |
+| `VERIFICATION_QUEUE_UNAVAILABLE` | 503 | BullMQ could not accept the durable orchestration job. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

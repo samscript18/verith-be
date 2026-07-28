@@ -30,3 +30,9 @@ export class RequestValidationException extends ApplicationException {
     );
   }
 }
+
+export class ValidationException extends ApplicationException {
+  constructor(message: string, details: ValidationErrorDetail[] | null = null) {
+    super(message, HttpStatus.BAD_REQUEST, 'VALIDATION_ERROR', details);
+  }
+}
