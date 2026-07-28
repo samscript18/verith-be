@@ -19,6 +19,8 @@ import { GamificationModule } from './gamification/gamification.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
+import { AdminModule } from './admin/admin.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { WhatsAppModule } from './whatsapp/whatsapp.module';
     ChallengesModule,
     NotificationsModule,
     WhatsAppModule,
+    AdminModule,
+    AnalyticsModule,
   ],
 })
 export class ApiModule {}
