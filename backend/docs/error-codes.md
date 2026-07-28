@@ -54,5 +54,16 @@
 | `SEARCH_PROVIDER_TIMEOUT` | 503 | The search request exceeded its configured timeout. |
 | `SEARCH_PROVIDER_UNAVAILABLE` | 503 | The search provider or its response was unavailable. |
 | `SEARCH_PROVIDER_INVALID_RESPONSE` | 503 | The search provider returned an unusable response contract. |
+| `MEDIA_ASSET_UNAVAILABLE` | 503 | The attached media record or delivery URL is unavailable. |
+| `MEDIA_URL_UNTRUSTED` | 422 | The media URL is outside the configured Cloudinary delivery namespace. |
+| `MEDIA_RETRIEVAL_FAILED` | 503 | The trusted media object could not be retrieved. |
+| `MEDIA_CONTENT_TYPE_UNSUPPORTED` | 422 | Retrieved image content has an unsupported type. |
+| `MEDIA_TOO_LARGE` | 422 | The image exceeds the configured inline-analysis limit. |
+| `MEDIA_TEXT_UNAVAILABLE` | 422 | No text was available for claim processing. |
+| `TRANSCRIPTION_PROVIDER_NOT_CONFIGURED` | 503 | Groq credentials or a transcription model are missing. |
+| `TRANSCRIPTION_AUTHENTICATION_FAILED` | 503 | Groq rejected the transcription credential. |
+| `TRANSCRIPTION_RATE_LIMITED` | 503 | Groq rate-limited transcription. |
+| `TRANSCRIPTION_UNAVAILABLE` | 503 | The transcription provider was unavailable. |
+| `TRANSCRIPTION_INVALID_RESPONSE` | 503 | The transcription response lacked required text. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

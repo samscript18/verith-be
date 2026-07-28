@@ -21,6 +21,13 @@ confidence from model authority. It returns evidence relationships and textual
 findings only; stored IDs and offsets are revalidated before deterministic
 application calculations.
 
+Gemini image analysis uses an inline image part plus a schema-constrained text
+instruction. Groq transcription is a separate speech-to-text adapter rather
+than a text-reasoning capability. Its official
+[speech-to-text contract](https://console.groq.com/docs/speech-to-text) supplies
+verbose segment metadata. Gemini inline requests follow the official
+[image-understanding contract](https://ai.google.dev/gemini-api/docs/generate-content/image-understanding).
+
 The wire contracts follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content), [Groq chat-completions API](https://console.groq.com/docs/api-reference), and [OpenRouter structured-output documentation](https://openrouter.ai/docs/guides/features/structured-outputs).
 
 ## Operational records and privacy

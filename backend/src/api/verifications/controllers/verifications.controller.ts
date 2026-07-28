@@ -36,6 +36,7 @@ import { VerificationService } from '../services/verification.service';
 import { ClaimExtractionService } from '../services/claim-extraction.service';
 import { EvidenceSearchService } from '../services/evidence-search.service';
 import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
+import { MediaProcessingService } from '../../media/services/media-processing.service';
 
 @ApiTags('Verifications')
 @ApiBearerAuth()
@@ -48,6 +49,7 @@ export class VerificationsController {
     private readonly claims: ClaimExtractionService,
     private readonly evidence: EvidenceSearchService,
     private readonly analysis: VerificationAnalysisService,
+    private readonly media: MediaProcessingService,
   ) {}
 
   @Post()
@@ -65,6 +67,16 @@ export class VerificationsController {
       normalizeIdempotencyKey(key),
       request.requestId,
     );
+  }
+
+  @Get(':id/media')
+  @ApiOperation({ summary: 'Retrieve image analysis or audio transcript' })
+  async getMedia(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    await this.verifications.findOwned(user.userId, id);
+    return this.media.get(id);
   }
 
   @Get(':id/analysis')

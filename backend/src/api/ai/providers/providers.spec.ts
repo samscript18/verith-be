@@ -75,15 +75,33 @@ describe('AI provider HTTP contracts', () => {
       ),
     );
     const provider = new GeminiProvider(configService());
-    const result = await provider.execute(baseRequest);
+    const result = await provider.execute({
+      ...baseRequest,
+      media: { mimeType: 'image/png', base64Data: 'aW1hZ2U=' },
+    });
     expect(result.output).toEqual({ value: 'ok' });
     const body = parseBody(fetchMock.mock.calls[0]?.[1]) as {
       generationConfig: Record<string, unknown>;
+      contents: unknown;
     };
     expect(body.generationConfig).toMatchObject({
       responseMimeType: 'application/json',
       responseJsonSchema: baseRequest.outputJsonSchema,
     });
+    expect(body.contents).toEqual([
+      {
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/png',
+              data: 'aW1hZ2U=',
+            },
+          },
+          { text: 'User' },
+        ],
+      },
+    ]);
   });
 });
 

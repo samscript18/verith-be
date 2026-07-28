@@ -15,6 +15,7 @@ export interface AiRouterRequest<TOutput> {
   preferredProvider?: AiProviderName;
   temperature?: number;
   maxOutputTokens?: number;
+  media?: { mimeType: string; base64Data: string };
 }
 
 export interface AiRouterResult<TOutput> {

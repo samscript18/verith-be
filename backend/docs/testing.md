@@ -8,3 +8,8 @@ Phase 8 extends the deterministic integration boundary through evidence
 relationship validation, claim evaluation, persisted confidence factors,
 overall verdict/risk calculation, and publisher discovery. Assertions verify
 that a duplicate page does not become a second independent confidence source.
+
+Phase 9 contract tests verify the Gemini inline-image request, Groq verbose
+segment transcription request and quality proxy, missing transcription
+configuration, and strict Cloudinary delivery-namespace validation. Normal
+tests never upload media or call paid providers.

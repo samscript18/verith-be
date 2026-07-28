@@ -102,6 +102,7 @@ export class AiRouterService {
             ...(request.maxOutputTokens !== undefined
               ? { maxOutputTokens: request.maxOutputTokens }
               : {}),
+            ...(request.media ? { media: request.media } : {}),
           });
           const validation = request.outputValidator.validate(result.output, {
             abortEarly: false,
@@ -253,7 +254,19 @@ export class AiRouterService {
       promptVersion: data.promptVersion,
       outputSchemaVersion: request.outputSchemaVersion,
       inputFingerprint: createHash('sha256')
-        .update(JSON.stringify(request.variables))
+        .update(
+          JSON.stringify({
+            variables: request.variables,
+            ...(request.media
+              ? {
+                  mediaMimeType: request.media.mimeType,
+                  mediaHash: createHash('sha256')
+                    .update(request.media.base64Data)
+                    .digest('hex'),
+                }
+              : {}),
+          }),
+        )
         .digest('hex'),
       startedAt: data.startedAt,
       endedAt,

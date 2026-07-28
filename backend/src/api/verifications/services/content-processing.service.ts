@@ -20,6 +20,7 @@ import { LanguageDetectionService } from './language-detection.service';
 import { TextNormalizationService } from './text-normalization.service';
 import { EvidenceSearchService } from './evidence-search.service';
 import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
+import { MediaProcessingService } from '../../media/services/media-processing.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -32,6 +33,7 @@ export class ContentProcessingService {
     private readonly claims: ClaimExtractionService,
     private readonly evidence: EvidenceSearchService,
     private readonly analysis: VerificationAnalysisService,
+    private readonly media: MediaProcessingService,
     private readonly events: VerificationEventService,
   ) {}
 
@@ -40,15 +42,8 @@ export class ContentProcessingService {
     requestId: string,
     jobId: string,
   ): Promise<void> {
-    if (
-      ![VerificationSourceType.TEXT, VerificationSourceType.URL].includes(
-        verification.sourceType,
-      )
-    ) {
-      return;
-    }
     try {
-      const extracted = await this.extractContent(verification);
+      const extracted = await this.extractContent(verification, requestId);
       verification.currentStage = VerificationStage.CONTENT_EXTRACTION;
       verification.progress = 20;
       if (extracted.title && !verification.title) {
@@ -68,6 +63,68 @@ export class ContentProcessingService {
         requestId,
         jobId,
       });
+      if (
+        [
+          VerificationSourceType.IMAGE,
+          VerificationSourceType.SCREENSHOT,
+        ].includes(verification.sourceType)
+      ) {
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.OCR,
+          status: VerificationEventStatus.COMPLETED,
+          progress: 20,
+          messageCode: 'OCR_COMPLETED',
+          safeMessage: 'Visible text and image context were analyzed',
+          requestId,
+          jobId,
+        });
+      } else if (verification.sourceType === VerificationSourceType.AUDIO) {
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.TRANSCRIPTION,
+          status: VerificationEventStatus.COMPLETED,
+          progress: 20,
+          messageCode: 'TRANSCRIPTION_COMPLETED',
+          safeMessage: 'The audio was transcribed',
+          requestId,
+          jobId,
+        });
+      }
+      if (!extracted.record) {
+        verification.currentStage = VerificationStage.REPORT_SYNTHESIS;
+        verification.progress = 60;
+        await verification.save();
+        for (const stage of [
+          VerificationStage.LANGUAGE_DETECTION,
+          VerificationStage.CLAIM_EXTRACTION,
+          VerificationStage.EVIDENCE_SEARCH,
+          VerificationStage.CLAIM_EVALUATION,
+        ]) {
+          await this.events.append({
+            verificationId: verification.id,
+            stage,
+            status: VerificationEventStatus.SKIPPED,
+            progress: 60,
+            messageCode: `${stage}_SKIPPED_NO_TEXT`,
+            safeMessage:
+              'This stage does not apply because no text was detected',
+            requestId,
+            jobId,
+          });
+        }
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.REPORT_SYNTHESIS,
+          status: VerificationEventStatus.PENDING,
+          progress: 60,
+          messageCode: 'REPORT_SYNTHESIS_PENDING',
+          safeMessage: 'The verification is awaiting report synthesis',
+          requestId,
+          jobId,
+        });
+        return;
+      }
       const language = this.languages.detect(extracted.record.normalizedText);
       verification.currentStage = VerificationStage.LANGUAGE_DETECTION;
       verification.progress = 25;
@@ -246,11 +303,30 @@ export class ContentProcessingService {
     }
   }
 
-  private async extractContent(verification: VerificationDocument): Promise<{
-    record: ExtractedContentDocument;
+  private async extractContent(
+    verification: VerificationDocument,
+    requestId: string,
+  ): Promise<{
+    record: ExtractedContentDocument | null;
     title?: string;
     urlMetadata?: Record<string, unknown>;
   }> {
+    if (
+      [
+        VerificationSourceType.IMAGE,
+        VerificationSourceType.SCREENSHOT,
+        VerificationSourceType.AUDIO,
+      ].includes(verification.sourceType)
+    ) {
+      const result = await this.media.process(verification, requestId);
+      if (!result.text.trim()) return { record: null };
+      const record = await this.upsertContent(
+        verification.id,
+        this.normalization.normalize(result.text),
+        {},
+      );
+      return { record };
+    }
     if (verification.sourceType === VerificationSourceType.TEXT) {
       const text =
         typeof verification.input.text === 'string'

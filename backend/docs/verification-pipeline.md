@@ -70,6 +70,17 @@ documented in [verification-analysis.md](verification-analysis.md).
 evaluations, confidence factors, uncertainty, limitations, overall verdict,
 risk, and analysis findings.
 
+## Phase 9 image and audio
+
+Image and screenshot inputs pass through attached-asset validation, trusted
+Cloudinary retrieval, Gemini image/OCR analysis, and the normal claim/evidence
+pipeline when visible text exists. Audio inputs use real Groq transcription
+with segment timestamps before entering that same pipeline.
+
+Media-specific details and honest unsupported states are documented in
+[media-processing.md](media-processing.md). `GET
+/api/v1/verifications/:id/media` is owner-scoped.
+
 ## Safe URL retrieval
 
 URL retrieval is performed only by the dedicated safe-fetch service. It permits HTTP and HTTPS on their standard ports, rejects credentials and local hostnames, resolves DNS before connecting, rejects every private/loopback/link-local/reserved answer, and pins the connection to the validated address. Every redirect repeats the full validation.

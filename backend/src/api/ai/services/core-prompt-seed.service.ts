@@ -42,6 +42,31 @@ export class CorePromptSeedService implements OnModuleInit {
         .exec(),
       this.model
         .updateOne(
+          { key: 'verification.image-analysis', version: 1 },
+          {
+            $setOnInsert: {
+              key: 'verification.image-analysis',
+              task: 'IMAGE_UNDERSTANDING',
+              version: 1,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Analyze the supplied image or screenshot. Extract visible text cautiously, preserve uncertain regions, and identify visible dates, URLs, publisher marks, likely content type, and possible cropping. Observations about synthetic generation are non-forensic clues only. Do not claim reverse-image search or definitive AI generation. Return only schema-valid JSON.',
+              userPromptTemplate:
+                'Inspect this verification image. Report only what is visibly supported.',
+              supportedProviders: [AiProviderName.GEMINI],
+              supportedModels: [],
+              outputSchemaVersion: 'image-analysis.v1',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary: 'Initial cautious image and OCR analysis',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
           { key: 'verification.analysis', version: 1 },
           {
             $setOnInsert: {

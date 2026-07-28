@@ -61,7 +61,24 @@ export class GeminiProvider implements AiProvider {
           systemInstruction: {
             parts: [{ text: request.systemPrompt }],
           },
-          contents: [{ role: 'user', parts: [{ text: request.userPrompt }] }],
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                ...(request.media
+                  ? [
+                      {
+                        inlineData: {
+                          mimeType: request.media.mimeType,
+                          data: request.media.base64Data,
+                        },
+                      },
+                    ]
+                  : []),
+                { text: request.userPrompt },
+              ],
+            },
+          ],
           generationConfig: {
             temperature: request.temperature ?? 0.1,
             ...(request.maxOutputTokens
