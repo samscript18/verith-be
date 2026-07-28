@@ -58,6 +58,10 @@ export const envSchema = Joi.object({
   CLOUDINARY_CLOUD_NAME: optionalSecret,
   CLOUDINARY_API_KEY: optionalSecret,
   CLOUDINARY_API_SECRET: optionalSecret,
+  CLOUDINARY_UPLOAD_FOLDER: Joi.string().trim().default('verith'),
+  MAX_IMAGE_UPLOAD_BYTES: Joi.number().integer().min(1024).default(10485760),
+  MAX_AUDIO_UPLOAD_BYTES: Joi.number().integer().min(1024).default(26214400),
+  UPLOAD_PENDING_TTL_MINUTES: Joi.number().integer().min(5).default(60),
   MAIL_PROVIDER: optionalSecret,
   MAIL_HOST: optionalSecret,
   MAIL_PORT: Joi.number().port().default(587),
@@ -100,4 +104,6 @@ export const envSchema = Joi.object({
       is: true,
       then: Joi.required(),
     }),
-}).unknown(true);
+})
+  .and('CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET')
+  .unknown(true);

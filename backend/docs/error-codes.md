@@ -12,5 +12,15 @@
 | `SESSION_REVOKED` | 401 | The access token references an inactive session. |
 | `CSRF_VALIDATION_FAILED` | 401 | Cookie refresh CSRF validation failed. |
 | `USER_ALREADY_EXISTS` | 409 | Normalized email or username is already registered. |
+| `MEDIA_ASSET_NOT_FOUND` | 404 | The asset does not exist, is expired, or is not owned by the caller. |
+| `UPLOAD_SIGNATURE_INVALID` | 409 | Cloudinary's upload response signature could not be verified. |
+| `UPLOAD_POLICY_MISMATCH` | 409 | Provider metadata violates the signed type, owner, size, or format policy. |
+| `UPLOAD_ASSET_TYPE_MISMATCH` | 409 | An asset was submitted to an incompatible attachment flow. |
+| `UPLOAD_CONFIRMATION_CONFLICT` | 409 | The pending upload was concurrently confirmed or changed. |
+| `UPLOAD_ATTACHMENT_CONFLICT` | 409 | A confirmed asset could not be attached to its target resource. |
+| `CLOUDINARY_NOT_CONFIGURED` | 503 | The Cloudinary integration has no complete credential set. |
+| `CLOUDINARY_ASSET_UNAVAILABLE` | 503 | Cloudinary could not return the uploaded asset metadata. |
+| `CLOUDINARY_INVALID_RESPONSE` | 503 | Cloudinary returned an unusable response. |
+| `CLOUDINARY_DELETE_FAILED` | 503 | Cloudinary did not acknowledge asset deletion. |
 
 Domain phases will add stable codes here as they are implemented. Production responses never include stack traces.

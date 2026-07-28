@@ -29,4 +29,16 @@ describe('envSchema', () => {
 
     expect(result.error?.message).toContain('WHATSAPP_PHONE_NUMBER_ID');
   });
+
+  it('rejects a partial Cloudinary credential set', () => {
+    const result = envSchema.validate({
+      MONGODB_URI: 'mongodb://localhost:27017/verith',
+      REDIS_URL: 'redis://localhost:6379',
+      JWT_ACCESS_SECRET: 'a'.repeat(32),
+      HASHING_PEPPER: 'b'.repeat(32),
+      CLOUDINARY_CLOUD_NAME: 'verith',
+    });
+
+    expect(result.error?.message).toContain('CLOUDINARY_API_KEY');
+  });
 });

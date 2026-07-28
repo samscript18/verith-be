@@ -120,6 +120,26 @@ export class UsersService {
     return this.toPrivateProfile(user);
   }
 
+  async updateAvatar(
+    userId: string,
+    secureUrl: string,
+  ): Promise<Record<string, unknown>> {
+    const user = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $set: { avatar: secureUrl } },
+        { returnDocument: 'after', runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      throw new NotFoundException(
+        'The user could not be found',
+        'USER_NOT_FOUND',
+      );
+    }
+    return this.toPrivateProfile(user);
+  }
+
   async updateNotificationPreferences(
     userId: string,
     dto: UpdatePreferencesDto,

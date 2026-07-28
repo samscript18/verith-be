@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { ApiModule } from './api/api.module';
@@ -9,6 +10,7 @@ import { CoreModule } from './core/core.module';
 import {
   appConfig,
   authConfig,
+  cloudinaryConfig,
   databaseConfig,
   mailConfig,
   redisConfig,
@@ -28,7 +30,14 @@ import { RedisThrottlerStorage } from './core/services/redis-throttler-storage.s
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
-      load: [appConfig, authConfig, databaseConfig, mailConfig, redisConfig],
+      load: [
+        appConfig,
+        authConfig,
+        cloudinaryConfig,
+        databaseConfig,
+        mailConfig,
+        redisConfig,
+      ],
       validationSchema: envSchema,
       validationOptions: { abortEarly: false },
     }),
@@ -65,6 +74,7 @@ import { RedisThrottlerStorage } from './core/services/redis-throttler-storage.s
       }),
     }),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     CoreModule,
     SharedModule,
     ApiModule,

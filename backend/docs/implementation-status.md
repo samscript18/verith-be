@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | 1. Foundation | COMPLETE | Quality gates pass; MongoDB, Redis, health routes, Swagger, and the production image were validated locally. |
 | 2. Authentication and Users | COMPLETE | Real MongoDB/Redis integration flow, security controls, Swagger, tests, build, audit, and production image validated. |
-| 3. Uploads and Cloudinary | NOT_STARTED | |
+| 3. Uploads and Cloudinary | COMPLETE | Signed owner-bound uploads, provider verification, avatar attachment, cleanup, docs, tests, audit, and production image validated. |
 | 4. Verification Core | NOT_STARTED | |
 | 5. AI Infrastructure | NOT_STARTED | |
 | 6. Text and URL Processing | NOT_STARTED | |

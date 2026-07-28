@@ -6,3 +6,7 @@ export {
 export { default as redisConfig, type RedisConfig } from './redis.config';
 export { default as authConfig, type AuthConfig } from './auth.config';
 export { default as mailConfig, type MailConfig } from './mail.config';
+export {
+  default as cloudinaryConfig,
+  type CloudinaryConfig,
+} from './cloudinary.config';

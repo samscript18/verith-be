@@ -1,6 +1,6 @@
 # Verith Backend
 
-Verith is an explainable misinformation-verification and media-literacy platform. This repository currently contains the Phase 1 NestJS foundation: validated configuration, MongoDB, Redis, structured logging, request IDs, secure HTTP defaults, consistent response envelopes, Swagger, and health checks.
+Verith is an explainable misinformation-verification and media-literacy platform. The backend currently includes the production foundation, authentication and user management, and owner-bound signed Cloudinary uploads.
 
 ## Architecture
 
@@ -8,6 +8,7 @@ Business domains live in `src/api`, request-lifecycle infrastructure in `src/cor
 
 See [docs/architecture.md](docs/architecture.md) and [docs/implementation-status.md](docs/implementation-status.md).
 Authentication behavior is documented in [docs/authentication-flow.md](docs/authentication-flow.md).
+Upload behavior is documented in [docs/uploads-and-cloudinary.md](docs/uploads-and-cloudinary.md).
 
 ## Requirements
 
@@ -48,7 +49,7 @@ npm run build
 
 ## Providers
 
-Provider variables are documented in `.env.example`. Provider keys are optional during Phase 1 and must never be committed. Unconfigured integrations will be represented explicitly in their implementation phases; no production behavior will be simulated.
+Provider variables are documented in `.env.example` and keys must never be committed. Cloudinary remains optional at application startup, but upload requests return `CLOUDINARY_NOT_CONFIGURED` unless all three Cloudinary credentials are present.
 
 ## Docker
 
