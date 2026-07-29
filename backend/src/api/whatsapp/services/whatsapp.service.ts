@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Queue } from 'bullmq';
@@ -46,7 +46,6 @@ export class WhatsAppService {
     private readonly assets: Model<MediaAsset>,
     @InjectModel(User.name) private readonly users: Model<User>,
     @InjectQueue(WHATSAPP_QUEUE) private readonly queue: Queue<InboundJob>,
-    @Inject(forwardRef(() => VerificationService))
     private readonly verifications: VerificationService,
     private readonly links: WhatsAppLinkService,
     private readonly meta: MetaWhatsAppService,
@@ -166,6 +165,18 @@ export class WhatsAppService {
     verificationId: string,
     reportId: string,
   ) {
+    const alreadySent = await this.messages.exists({
+      verificationId: new Types.ObjectId(verificationId),
+      direction: WhatsAppDirection.OUTBOUND,
+      status: {
+        $in: [
+          WhatsAppMessageStatus.SENT,
+          WhatsAppMessageStatus.DELIVERED,
+          WhatsAppMessageStatus.READ,
+        ],
+      },
+    });
+    if (alreadySent) return;
     const user = await this.users
       .findById(userId)
       .select('notificationPreferences')

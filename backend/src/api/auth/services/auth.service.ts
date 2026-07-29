@@ -1,14 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import bcrypt from 'bcrypt';
-import { timingSafeEqual } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
 import {
   AuthenticationException,
   ConflictException,
 } from '../../../core/exceptions';
+import {
+  DomainEventName,
+  SecurityAlertKind,
+} from '../../../core/events/domain-event.contracts';
+import { DomainEventPublisher } from '../../../core/events/domain-event-publisher.service';
 import type { AppConfig, AuthConfig } from '../../../shared/config';
 import {
   MailService,
@@ -17,8 +22,6 @@ import {
 import { UserStatus } from '../../users/enums/user-status.enum';
 import type { UserDocument } from '../../users/schemas/user.schema';
 import { UsersService } from '../../users/users.service';
-import { NotificationType } from '../../notifications/enums/notification.enum';
-import { NotificationsService } from '../../notifications/services/notifications.service';
 import type {
   ChangePasswordDto,
   LoginDto,
@@ -47,6 +50,7 @@ export interface AuthenticationResult {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly authConfig: AuthConfig;
   private readonly appConfig: AppConfig;
 
@@ -57,7 +61,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly tokenService: TokenService,
     private readonly mailService: MailService,
-    private readonly notifications: NotificationsService,
+    private readonly domainEvents: DomainEventPublisher,
     configService: ConfigService,
   ) {
     this.authConfig = configService.getOrThrow<AuthConfig>('auth');
@@ -272,16 +276,11 @@ export class AuthService {
     );
     await this.usersService.updatePassword(token.userId, passwordHash);
     await this.logoutAll(token.userId.toString(), 'PASSWORD_RESET');
-    await this.notifications
-      .dispatch({
-        userId: token.userId.toString(),
-        type: NotificationType.SECURITY_ALERT,
-        title: 'Password reset completed',
-        message:
-          'Your Verith password was reset and existing sessions were revoked.',
-        idempotencyReference: `security:password-reset:${token._id.toString()}`,
-      })
-      .catch(() => undefined);
+    await this.publishSecurityAlert(
+      token.userId.toString(),
+      SecurityAlertKind.PASSWORD_RESET,
+      `password-reset:${token._id.toString()}`,
+    );
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
@@ -309,16 +308,11 @@ export class AuthService {
     );
     await this.usersService.updatePassword(user._id, passwordHash);
     await this.logoutAll(userId, 'PASSWORD_CHANGED');
-    await this.notifications
-      .dispatch({
-        userId,
-        type: NotificationType.SECURITY_ALERT,
-        title: 'Password changed',
-        message:
-          'Your Verith password changed and existing sessions were revoked.',
-        idempotencyReference: `security:password-change:${Date.now()}`,
-      })
-      .catch(() => undefined);
+    await this.publishSecurityAlert(
+      userId,
+      SecurityAlertKind.PASSWORD_CHANGED,
+      `password-change:${randomUUID()}`,
+    );
   }
 
   private async createSession(
@@ -447,6 +441,29 @@ export class AuthService {
         { $set: { revokedAt: new Date(), revokedReason: reason } },
       )
       .exec();
+  }
+
+  private async publishSecurityAlert(
+    userId: string,
+    kind: SecurityAlertKind,
+    operationId: string,
+  ): Promise<void> {
+    try {
+      await this.domainEvents.publish({
+        name: DomainEventName.SECURITY_ALERT_REQUESTED,
+        aggregateType: 'USER',
+        aggregateId: userId,
+        correlationId: operationId,
+        deduplicationKey: `security:${operationId}:v1`,
+        payload: { userId, kind },
+      });
+    } catch {
+      this.logger.warn({
+        eventName: DomainEventName.SECURITY_ALERT_REQUESTED,
+        aggregateId: userId,
+        failureCode: 'DOMAIN_EVENT_OUTBOX_UNAVAILABLE',
+      });
+    }
   }
 
   private constantTimeEqual(left: string, right: string): boolean {

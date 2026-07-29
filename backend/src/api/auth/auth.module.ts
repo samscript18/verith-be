@@ -9,7 +9,6 @@ import { AuthService } from './services/auth.service';
 import { TokenService } from './services/token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
-import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -20,7 +19,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
       { name: AuthToken.name, schema: AuthTokenSchema },
     ]),
     UsersModule,
-    NotificationsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, TokenService, JwtStrategy],

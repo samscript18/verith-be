@@ -12,6 +12,9 @@ Upload behavior is documented in [docs/uploads-and-cloudinary.md](docs/uploads-a
 Verification lifecycle behavior is documented in [docs/verification-pipeline.md](docs/verification-pipeline.md).
 AI provider routing is documented in [docs/provider-routing.md](docs/provider-routing.md).
 Text/URL processing and SSRF controls are documented in [docs/verification-pipeline.md](docs/verification-pipeline.md) and [docs/security.md](docs/security.md).
+Domain-event boundaries, outbox delivery, retries, and failure semantics are
+documented in
+[docs/event-driven-architecture.md](docs/event-driven-architecture.md).
 
 ## Requirements
 

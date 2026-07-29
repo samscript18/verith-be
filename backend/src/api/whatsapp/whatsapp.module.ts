@@ -1,5 +1,5 @@
 import { BullModule } from '@nestjs/bullmq';
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { RedisOptions } from 'ioredis';
@@ -26,6 +26,7 @@ import { WhatsAppService } from './services/whatsapp.service';
 import { WHATSAPP_QUEUE } from './whatsapp.constants';
 import { WhatsAppWorker } from './workers/whatsapp.worker';
 import { runsWorkers } from '../../shared/utils/process-role';
+import { VerificationCompletedWhatsAppHandler } from './handlers/verification-completed.handler';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -45,7 +46,7 @@ const redisOptions = (value: string): RedisOptions => {
 @Module({
   imports: [
     UploadsModule,
-    forwardRef(() => VerificationsModule),
+    VerificationsModule,
     MongooseModule.forFeature([
       { name: WhatsAppLink.name, schema: WhatsAppLinkSchema },
       { name: WhatsAppMessage.name, schema: WhatsAppMessageSchema },
@@ -66,6 +67,7 @@ const redisOptions = (value: string): RedisOptions => {
     MetaWhatsAppService,
     WhatsAppLinkService,
     WhatsAppService,
+    VerificationCompletedWhatsAppHandler,
     ...(runsWorkers() ? [WhatsAppWorker] : []),
   ],
   exports: [WhatsAppService, WhatsAppLinkService],

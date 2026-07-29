@@ -1,8 +1,16 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'node:crypto';
 import { Model, Types } from 'mongoose';
+import {
+  DomainEventName,
+  type PublishDomainEventInput,
+} from '../../../core/events/domain-event.contracts';
+import { DomainEventPublisher } from '../../../core/events/domain-event-publisher.service';
 import { ApplicationException } from '../../../core/exceptions';
+import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
+import { MediaProcessingService } from '../../media/services/media-processing.service';
+import { ReportService } from '../../reports/services/report.service';
 import { VerificationEventStatus } from '../enums/verification-event-status.enum';
 import { VerificationSourceType } from '../enums/verification-source-type.enum';
 import { VerificationStage } from '../enums/verification-stage.enum';
@@ -19,12 +27,6 @@ import { VerificationEventService } from './verification-event.service';
 import { LanguageDetectionService } from './language-detection.service';
 import { TextNormalizationService } from './text-normalization.service';
 import { EvidenceSearchService } from './evidence-search.service';
-import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
-import { MediaProcessingService } from '../../media/services/media-processing.service';
-import { ReportService } from '../../reports/services/report.service';
-import { NotificationType } from '../../notifications/enums/notification.enum';
-import { NotificationsService } from '../../notifications/services/notifications.service';
-import { WhatsAppService } from '../../whatsapp/services/whatsapp.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -39,9 +41,7 @@ export class ContentProcessingService {
     private readonly analysis: VerificationAnalysisService,
     private readonly media: MediaProcessingService,
     private readonly reports: ReportService,
-    private readonly notifications: NotificationsService,
-    @Inject(forwardRef(() => WhatsAppService))
-    private readonly whatsapp: WhatsAppService,
+    private readonly domainEvents: DomainEventPublisher,
     private readonly events: VerificationEventService,
   ) {}
 
@@ -316,17 +316,23 @@ export class ContentProcessingService {
         requestId,
         jobId,
       });
-      await this.notifications
-        .dispatch({
-          userId: verification.userId.toString(),
-          type: NotificationType.VERIFICATION_FAILED,
-          title: 'Verification could not be completed',
-          message:
-            'Your verification could not be completed. You can review its status in Verith.',
-          idempotencyReference: `verification:${verification.id}:failed`,
-          metadata: { verificationId: verification.id, failureCode: code },
-        })
-        .catch(() => undefined);
+      await this.publishDomainEvent(
+        {
+          name: DomainEventName.VERIFICATION_FAILED,
+          aggregateType: 'VERIFICATION',
+          aggregateId: verification.id,
+          correlationId: requestId,
+          deduplicationKey: `verification:${verification.id}:failed:v1`,
+          payload: {
+            userId: verification.userId.toString(),
+            verificationId: verification.id,
+            failureCode: code,
+          },
+        },
+        verification,
+        requestId,
+        jobId,
+      );
     }
   }
 
@@ -496,25 +502,47 @@ export class ContentProcessingService {
       requestId,
       jobId,
     });
-    await this.notifications
-      .dispatch({
-        userId: verification.userId.toString(),
-        type: NotificationType.VERIFICATION_COMPLETED,
-        title: 'Verification complete',
-        message: 'Your Verith verification report is ready to review.',
-        idempotencyReference: `verification:${verification.id}:completed`,
-        metadata: {
+    await this.publishDomainEvent(
+      {
+        name: DomainEventName.VERIFICATION_COMPLETED,
+        aggregateType: 'VERIFICATION',
+        aggregateId: verification.id,
+        correlationId: requestId,
+        deduplicationKey: `verification:${verification.id}:completed:v1`,
+        payload: {
+          userId: verification.userId.toString(),
           verificationId: verification.id,
           reportId: report.id,
         },
-      })
-      .catch(() => undefined);
-    await this.whatsapp
-      .sendCompletion(
-        verification.userId.toString(),
-        verification.id,
-        report.id,
-      )
-      .catch(() => undefined);
+      },
+      verification,
+      requestId,
+      jobId,
+    );
+  }
+
+  private async publishDomainEvent<TName extends DomainEventName>(
+    input: PublishDomainEventInput<TName>,
+    verification: VerificationDocument,
+    requestId: string,
+    jobId: string,
+  ): Promise<void> {
+    try {
+      await this.domainEvents.publish(input);
+    } catch {
+      await this.events
+        .append({
+          verificationId: verification.id,
+          stage: verification.currentStage,
+          status: VerificationEventStatus.UNAVAILABLE,
+          progress: verification.progress,
+          messageCode: 'DOMAIN_EVENT_OUTBOX_UNAVAILABLE',
+          safeMessage:
+            'Follow-up notifications could not be scheduled automatically',
+          requestId,
+          jobId,
+        })
+        .catch(() => undefined);
+    }
   }
 }

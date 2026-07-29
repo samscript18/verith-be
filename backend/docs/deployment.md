@@ -10,12 +10,12 @@ Deploy the same image as three independently scalable processes:
 | --------- | --------------------------------------------------------- | -------------------------------------------- |
 | API       | HTTP/SSE only                                             | `PROCESS_ROLE=api node dist/main`            |
 | Worker    | BullMQ verification, notification, WhatsApp, privacy jobs | `PROCESS_ROLE=worker node dist/worker`       |
-| Scheduler | retention and orphan cleanup                              | `PROCESS_ROLE=scheduler node dist/scheduler` |
+| Scheduler | domain-event relay, retention, and orphan cleanup         | `PROCESS_ROLE=scheduler node dist/scheduler` |
 
 Do not use `PROCESS_ROLE=all` in production. It exists for local development
 and integration testing. Scale API and worker replicas independently; run at
-least one scheduler replica (the Redis lock prevents duplicate retention
-sweeps).
+least one scheduler replica. MongoDB leases prevent duplicate outbox delivery
+claims, and the Redis lock prevents duplicate retention sweeps.
 
 MongoDB and Redis are mandatory, authenticated, private-network dependencies.
 Use a managed MongoDB replica set for transactions and point-in-time recovery.
@@ -30,8 +30,9 @@ Before routing traffic:
 2. deploy workers, then the API, then scheduler;
 3. require `/api/v1/health/ready` to pass;
 4. verify queues have consumers and no unexpected failed-job increase;
-5. smoke-test authentication and a non-provider health route;
-6. retain the prior image digest for rollback.
+5. verify `domain_event_outbox` has no unexpected `DEAD_LETTER` growth;
+6. smoke-test authentication and a non-provider health route;
+7. retain the prior image digest for rollback.
 
 Shutdown uses Nest lifecycle hooks. HTTP stops accepting requests, BullMQ
 workers close through their lifecycle integration, and MongoDB/Redis/logging

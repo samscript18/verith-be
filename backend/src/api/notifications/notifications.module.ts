@@ -14,6 +14,7 @@ import {
 import { NotificationsService } from './services/notifications.service';
 import { NotificationWorker } from './workers/notification.worker';
 import { runsWorkers } from '../../shared/utils/process-role';
+import { DomainNotificationHandler } from './handlers/domain-notification.handler';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -48,6 +49,7 @@ const redisOptions = (value: string): RedisOptions => {
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
+    DomainNotificationHandler,
     ...(runsWorkers() ? [NotificationWorker] : []),
   ],
   exports: [NotificationsService, MongooseModule],

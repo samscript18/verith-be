@@ -117,6 +117,12 @@ Events live in a separate collection with a per-verification monotonic sequence.
 
 Clients should reconnect with the last processed sequence in the `after` query. Persisted catch-up prevents event loss across API restarts. In-process fan-out serves clients connected to the same API instance; a Redis-backed cross-instance fan-out adapter is required before horizontally scaling the API.
 
+Lifecycle events and cross-domain events are separate concerns. Lifecycle
+events drive owner history and SSE. After a verification completes or fails,
+the worker writes a typed domain event to the durable outbox. The scheduler
+then invokes idempotent notification and WhatsApp consumers without coupling
+those modules to the verification worker.
+
 ## Lifecycle operations
 
 - Cancellation records `cancelRequestedAt`, moves the record to `CANCELLED`, and emits a durable event.

@@ -260,6 +260,8 @@ export class PrivacyService {
           .project({ _id: 1 })
           .toArray()
       ).map((item) => new Types.ObjectId(String(item._id)));
+      const verificationIdStrings = verificationIds.map(String);
+      const userIdString = userId.toString();
 
       await Promise.all([
         db.collection('sessions').deleteMany({ userId }),
@@ -277,6 +279,16 @@ export class PrivacyService {
         db.collection('report_feedback').deleteMany({ userId }),
         db.collection('report_exports').deleteMany({ userId }),
         db.collection('privacy_jobs').deleteMany({ userId }),
+        db.collection('domain_event_outbox').deleteMany({
+          $or: [
+            { 'payload.userId': userIdString },
+            { aggregateType: 'USER', aggregateId: userIdString },
+            {
+              aggregateType: 'VERIFICATION',
+              aggregateId: { $in: verificationIdStrings },
+            },
+          ],
+        }),
         db
           .collection('claims')
           .deleteMany({ verificationId: { $in: verificationIds } }),
@@ -374,6 +386,7 @@ export class PrivacyService {
       rewards,
       notifications,
       whatsappLink,
+      domainEvents,
     ] = await Promise.all([
       db.collection('users').findOne(
         { _id: ownerId },
@@ -414,6 +427,15 @@ export class PrivacyService {
           },
         },
       ),
+      db
+        .collection('domain_event_outbox')
+        .find({ 'payload.userId': userId })
+        .project({
+          deduplicationKey: 0,
+          lockedUntil: 0,
+          lastFailureCode: 0,
+        })
+        .toArray(),
     ]);
     return {
       schemaVersion: 1,
@@ -428,6 +450,7 @@ export class PrivacyService {
       gamificationHistory: rewards,
       notifications,
       whatsappLink,
+      domainEvents,
     };
   }
 

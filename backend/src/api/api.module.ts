@@ -22,10 +22,12 @@ import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { AdminModule } from './admin/admin.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PrivacyModule } from './privacy/privacy.module';
+import { DomainEventsModule } from '../core/events/domain-events.module';
 
 @Module({
   imports: [
     DatabaseModule,
+    DomainEventsModule,
     IntegrationsModule,
     HealthModule,
     UsersModule,
