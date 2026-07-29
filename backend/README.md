@@ -43,7 +43,7 @@ npm run test:e2e
 npm run build
 ```
 
-`npm run test:external` is reserved for explicitly enabled live provider contract tests. Normal test runs never call paid or messaging providers.
+`npm run test:external` is reserved for explicitly enabled live provider contract tests. Normal test runs never call external AI or messaging providers.
 
 ## Health
 
@@ -52,7 +52,13 @@ npm run build
 
 ## Providers
 
-Provider variables are documented in `.env.example` and keys must never be committed. Cloudinary remains optional at application startup, but upload requests return `CLOUDINARY_NOT_CONFIGURED` unless all three Cloudinary credentials are present.
+Only deployment-specific addresses and secrets remain in `.env.example`; limits,
+retention, provider URLs, provider order, and no-cost model names are defaults
+in code. AI keys must belong to free-tier projects without billing enabled.
+Search uses credential-free GDELT and Wikipedia fallback. Cloudinary remains
+optional at application startup, but upload requests return
+`CLOUDINARY_NOT_CONFIGURED` unless all three Cloudinary credentials are
+present.
 
 ## Docker
 

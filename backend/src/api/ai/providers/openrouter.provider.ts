@@ -16,6 +16,8 @@ export class OpenRouterProvider extends OpenAiCompatibleProvider {
     AiCapability.REPORT_GENERATION,
     AiCapability.MANIPULATION_ANALYSIS,
     AiCapability.BIAS_ANALYSIS,
+    AiCapability.IMAGE_UNDERSTANDING,
+    AiCapability.OCR_FALLBACK,
     AiCapability.TRANSLATION,
   ]);
   private readonly siteUrl: string;

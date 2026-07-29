@@ -20,8 +20,8 @@ export default registerAs('cloudinary', (): CloudinaryConfig => ({
   cloudName: process.env.CLOUDINARY_CLOUD_NAME ?? '',
   apiKey: process.env.CLOUDINARY_API_KEY ?? '',
   apiSecret: process.env.CLOUDINARY_API_SECRET ?? '',
-  folder: process.env.CLOUDINARY_UPLOAD_FOLDER ?? 'verith',
-  maxImageBytes: Number(process.env.MAX_IMAGE_UPLOAD_BYTES ?? 10485760),
-  maxAudioBytes: Number(process.env.MAX_AUDIO_UPLOAD_BYTES ?? 26214400),
-  pendingTtlMinutes: Number(process.env.UPLOAD_PENDING_TTL_MINUTES ?? 60),
+  folder: 'verith',
+  maxImageBytes: 10485760,
+  maxAudioBytes: 26214400,
+  pendingTtlMinutes: 60,
 }));

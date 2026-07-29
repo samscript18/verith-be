@@ -23,6 +23,6 @@ export default registerAs('mail', (): MailConfig => ({
   secure: process.env.MAIL_SECURE === 'true',
   user: process.env.MAIL_USER ?? '',
   password: process.env.MAIL_PASSWORD ?? '',
-  fromName: process.env.MAIL_FROM_NAME ?? 'Verith',
+  fromName: 'Verith',
   fromEmail: process.env.MAIL_FROM_EMAIL ?? '',
 }));

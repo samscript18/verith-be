@@ -53,7 +53,10 @@ export class CorePromptSeedService implements OnModuleInit {
                 'Analyze the supplied image or screenshot. Extract visible text cautiously, preserve uncertain regions, and identify visible dates, URLs, publisher marks, likely content type, and possible cropping. Observations about synthetic generation are non-forensic clues only. Do not claim reverse-image search or definitive AI generation. Return only schema-valid JSON.',
               userPromptTemplate:
                 'Inspect this verification image. Report only what is visibly supported.',
-              supportedProviders: [AiProviderName.GEMINI],
+              supportedProviders: [
+                AiProviderName.GEMINI,
+                AiProviderName.OPENROUTER,
+              ],
               supportedModels: [],
               outputSchemaVersion: 'image-analysis.v1',
               createdBy: 'SYSTEM',

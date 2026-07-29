@@ -21,7 +21,10 @@ Confirmation updates the user's avatar URL and marks the asset attached. Generic
 - Asset lookup deliberately returns the same not-found response for nonexistent and foreign assets.
 - Attached assets cannot be removed through the generic deletion route.
 
-Image assets accept `jpg`, `jpeg`, `png`, `webp`, `gif`, `avif`, and `heic`. Audio assets accept `mp3`, `wav`, `m4a`, `aac`, `ogg`, `webm`, and `flac`. Limits are configured with `MAX_IMAGE_UPLOAD_BYTES` and `MAX_AUDIO_UPLOAD_BYTES`.
+Image assets accept `jpg`, `jpeg`, `png`, `webp`, `gif`, `avif`, and `heic`
+up to 10 MiB. Audio assets accept `mp3`, `wav`, `m4a`, `aac`, `ogg`, `webm`,
+and `flac` up to 25 MiB. These limits are code defaults shared by the upload
+and WhatsApp paths.
 
 ## Configuration and provider states
 

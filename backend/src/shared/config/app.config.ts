@@ -14,10 +14,10 @@ export interface AppConfig {
 }
 
 export default registerAs('app', (): AppConfig => ({
-  name: process.env.APP_NAME ?? 'Verith',
-  host: process.env.APP_HOST ?? '0.0.0.0',
+  name: 'Verith',
+  host: '0.0.0.0',
   port: Number(process.env.PORT ?? 4000),
-  apiPrefix: process.env.API_PREFIX ?? 'api/v1',
+  apiPrefix: 'api/v1',
   appUrl: process.env.APP_URL ?? 'http://localhost:4000',
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000')

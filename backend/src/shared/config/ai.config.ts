@@ -16,41 +16,44 @@ export interface AiConfig {
   openRouter: AiProviderConfig & { siteUrl: string; appName: string };
 }
 
+export const FREE_AI_MODELS = {
+  gemini: 'gemini-3.5-flash',
+  groq: 'openai/gpt-oss-120b',
+  groqTranscription: 'whisper-large-v3-turbo',
+  openRouter: 'openrouter/free',
+} as const;
+
 export default registerAs('ai', (): AiConfig => ({
-  maxRetries: Number(process.env.AI_MAX_RETRIES ?? 2),
-  healthCacheSeconds: Number(process.env.PROVIDER_HEALTH_CACHE_SECONDS ?? 300),
-  executionRetentionDays: Number(
-    process.env.PROVIDER_EXECUTION_RETENTION_DAYS ?? 30,
-  ),
+  maxRetries: 2,
+  healthCacheSeconds: 300,
+  executionRetentionDays: 30,
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
-    baseUrl:
-      process.env.GEMINI_BASE_URL ??
-      'https://generativelanguage.googleapis.com',
-    timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS ?? 30000),
+    baseUrl: 'https://generativelanguage.googleapis.com',
+    timeoutMs: 30000,
     models: {
-      text: process.env.GEMINI_TEXT_MODEL ?? '',
-      vision: process.env.GEMINI_VISION_MODEL ?? '',
+      text: FREE_AI_MODELS.gemini,
+      vision: FREE_AI_MODELS.gemini,
     },
   },
   groq: {
     apiKey: process.env.GROQ_API_KEY ?? '',
-    baseUrl: process.env.GROQ_BASE_URL ?? 'https://api.groq.com/openai/v1',
-    timeoutMs: Number(process.env.GROQ_TIMEOUT_MS ?? 30000),
+    baseUrl: 'https://api.groq.com/openai/v1',
+    timeoutMs: 30000,
     models: {
-      text: process.env.GROQ_TEXT_MODEL ?? '',
-      transcription: process.env.GROQ_TRANSCRIPTION_MODEL ?? '',
+      text: FREE_AI_MODELS.groq,
+      transcription: FREE_AI_MODELS.groqTranscription,
     },
   },
   openRouter: {
     apiKey: process.env.OPENROUTER_API_KEY ?? '',
-    baseUrl: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
-    timeoutMs: Number(process.env.OPENROUTER_TIMEOUT_MS ?? 45000),
+    baseUrl: 'https://openrouter.ai/api/v1',
+    timeoutMs: 45000,
     models: {
-      reasoning: process.env.OPENROUTER_REASONING_MODEL ?? '',
-      report: process.env.OPENROUTER_REPORT_MODEL ?? '',
+      reasoning: FREE_AI_MODELS.openRouter,
+      report: FREE_AI_MODELS.openRouter,
     },
     siteUrl: process.env.OPENROUTER_SITE_URL ?? '',
-    appName: process.env.OPENROUTER_APP_NAME ?? 'Verith',
+    appName: 'Verith',
   },
 }));

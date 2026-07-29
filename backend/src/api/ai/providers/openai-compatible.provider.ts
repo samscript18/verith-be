@@ -46,7 +46,20 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
           model: request.model,
           messages: [
             { role: 'system', content: request.systemPrompt },
-            { role: 'user', content: request.userPrompt },
+            {
+              role: 'user',
+              content: request.media
+                ? [
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:${request.media.mimeType};base64,${request.media.base64Data}`,
+                      },
+                    },
+                    { type: 'text', text: request.userPrompt },
+                  ]
+                : request.userPrompt,
+            },
           ],
           temperature: request.temperature ?? 0.1,
           ...(request.maxOutputTokens

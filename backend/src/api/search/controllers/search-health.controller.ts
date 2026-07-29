@@ -25,8 +25,7 @@ export class SearchHealthController {
 
   @Get('health')
   @ApiOperation({
-    summary:
-      'Check search connectivity (a forced Tavily check consumes a search credit)',
+    summary: 'Check credential-free search provider connectivity',
   })
   check(@Query() query: SearchHealthQueryDto) {
     return this.health.all(query.force);

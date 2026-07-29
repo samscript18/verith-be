@@ -197,12 +197,13 @@ export class AiRouterService {
 
   private defaultOrder(capability: AiCapability): AiProviderName[] {
     if (
-      [
-        AiCapability.IMAGE_UNDERSTANDING,
-        AiCapability.OCR_FALLBACK,
-        AiCapability.AUDIO_REASONING,
-      ].includes(capability)
+      [AiCapability.IMAGE_UNDERSTANDING, AiCapability.OCR_FALLBACK].includes(
+        capability,
+      )
     ) {
+      return [AiProviderName.GEMINI, AiProviderName.OPENROUTER];
+    }
+    if (capability === AiCapability.AUDIO_REASONING) {
       return [AiProviderName.GEMINI];
     }
     if (

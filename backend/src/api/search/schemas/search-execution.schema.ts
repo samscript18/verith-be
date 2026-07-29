@@ -18,6 +18,12 @@ export class SearchExecution {
   @Prop({ required: true, enum: SearchProviderName })
   provider!: SearchProviderName;
 
+  @Prop({ enum: SearchProviderName })
+  primaryProvider?: SearchProviderName;
+
+  @Prop({ default: false })
+  fallbackUsed?: boolean;
+
   @Prop({ required: true })
   queryFingerprint!: string;
 

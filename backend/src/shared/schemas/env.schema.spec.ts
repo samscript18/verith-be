@@ -12,9 +12,9 @@ describe('envSchema', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.value).toMatchObject({
-      APP_NAME: 'Verith',
       PORT: 4000,
-      API_PREFIX: 'api/v1',
+      MONGODB_URI: 'mongodb://localhost:27017/verith',
+      REDIS_URL: 'redis://localhost:6379',
       WHATSAPP_ENABLED: false,
     });
   });

@@ -4,7 +4,7 @@ import type { AiProvider } from '../../src/api/ai/interfaces/ai-provider.interfa
 import { GeminiProvider } from '../../src/api/ai/providers/gemini.provider';
 import { GroqProvider } from '../../src/api/ai/providers/groq.provider';
 import { OpenRouterProvider } from '../../src/api/ai/providers/openrouter.provider';
-import type { AiConfig } from '../../src/shared/config';
+import { FREE_AI_MODELS, type AiConfig } from '../../src/shared/config';
 import { ProviderState } from '../../src/shared/enums/provider-state.enum';
 
 const run = process.env.RUN_AI_EXTERNAL_TESTS === 'true';
@@ -57,35 +57,32 @@ function aiConfig(): AiConfig {
     executionRetentionDays: 1,
     gemini: {
       apiKey: process.env.GEMINI_API_KEY ?? '',
-      baseUrl:
-        process.env.GEMINI_BASE_URL ??
-        'https://generativelanguage.googleapis.com',
+      baseUrl: 'https://generativelanguage.googleapis.com',
       timeoutMs: 60000,
       models: {
-        text: process.env.GEMINI_TEXT_MODEL ?? '',
-        vision: process.env.GEMINI_VISION_MODEL ?? '',
+        text: FREE_AI_MODELS.gemini,
+        vision: FREE_AI_MODELS.gemini,
       },
     },
     groq: {
       apiKey: process.env.GROQ_API_KEY ?? '',
-      baseUrl: process.env.GROQ_BASE_URL ?? 'https://api.groq.com/openai/v1',
+      baseUrl: 'https://api.groq.com/openai/v1',
       timeoutMs: 60000,
       models: {
-        text: process.env.GROQ_TEXT_MODEL ?? '',
-        transcription: process.env.GROQ_TRANSCRIPTION_MODEL ?? '',
+        text: FREE_AI_MODELS.groq,
+        transcription: FREE_AI_MODELS.groqTranscription,
       },
     },
     openRouter: {
       apiKey: process.env.OPENROUTER_API_KEY ?? '',
-      baseUrl:
-        process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
+      baseUrl: 'https://openrouter.ai/api/v1',
       timeoutMs: 60000,
       models: {
-        reasoning: process.env.OPENROUTER_REASONING_MODEL ?? '',
-        report: process.env.OPENROUTER_REPORT_MODEL ?? '',
+        reasoning: FREE_AI_MODELS.openRouter,
+        report: FREE_AI_MODELS.openRouter,
       },
       siteUrl: process.env.OPENROUTER_SITE_URL ?? '',
-      appName: process.env.OPENROUTER_APP_NAME ?? 'Verith',
+      appName: 'Verith',
     },
   };
 }

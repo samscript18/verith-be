@@ -12,6 +12,7 @@ export {
 } from './cloudinary.config';
 export {
   default as aiConfig,
+  FREE_AI_MODELS,
   type AiConfig,
   type AiProviderConfig,
 } from './ai.config';
@@ -19,7 +20,11 @@ export {
   default as processingConfig,
   type ProcessingConfig,
 } from './processing.config';
-export { default as searchConfig, type SearchConfig } from './search.config';
+export {
+  default as searchConfig,
+  type SearchConfig,
+  type SearchProviderKey,
+} from './search.config';
 export {
   default as whatsappConfig,
   type WhatsAppConfig,

@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SEARCH_PROVIDERS } from './interfaces/search-provider.interface';
-import { TavilyProvider } from './providers/tavily.provider';
+import { GdeltProvider } from './providers/gdelt.provider';
+import { WikipediaProvider } from './providers/wikipedia.provider';
 import {
   SearchExecution,
   SearchExecutionSchema,
@@ -18,15 +19,19 @@ import { SearchHealthController } from './controllers/search-health.controller';
   ],
   controllers: [SearchHealthController],
   providers: [
-    TavilyProvider,
+    GdeltProvider,
+    WikipediaProvider,
     {
       provide: SEARCH_PROVIDERS,
-      inject: [TavilyProvider],
-      useFactory: (tavily: TavilyProvider) => [tavily],
+      inject: [GdeltProvider, WikipediaProvider],
+      useFactory: (gdelt: GdeltProvider, wikipedia: WikipediaProvider) => [
+        gdelt,
+        wikipedia,
+      ],
     },
     SearchRouterService,
     SearchHealthService,
   ],
-  exports: [SearchRouterService, SearchHealthService, TavilyProvider],
+  exports: [SearchRouterService, SearchHealthService],
 })
 export class SearchModule {}

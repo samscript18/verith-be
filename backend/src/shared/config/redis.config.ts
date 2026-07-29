@@ -7,5 +7,5 @@ export interface RedisConfig {
 
 export default registerAs('redis', (): RedisConfig => ({
   url: process.env.REDIS_URL ?? 'redis://localhost:6379',
-  prefix: process.env.REDIS_PREFIX ?? 'verith',
+  prefix: 'verith',
 }));

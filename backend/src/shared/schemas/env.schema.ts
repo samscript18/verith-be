@@ -6,12 +6,7 @@ export const envSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'test', 'production')
     .default('development'),
-  APP_NAME: Joi.string().trim().default('Verith'),
-  APP_HOST: Joi.string().hostname().default('0.0.0.0'),
   PORT: Joi.number().port().default(4000),
-  API_PREFIX: Joi.string()
-    .pattern(/^[a-z0-9/-]+$/)
-    .default('api/v1'),
   APP_URL: Joi.string()
     .uri({ scheme: ['http', 'https'] })
     .default('http://localhost:4000'),
@@ -30,32 +25,17 @@ export const envSchema = Joi.object({
 
   MONGODB_URI: Joi.string()
     .uri({ scheme: ['mongodb', 'mongodb+srv'] })
-    .required(),
-  MONGODB_DB_NAME: Joi.string().trim().default('verith'),
-  MONGODB_MAX_POOL_SIZE: Joi.number().integer().min(1).default(20),
-  MONGODB_MIN_POOL_SIZE: Joi.number().integer().min(0).default(2),
-  MONGODB_SERVER_SELECTION_TIMEOUT_MS: Joi.number()
-    .integer()
-    .min(100)
-    .default(10000),
-  MONGODB_SOCKET_TIMEOUT_MS: Joi.number().integer().min(1000).default(45000),
-  MONGODB_AUTO_INDEX: Joi.boolean().truthy('true').falsy('false').default(true),
-
+    .default('mongodb://localhost:27017/verith'),
   REDIS_URL: Joi.string()
     .uri({ scheme: ['redis', 'rediss'] })
-    .required(),
-  REDIS_PREFIX: Joi.string().trim().default('verith'),
+    .default('redis://localhost:6379'),
 
   JWT_ACCESS_SECRET: Joi.string().min(32).required(),
-  JWT_REFRESH_SECRET: optionalSecret,
-  JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
-  JWT_REFRESH_EXPIRES_DAYS: Joi.number().integer().min(1).max(365).default(30),
-  EMAIL_VERIFICATION_TOKEN_TTL_MINUTES: Joi.number()
-    .integer()
-    .min(5)
-    .default(30),
-  PASSWORD_RESET_TOKEN_TTL_MINUTES: Joi.number().integer().min(5).default(20),
-  BCRYPT_ROUNDS: Joi.number().integer().min(10).max(15).default(12),
+  HASHING_PEPPER: Joi.string().min(32).required(),
+  DATA_EXPORT_ENCRYPTION_KEY: Joi.string().min(32).required(),
+  COOKIE_DOMAIN: Joi.string().trim().allow('').optional(),
+  COOKIE_SECURE: Joi.boolean().truthy('true').falsy('false').default(false),
+  COOKIE_SAME_SITE: Joi.string().valid('strict', 'lax', 'none').default('lax'),
   MASTER_ENCRYPTION_KEY: Joi.string()
     .trim()
     .allow('')
@@ -63,20 +43,7 @@ export const envSchema = Joi.object({
       is: true,
       then: Joi.string().min(32).required(),
     }),
-  HASHING_PEPPER: Joi.string().min(32).required(),
-  DATA_EXPORT_ENCRYPTION_KEY: Joi.string().min(32).required(),
-  EXPORT_RETENTION_HOURS: Joi.number().integer().min(1).max(168).default(24),
-  ACCOUNT_DELETION_GRACE_DAYS: Joi.number().integer().min(0).max(30).default(7),
-  WHATSAPP_METADATA_RETENTION_DAYS: Joi.number()
-    .integer()
-    .min(1)
-    .max(3650)
-    .default(90),
-  AUDIT_LOG_RETENTION_DAYS: Joi.number()
-    .integer()
-    .min(365)
-    .max(3650)
-    .default(2555),
+
   CLOUDINARY_CLOUD_NAME: Joi.string()
     .trim()
     .allow('')
@@ -89,110 +56,27 @@ export const envSchema = Joi.object({
     .trim()
     .allow('')
     .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
-  CLOUDINARY_UPLOAD_FOLDER: Joi.string().trim().default('verith'),
-  MAX_IMAGE_UPLOAD_BYTES: Joi.number().integer().min(1024).default(10485760),
-  MAX_AUDIO_UPLOAD_BYTES: Joi.number().integer().min(1024).default(26214400),
-  UPLOAD_PENDING_TTL_MINUTES: Joi.number().integer().min(5).default(60),
-  MAIL_PROVIDER: optionalSecret,
+
   MAIL_HOST: optionalSecret,
   MAIL_PORT: Joi.number().port().default(587),
   MAIL_SECURE: Joi.boolean().truthy('true').falsy('false').default(false),
   MAIL_USER: optionalSecret,
   MAIL_PASSWORD: optionalSecret,
-  MAIL_FROM_NAME: Joi.string().default('Verith'),
   MAIL_FROM_EMAIL: Joi.string().email().allow('').optional(),
+
   GEMINI_API_KEY: optionalSecret,
-  GEMINI_BASE_URL: Joi.string()
-    .uri({ scheme: ['https'] })
-    .default('https://generativelanguage.googleapis.com'),
-  GEMINI_TEXT_MODEL: Joi.string().trim().allow('').optional(),
-  GEMINI_VISION_MODEL: Joi.string().trim().allow('').optional(),
-  GEMINI_TIMEOUT_MS: Joi.number()
-    .integer()
-    .min(1000)
-    .max(120000)
-    .default(30000),
   GROQ_API_KEY: optionalSecret,
-  GROQ_BASE_URL: Joi.string()
-    .uri({ scheme: ['https'] })
-    .default('https://api.groq.com/openai/v1'),
-  GROQ_TEXT_MODEL: Joi.string().trim().allow('').optional(),
-  GROQ_TRANSCRIPTION_MODEL: Joi.string().trim().allow('').optional(),
-  GROQ_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(30000),
   OPENROUTER_API_KEY: optionalSecret,
-  OPENROUTER_BASE_URL: Joi.string()
-    .uri({ scheme: ['https'] })
-    .default('https://openrouter.ai/api/v1'),
-  OPENROUTER_REASONING_MODEL: Joi.string().trim().allow('').optional(),
-  OPENROUTER_REPORT_MODEL: Joi.string().trim().allow('').optional(),
-  OPENROUTER_TIMEOUT_MS: Joi.number()
-    .integer()
-    .min(1000)
-    .max(120000)
-    .default(45000),
   OPENROUTER_SITE_URL: Joi.string()
     .uri({ scheme: ['https'] })
     .allow('')
     .optional(),
-  OPENROUTER_APP_NAME: Joi.string().trim().default('Verith'),
-  TAVILY_API_KEY: optionalSecret,
-  TAVILY_BASE_URL: Joi.string()
-    .uri({ scheme: ['https'] })
-    .default('https://api.tavily.com'),
-  SEARCH_PRIMARY_PROVIDER: Joi.string().valid('tavily').default('tavily'),
-  SEARCH_FALLBACK_PROVIDER: Joi.string().valid('', 'tavily').default(''),
-  SEARCH_TIMEOUT_MS: Joi.number().integer().min(1000).max(60000).default(20000),
-  SEARCH_MAX_RETRIES: Joi.number().integer().min(0).max(5).default(2),
-  VERIFICATION_MAX_EVIDENCE_PER_CLAIM: Joi.number()
-    .integer()
-    .min(1)
-    .max(50)
-    .default(10),
-  AI_MAX_RETRIES: Joi.number().integer().min(0).max(5).default(2),
-  PROVIDER_HEALTH_CACHE_SECONDS: Joi.number()
-    .integer()
-    .min(5)
-    .max(3600)
-    .default(300),
-  PROVIDER_EXECUTION_RETENTION_DAYS: Joi.number()
-    .integer()
-    .min(1)
-    .max(365)
-    .default(30),
-  VERIFICATION_MAX_TEXT_LENGTH: Joi.number()
-    .integer()
-    .min(1000)
-    .max(200000)
-    .default(50000),
-  VERIFICATION_MAX_CLAIMS: Joi.number().integer().min(1).max(50).default(20),
-  VERIFICATION_MAX_SEARCH_QUERIES_PER_CLAIM: Joi.number()
-    .integer()
-    .min(1)
-    .max(10)
-    .default(5),
-  URL_FETCH_TIMEOUT_MS: Joi.number()
-    .integer()
-    .min(1000)
-    .max(60000)
-    .default(15000),
-  URL_FETCH_MAX_BYTES: Joi.number()
-    .integer()
-    .min(65536)
-    .max(10485760)
-    .default(2097152),
-  URL_FETCH_MAX_REDIRECTS: Joi.number().integer().min(0).max(10).default(3),
-  URL_FETCH_USER_AGENT: Joi.string()
-    .trim()
-    .min(10)
-    .default('VerithBot/1.0 (+https://verith.example/bot)'),
+
   WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   WHATSAPP_PHONE_NUMBER_ID: Joi.string()
     .trim()
     .allow('')
-    .when('WHATSAPP_ENABLED', {
-      is: true,
-      then: Joi.required(),
-    }),
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
   WHATSAPP_BUSINESS_ACCOUNT_ID: Joi.string()
     .trim()
     .allow('')
@@ -200,27 +84,15 @@ export const envSchema = Joi.object({
   WHATSAPP_ACCESS_TOKEN: Joi.string()
     .trim()
     .allow('')
-    .when('WHATSAPP_ENABLED', {
-      is: true,
-      then: Joi.required(),
-    }),
-  WHATSAPP_APP_SECRET: Joi.string().trim().allow('').when('WHATSAPP_ENABLED', {
-    is: true,
-    then: Joi.required(),
-  }),
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
+  WHATSAPP_APP_SECRET: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
   WHATSAPP_VERIFY_TOKEN: Joi.string()
     .trim()
     .allow('')
-    .when('WHATSAPP_ENABLED', {
-      is: true,
-      then: Joi.required(),
-    }),
-  WHATSAPP_API_VERSION: Joi.string()
-    .pattern(/^v\d+\.\d+$/)
-    .default('v23.0'),
-  WHATSAPP_BASE_URL: Joi.string()
-    .uri({ scheme: ['https'] })
-    .default('https://graph.facebook.com'),
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
   WHATSAPP_REPORT_DEEP_LINK_BASE: Joi.string()
     .uri({ scheme: ['https'] })
     .allow('')

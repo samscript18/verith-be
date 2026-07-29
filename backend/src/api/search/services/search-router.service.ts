@@ -27,11 +27,7 @@ export class SearchRouterService {
   }
 
   async search(request: RoutedSearchRequest): Promise<RoutedSearchResult> {
-    const candidates = [
-      this.config.primaryProvider,
-      this.config.fallbackProvider,
-    ]
-      .filter((name, index, all) => name && all.indexOf(name) === index)
+    const candidates = this.config.providerOrder
       .map((name) =>
         this.providers.find((item) => String(item.provider) === name),
       )
@@ -42,7 +38,9 @@ export class SearchRouterService {
         'SEARCH_PROVIDER_NOT_CONFIGURED',
       );
     }
+    const primaryProvider = candidates.find((provider) => provider.configured)!;
     let lastCode = 'SEARCH_PROVIDER_UNAVAILABLE';
+    let emptyResult: RoutedSearchResult | undefined;
     for (const provider of candidates.filter((item) => item.configured)) {
       for (
         let attempt = 1;
@@ -52,7 +50,7 @@ export class SearchRouterService {
         const startedAt = new Date();
         try {
           const result = await provider.search(request);
-          await this.record(request, provider, startedAt, {
+          await this.record(request, provider, primaryProvider, startedAt, {
             success: true,
             resultCount: result.results.length,
             ...(result.requestId
@@ -62,13 +60,15 @@ export class SearchRouterService {
               ? { creditsUsed: result.creditsUsed }
               : {}),
           });
-          return result;
+          if (result.results.length) return result;
+          emptyResult ??= result;
+          break;
         } catch (error) {
           lastCode =
             error instanceof ExternalProviderException
               ? error.code
               : 'SEARCH_PROVIDER_UNAVAILABLE';
-          await this.record(request, provider, startedAt, {
+          await this.record(request, provider, primaryProvider, startedAt, {
             success: false,
             safeFailureCode: lastCode,
           });
@@ -76,6 +76,7 @@ export class SearchRouterService {
         }
       }
     }
+    if (emptyResult) return emptyResult;
     throw new ExternalProviderException(
       'No search provider completed the request',
       lastCode,
@@ -91,6 +92,7 @@ export class SearchRouterService {
   private async record(
     request: RoutedSearchRequest,
     provider: SearchProvider,
+    primaryProvider: SearchProvider,
     startedAt: Date,
     result: {
       success: boolean;
@@ -110,6 +112,8 @@ export class SearchRouterService {
         : {}),
       requestId: request.requestId,
       provider: provider.provider,
+      primaryProvider: primaryProvider.provider,
+      fallbackUsed: provider.provider !== primaryProvider.provider,
       queryFingerprint: createHash('sha256')
         .update(request.query)
         .digest('hex'),

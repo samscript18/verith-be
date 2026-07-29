@@ -10,7 +10,7 @@ provider credentials are not logged by default.
 one-time 256-bit download token. The raw token is never stored or placed in a
 URL; downloads present it through `X-Data-Export-Token`. Export JSON is
 encrypted at rest with AES-256-GCM using `DATA_EXPORT_ENCRYPTION_KEY`, expires
-after `EXPORT_RETENTION_HOURS`, and is downloadable only by the authenticated
+after 24 hours, and is downloadable only by the authenticated
 owner presenting the token.
 
 Exports include profile/preferences, safe session metadata, verification

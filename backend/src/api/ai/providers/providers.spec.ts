@@ -48,7 +48,7 @@ describe('AI provider HTTP contracts', () => {
     });
   });
 
-  it('requires parameter-compatible routing from OpenRouter', async () => {
+  it('requires parameter-compatible routing and sends image data to OpenRouter', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -59,9 +59,28 @@ describe('AI provider HTTP contracts', () => {
       ),
     );
     const provider = new OpenRouterProvider(configService());
-    await provider.execute(baseRequest);
+    await provider.execute({
+      ...baseRequest,
+      capability: AiCapability.IMAGE_UNDERSTANDING,
+      media: { mimeType: 'image/png', base64Data: 'aW1hZ2U=' },
+    });
     const body = parseBody(fetchMock.mock.calls[0]?.[1]);
     expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.messages).toEqual([
+      { role: 'system', content: 'System' },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'data:image/png;base64,aW1hZ2U=',
+            },
+          },
+          { type: 'text', text: 'User' },
+        ],
+      },
+    ]);
   });
 
   it('uses Gemini responseJsonSchema and rejects no substitute output', async () => {
