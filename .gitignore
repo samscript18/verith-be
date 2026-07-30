@@ -1,0 +1,32 @@
+# Test source
+**/__tests__/
+**/test/
+**/tests/
+**/*.test.js
+**/*.test.jsx
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.js
+**/*.spec.jsx
+**/*.spec.ts
+**/*.spec.tsx
+**/*.e2e-spec.js
+**/*.e2e-spec.ts
+
+# Test output and generated reports
+**/coverage/
+**/.nyc_output/
+**/playwright-report/
+**/test-results/
+**/test-reports/
+**/coverage-reports/
+**/junit/
+**/junit-results/
+/reports/
+/results/
+/backend/reports/
+/backend/results/
+/frontend/reports/
+/frontend/results/
+*.lcov
+junit*.xml
