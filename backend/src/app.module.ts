@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { LoggerModule } from 'nestjs-pino';
 import { ApiModule } from './api/api.module';
 import { CoreModule } from './core/core.module';
@@ -30,11 +32,24 @@ import { REDIS_CLIENT } from './api/integrations/redis/redis.constants';
 import type Redis from 'ioredis';
 import { RedisThrottlerStorage } from './core/services/redis-throttler-storage.service';
 
+const moduleRoot = resolve(__dirname, '..');
+const backendRoot = existsSync(resolve(moduleRoot, 'package.json'))
+  ? moduleRoot
+  : resolve(moduleRoot, '..');
+const environment = process.env.NODE_ENV ?? 'development';
+const envFilePath = [
+  resolve(backendRoot, `.env.${environment}.local`),
+  ...(environment === 'test' ? [] : [resolve(backendRoot, '.env.local')]),
+  resolve(backendRoot, `.env.${environment}`),
+  resolve(backendRoot, '.env'),
+];
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      envFilePath,
       load: [
         aiConfig,
         appConfig,
