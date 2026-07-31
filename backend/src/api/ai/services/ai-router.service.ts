@@ -20,6 +20,7 @@ import type {
 import { ProviderExecution } from '../schemas/provider-execution.schema';
 import { PromptRegistryService } from './prompt-registry.service';
 import { ProviderHealthService } from './provider-health.service';
+import { ProviderConfigService } from './provider-config.service';
 
 @Injectable()
 export class AiRouterService {
@@ -31,6 +32,7 @@ export class AiRouterService {
     private readonly executionModel: Model<ProviderExecution>,
     private readonly prompts: PromptRegistryService,
     private readonly health: ProviderHealthService,
+    private readonly providerConfig: ProviderConfigService,
     configService: ConfigService,
   ) {
     this.config = configService.getOrThrow<AiConfig>('ai');
@@ -39,7 +41,7 @@ export class AiRouterService {
   async execute<TOutput>(
     request: AiRouterRequest<TOutput>,
   ): Promise<AiRouterResult<TOutput>> {
-    const candidates = this.candidates(
+    const candidates = await this.candidates(
       request.capability,
       request.preferredProvider,
     );
@@ -175,11 +177,23 @@ export class AiRouterService {
     );
   }
 
-  private candidates(
+  private async candidates(
     capability: AiCapability,
     preferred?: AiProviderName,
-  ): AiProvider[] {
-    const order = this.defaultOrder(capability);
+  ): Promise<AiProvider[]> {
+    const runtime = await this.providerConfig.get();
+    const capabilityOrder = this.defaultOrder(capability);
+    const configured = runtime.defaultOrder.filter((provider) =>
+      runtime.enabledProviders.includes(provider),
+    );
+    const order = [
+      ...configured.filter((provider) => capabilityOrder.includes(provider)),
+      ...capabilityOrder.filter(
+        (provider) =>
+          runtime.enabledProviders.includes(provider) &&
+          !configured.includes(provider),
+      ),
+    ];
     if (preferred) {
       const withoutPreferred = order.filter((item) => item !== preferred);
       order.splice(0, order.length, preferred, ...withoutPreferred);

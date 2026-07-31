@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -38,6 +41,22 @@ export class ReportsController {
     return this.reports.latestOwned(user.userId, verificationId);
   }
 
+  @Get('verification/:verificationId/versions')
+  versions(
+    @CurrentUser() user: AuthUser,
+    @Param('verificationId', ParseObjectIdPipe) verificationId: string,
+  ) {
+    return this.reports.versionsOwned(user.userId, verificationId);
+  }
+
+  @Get(':id')
+  get(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    return this.reports.getOwned(user.userId, id);
+  }
+
   @Patch(':id/visibility')
   visibility(
     @CurrentUser() user: AuthUser,
@@ -62,6 +81,15 @@ export class ReportsController {
     @Body() dto: ReportFeedbackDto,
   ) {
     return this.reports.feedback(user.userId, id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    return this.reports.remove(user.userId, id);
   }
 
   @Get(':id/export/json')

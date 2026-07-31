@@ -4,6 +4,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { createHash, randomBytes } from 'node:crypto';
 import PDFDocument from 'pdfkit';
 import { Model, Types } from 'mongoose';
+import { AuditService } from '../../admin/services/audit.service';
+import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
+import type {
+  ReportFeedbackAdminQueryDto,
+  ResolveReportFeedbackDto,
+} from '../dto/report-feedback-admin.dto';
 import {
   NotFoundException,
   ValidationException,
@@ -53,7 +59,79 @@ export class ReportService {
     private readonly mediaModel: Model<MediaAnalysis>,
     @InjectModel(Transcript.name)
     private readonly transcriptModel: Model<Transcript>,
+    private readonly audit: AuditService,
   ) {}
+
+  async listFeedback(query: ReportFeedbackAdminQueryDto) {
+    const records = await this.feedbackModel
+      .find({
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.cursor
+          ? { _id: { $lt: new Types.ObjectId(query.cursor) } }
+          : {}),
+      })
+      .sort({ _id: -1 })
+      .limit(query.limit + 1)
+      .lean()
+      .exec();
+    const hasNextPage = records.length > query.limit;
+    const items = records.slice(0, query.limit);
+    return {
+      items,
+      pagination: {
+        nextCursor: hasNextPage ? items.at(-1)?._id.toString() : null,
+        previousCursor: null,
+        hasNextPage,
+        limit: query.limit,
+      },
+    };
+  }
+
+  async getFeedback(id: string) {
+    const feedback = await this.feedbackModel.findById(id).lean().exec();
+    if (!feedback)
+      throw new NotFoundException(
+        'The feedback record could not be found',
+        'REPORT_FEEDBACK_NOT_FOUND',
+      );
+    return feedback;
+  }
+
+  async resolveFeedback(
+    id: string,
+    dto: ResolveReportFeedbackDto,
+    actor: AuthUser,
+    requestId: string,
+  ) {
+    const feedback = await this.feedbackModel.findById(id).exec();
+    if (!feedback)
+      throw new NotFoundException(
+        'The feedback record could not be found',
+        'REPORT_FEEDBACK_NOT_FOUND',
+      );
+    const before = { status: feedback.status };
+    feedback.status = dto.status;
+    feedback.resolution = dto.resolution;
+    feedback.assignedModeratorId = new Types.ObjectId(actor.userId);
+    if (
+      dto.status === ReportFeedbackStatus.RESOLVED ||
+      dto.status === ReportFeedbackStatus.DISMISSED
+    )
+      feedback.resolvedAt = new Date();
+    else feedback.set('resolvedAt', undefined);
+    await feedback.save();
+    await this.audit.record({
+      actor,
+      action: 'REPORT_FEEDBACK_MODERATED',
+      resourceType: 'REPORT_FEEDBACK',
+      resourceId: id,
+      requestId,
+      reason: dto.reason,
+      safeBefore: before,
+      safeAfter: { status: feedback.status },
+    });
+    return feedback.toObject();
+  }
 
   async synthesize(
     verification: VerificationDocument,
@@ -226,6 +304,40 @@ export class ReportService {
     return this.privateProjection(report);
   }
 
+  async versionsOwned(userId: string, verificationId: string) {
+    await this.assertOwnedVerification(userId, verificationId);
+    const reports = await this.reportModel
+      .find({
+        verificationId: new Types.ObjectId(verificationId),
+        status: { $nin: [ReportStatus.DELETED, ReportStatus.INVALID] },
+      })
+      .select(
+        'version status overallVerdict riskLevel confidence visibility schemaVersion generatedAt publishedAt',
+      )
+      .sort({ version: -1 })
+      .lean()
+      .exec();
+    return reports.map((report) => ({
+      id: report._id.toString(),
+      version: report.version,
+      status: report.status,
+      overallVerdict: report.overallVerdict,
+      riskLevel: report.riskLevel,
+      confidence: report.confidence,
+      visibility: report.visibility,
+      schemaVersion: report.schemaVersion,
+      generatedAt: report.generatedAt,
+      publishedAt: report.publishedAt ?? null,
+    }));
+  }
+
+  async getOwned(userId: string, reportId: string) {
+    const report = await this.findOwned(userId, reportId);
+    if ([ReportStatus.DELETED, ReportStatus.INVALID].includes(report.status))
+      throw this.notFound();
+    return this.privateProjection(report.toObject());
+  }
+
   async setVisibility(
     userId: string,
     reportId: string,
@@ -289,6 +401,36 @@ export class ReportService {
         },
       },
       { upsert: true, returnDocument: 'after', runValidators: true },
+    );
+  }
+
+  async remove(userId: string, reportId: string): Promise<void> {
+    const report = await this.findOwned(userId, reportId);
+    report.status = ReportStatus.DELETED;
+    report.visibility = ReportVisibility.PRIVATE;
+    report.publicAccessRevokedAt = new Date();
+    report.set('publicSlug', undefined);
+    await report.save();
+    const latest = await this.reportModel
+      .findOne({
+        verificationId: report.verificationId,
+        _id: { $ne: report._id },
+        status: { $nin: [ReportStatus.DELETED, ReportStatus.INVALID] },
+      })
+      .sort({ version: -1 })
+      .exec();
+    await this.verificationModel.updateOne(
+      { _id: report.verificationId },
+      latest
+        ? {
+            $set: {
+              reportId: latest._id,
+              latestReportVersion: latest.version,
+            },
+          }
+        : {
+            $unset: { reportId: 1, latestReportVersion: 1 },
+          },
     );
   }
 

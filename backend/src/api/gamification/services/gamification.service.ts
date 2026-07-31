@@ -1,13 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { ConflictException } from '../../../core/exceptions';
-import { ValidationException } from '../../../core/exceptions';
+import { AuditService } from '../../admin/services/audit.service';
+import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
+import {
+  ConflictException,
+  NotFoundException,
+  ValidationException,
+} from '../../../core/exceptions';
 import { UserStatus } from '../../users/enums/user-status.enum';
 import { User } from '../../users/schemas/user.schema';
 import type {
   CreateBadgeDto,
   LeaderboardQueryDto,
+  RewardTransactionQueryDto,
+  UpdateBadgeDto,
 } from '../dto/gamification.dto';
 import {
   BadgeCriteriaType,
@@ -38,6 +45,7 @@ export class GamificationService {
     @InjectModel(Badge.name) private readonly badges: Model<Badge>,
     @InjectModel(UserBadge.name) private readonly userBadges: Model<UserBadge>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    private readonly audit: AuditService,
   ) {}
 
   async award(userId: string, input: RewardInput) {
@@ -63,14 +71,30 @@ export class GamificationService {
     return this.recalculate(userId);
   }
 
-  async listTransactions(userId: string) {
-    return this.transactions
-      .find({ userId: new Types.ObjectId(userId) })
+  async listTransactions(userId: string, query: RewardTransactionQueryDto) {
+    const records = await this.transactions
+      .find({
+        userId: new Types.ObjectId(userId),
+        ...(query.cursor
+          ? { _id: { $lt: new Types.ObjectId(query.cursor) } }
+          : {}),
+      })
       .select('-createdBy')
-      .sort({ createdAt: -1 })
-      .limit(100)
+      .sort({ _id: -1 })
+      .limit(query.limit + 1)
       .lean()
       .exec();
+    const hasNextPage = records.length > query.limit;
+    const page = records.slice(0, query.limit);
+    return {
+      items: page,
+      pagination: {
+        nextCursor: hasNextPage ? page.at(-1)?._id.toString() : null,
+        previousCursor: null,
+        hasNextPage,
+        limit: query.limit,
+      },
+    };
   }
 
   async listBadges(userId?: string) {
@@ -87,7 +111,21 @@ export class GamificationService {
     }));
   }
 
-  async createBadge(userId: string, dto: CreateBadgeDto) {
+  async listBadgesAdmin() {
+    return this.badges.find().sort({ _id: -1 }).lean().exec();
+  }
+
+  async getBadgeAdmin(id: string) {
+    const badge = await this.badges.findById(id).lean().exec();
+    if (!badge)
+      throw new NotFoundException(
+        'The badge could not be found',
+        'BADGE_NOT_FOUND',
+      );
+    return badge;
+  }
+
+  async createBadge(actor: AuthUser, dto: CreateBadgeDto, requestId: string) {
     const threshold = Number(dto.criteria.threshold);
     const xp = Number(dto.reward.xp ?? 0);
     const truthPoints = Number(dto.reward.truthPoints ?? 0);
@@ -103,11 +141,21 @@ export class GamificationService {
         'Badge thresholds and rewards must be valid non-negative integers',
       );
     try {
-      return await this.badges.create({
+      const badge = await this.badges.create({
         ...dto,
         active: dto.active ?? true,
-        createdBy: new Types.ObjectId(userId),
+        createdBy: new Types.ObjectId(actor.userId),
       });
+      await this.audit.record({
+        actor,
+        action: 'BADGE_CREATED',
+        resourceType: 'BADGE',
+        resourceId: badge.id,
+        requestId,
+        reason: 'Created a new gamification badge definition',
+        safeAfter: { name: badge.name, slug: badge.slug, active: badge.active },
+      });
+      return badge;
     } catch (error) {
       if (this.isDuplicate(error))
         throw new ConflictException(
@@ -116,6 +164,60 @@ export class GamificationService {
         );
       throw error;
     }
+  }
+
+  async updateBadge(
+    id: string,
+    actor: AuthUser,
+    dto: UpdateBadgeDto,
+    requestId: string,
+  ) {
+    const badge = await this.badges.findById(id).exec();
+    if (!badge)
+      throw new NotFoundException(
+        'The badge could not be found',
+        'BADGE_NOT_FOUND',
+      );
+    const before = { name: badge.name, active: badge.active };
+    badge.set(dto);
+    await badge.save();
+    await this.audit.record({
+      actor,
+      action: 'BADGE_UPDATED',
+      resourceType: 'BADGE',
+      resourceId: id,
+      requestId,
+      reason: 'Updated a gamification badge definition',
+      safeBefore: before,
+      safeAfter: { name: badge.name, active: badge.active },
+    });
+    return badge;
+  }
+
+  async archiveBadge(
+    id: string,
+    actor: AuthUser,
+    reason: string,
+    requestId: string,
+  ) {
+    const badge = await this.badges.findById(id).exec();
+    if (!badge)
+      throw new NotFoundException(
+        'The badge could not be found',
+        'BADGE_NOT_FOUND',
+      );
+    badge.active = false;
+    await badge.save();
+    await this.audit.record({
+      actor,
+      action: 'BADGE_ARCHIVED',
+      resourceType: 'BADGE',
+      resourceId: id,
+      requestId,
+      reason,
+      safeAfter: { active: false },
+    });
+    return badge;
   }
 
   async leaderboard(query: LeaderboardQueryDto) {

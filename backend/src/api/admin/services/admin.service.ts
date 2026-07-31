@@ -192,6 +192,21 @@ export class AdminService {
     );
   }
 
+  async getVerification(id: string) {
+    const verification = await this.verifications
+      .findById(id)
+      .select('-input')
+      .lean()
+      .exec();
+    if (!verification) {
+      throw new NotFoundException(
+        'The verification could not be found',
+        'VERIFICATION_NOT_FOUND',
+      );
+    }
+    return this.safeVerification(verification);
+  }
+
   async retryVerification(id: string, context: MutationContext) {
     const verification = await this.verifications.findById(id).exec();
     if (!verification) {

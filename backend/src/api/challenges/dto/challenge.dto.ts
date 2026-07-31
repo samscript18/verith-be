@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { PartialType } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -60,6 +61,11 @@ export class CreateChallengeDto {
 }
 export class UpdateChallengeStatusDto {
   @IsEnum(ChallengeStatus) status!: ChallengeStatus;
+}
+export class UpdateChallengeDto extends PartialType(CreateChallengeDto) {}
+export class ChallengeAdminQueryDto {
+  @IsOptional() @IsMongoId() cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
 }
 class ChallengeAnswerDto {
   @IsString() questionId!: string;

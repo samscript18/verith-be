@@ -23,7 +23,9 @@ import {
   VerificationSchema,
 } from '../verifications/schemas/verification.schema';
 import { PublicReportsController } from './controllers/public-reports.controller';
+import { ReportFeedbackAdminController } from './controllers/report-feedback-admin.controller';
 import { ReportsController } from './controllers/reports.controller';
+import { AdminModule } from '../admin/admin.module';
 import {
   ReportExport,
   ReportExportSchema,
@@ -37,6 +39,7 @@ import { ReportService } from './services/report.service';
 
 @Module({
   imports: [
+    AdminModule,
     MongooseModule.forFeature([
       { name: Report.name, schema: ReportSchema },
       { name: ReportFeedback.name, schema: ReportFeedbackSchema },
@@ -50,7 +53,11 @@ import { ReportService } from './services/report.service';
       { name: Transcript.name, schema: TranscriptSchema },
     ]),
   ],
-  controllers: [ReportsController, PublicReportsController],
+  controllers: [
+    ReportsController,
+    PublicReportsController,
+    ReportFeedbackAdminController,
+  ],
   providers: [ReportService],
   exports: [ReportService, MongooseModule],
 })

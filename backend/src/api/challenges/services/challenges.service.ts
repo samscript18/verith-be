@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { AuditService } from '../../admin/services/audit.service';
+import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import {
   ConflictException,
   NotFoundException,
@@ -11,7 +13,9 @@ import { RewardTransactionType } from '../../gamification/enums/gamification.enu
 import { QuizQuestionType } from '../../quizzes/enums/quiz.enum';
 import type {
   CreateChallengeDto,
+  ChallengeAdminQueryDto,
   SubmitChallengeDto,
+  UpdateChallengeDto,
 } from '../dto/challenge.dto';
 import { ChallengeStatus } from '../enums/challenge.enum';
 import { ChallengeAttempt } from '../schemas/challenge-attempt.schema';
@@ -24,7 +28,104 @@ export class ChallengesService {
     @InjectModel(ChallengeAttempt.name)
     private readonly attempts: Model<ChallengeAttempt>,
     private readonly gamification: GamificationService,
+    private readonly audit: AuditService,
   ) {}
+
+  async listAdmin(query: ChallengeAdminQueryDto) {
+    const records = await this.challenges
+      .find(
+        query.cursor ? { _id: { $lt: new Types.ObjectId(query.cursor) } } : {},
+      )
+      .sort({ _id: -1 })
+      .limit(query.limit + 1)
+      .lean()
+      .exec();
+    const hasNextPage = records.length > query.limit;
+    const items = records.slice(0, query.limit);
+    return {
+      items,
+      pagination: {
+        nextCursor: hasNextPage ? items.at(-1)?._id.toString() : null,
+        previousCursor: null,
+        hasNextPage,
+        limit: query.limit,
+      },
+    };
+  }
+
+  async getAdmin(id: string) {
+    const challenge = await this.challenges.findById(id).exec();
+    if (!challenge) throw this.notFound();
+    return {
+      ...this.adminProjection(challenge),
+      questions: challenge.questions,
+      rewardPolicy: challenge.rewardPolicy,
+    };
+  }
+
+  async update(userId: string, id: string, dto: UpdateChallengeDto) {
+    const challenge = await this.challenges.findById(id).exec();
+    if (!challenge) throw this.notFound();
+    const next = {
+      title: dto.title ?? challenge.title,
+      slug: dto.slug ?? challenge.slug,
+      scenario: dto.scenario ?? challenge.scenario,
+      content: dto.content ?? challenge.content,
+      ...(dto.mediaAssetId || challenge.mediaAssetId
+        ? {
+            mediaAssetId:
+              dto.mediaAssetId ?? challenge.mediaAssetId!.toString(),
+          }
+        : {}),
+      questions: dto.questions ?? challenge.questions,
+      difficulty: dto.difficulty ?? challenge.difficulty,
+      rewardPolicy: dto.rewardPolicy ?? challenge.rewardPolicy,
+      maxAttempts: dto.maxAttempts ?? challenge.maxAttempts,
+      passingScore: dto.passingScore ?? challenge.passingScore,
+      publishAt: dto.publishAt ?? challenge.publishAt.toISOString(),
+      expiresAt: dto.expiresAt ?? challenge.expiresAt.toISOString(),
+    };
+    this.validate(next);
+    const publishAt = new Date(next.publishAt);
+    const expiresAt = new Date(next.expiresAt);
+    if (expiresAt <= publishAt)
+      throw new ValidationException('Challenge expiration must follow publish');
+    challenge.set({
+      ...dto,
+      ...(dto.mediaAssetId
+        ? { mediaAssetId: new Types.ObjectId(dto.mediaAssetId) }
+        : {}),
+      publishAt,
+      expiresAt,
+      updatedBy: new Types.ObjectId(userId),
+    });
+    await challenge.save();
+    return this.getAdmin(id);
+  }
+
+  async archive(
+    actor: AuthUser,
+    id: string,
+    reason: string,
+    requestId: string,
+  ) {
+    const challenge = await this.challenges.findById(id).exec();
+    if (!challenge) throw this.notFound();
+    const before = challenge.status;
+    challenge.status = ChallengeStatus.ARCHIVED;
+    await challenge.save();
+    await this.audit.record({
+      actor,
+      action: 'CHALLENGE_ARCHIVED',
+      resourceType: 'CHALLENGE',
+      resourceId: id,
+      requestId,
+      reason,
+      safeBefore: { status: before },
+      safeAfter: { status: challenge.status },
+    });
+    return this.adminProjection(challenge);
+  }
 
   async create(userId: string, dto: CreateChallengeDto) {
     this.validate(dto);

@@ -14,6 +14,7 @@ export class CorePromptSeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    if (process.env.OPENAPI_EXPORT === 'true') return;
     await Promise.all([
       this.model
         .updateOne(

@@ -256,6 +256,42 @@ export class VerificationService {
     return this.toResponse(verification);
   }
 
+  async reprocess(userId: string, id: string, requestId: string) {
+    const verification = await this.findOwned(userId, id);
+    if (
+      ![
+        VerificationStatus.COMPLETED,
+        VerificationStatus.PARTIALLY_COMPLETED,
+      ].includes(verification.status)
+    ) {
+      throw new ConflictException(
+        'Only completed verifications can be reprocessed',
+        'VERIFICATION_NOT_REPROCESSABLE',
+      );
+    }
+    verification.status = VerificationStatus.QUEUED;
+    verification.currentStage = VerificationStage.RECEIVED;
+    verification.progress = 0;
+    verification.retryCount += 1;
+    verification.set('processingStartedAt', undefined);
+    verification.set('processingCompletedAt', undefined);
+    verification.set('failedAt', undefined);
+    verification.set('failureCode', undefined);
+    verification.set('failureSummary', undefined);
+    await verification.save();
+    await this.events.append({
+      verificationId: id,
+      stage: VerificationStage.RECEIVED,
+      status: VerificationEventStatus.COMPLETED,
+      progress: 0,
+      messageCode: 'VERIFICATION_REPROCESS_REQUESTED',
+      safeMessage: 'A new verification pass was requested',
+      requestId,
+    });
+    await this.enqueue(id, requestId, verification.retryCount);
+    return this.toResponse(verification);
+  }
+
   async remove(userId: string, id: string): Promise<void> {
     const verification = await this.findOwned(userId, id);
     if (

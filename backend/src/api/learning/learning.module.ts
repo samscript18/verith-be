@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AdminModule } from '../admin/admin.module';
 import { Report, ReportSchema } from '../reports/schemas/report.schema';
 import {
   Verification,
@@ -17,6 +18,7 @@ import { LearningService } from './services/learning.service';
 
 @Module({
   imports: [
+    AdminModule,
     MongooseModule.forFeature([
       { name: Course.name, schema: CourseSchema },
       { name: Lesson.name, schema: LessonSchema },

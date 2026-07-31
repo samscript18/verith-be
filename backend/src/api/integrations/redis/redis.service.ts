@@ -12,10 +12,12 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
   constructor(@Inject(REDIS_CLIENT) private readonly client: Redis) {}
 
   async onModuleInit(): Promise<void> {
+    if (process.env.OPENAPI_EXPORT === 'true') return;
     await this.client.connect();
   }
 
   async onApplicationShutdown(): Promise<void> {
+    if (process.env.OPENAPI_EXPORT === 'true') return;
     await this.client.quit();
   }
 

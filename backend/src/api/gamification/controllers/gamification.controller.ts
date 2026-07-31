@@ -3,7 +3,10 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
-import { LeaderboardQueryDto } from '../dto/gamification.dto';
+import {
+  LeaderboardQueryDto,
+  RewardTransactionQueryDto,
+} from '../dto/gamification.dto';
 import { GamificationService } from '../services/gamification.service';
 
 @ApiTags('Gamification')
@@ -21,13 +24,23 @@ export class GamificationController {
   @Get('transactions')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  transactions(@CurrentUser() user: AuthUser) {
-    return this.gamification.listTransactions(user.userId);
+  transactions(
+    @CurrentUser() user: AuthUser,
+    @Query() query: RewardTransactionQueryDto,
+  ) {
+    return this.gamification.listTransactions(user.userId, query);
   }
 
   @Get('badges')
   badges() {
     return this.gamification.listBadges();
+  }
+
+  @Get('badges/me')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  myBadges(@CurrentUser() user: AuthUser) {
+    return this.gamification.listBadges(user.userId);
   }
 
   @Get('leaderboards')

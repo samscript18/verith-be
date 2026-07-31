@@ -1,4 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -72,4 +73,13 @@ export class UpdateLessonProgressDto {
   @IsInt()
   @Min(0)
   lastPosition?: number;
+}
+
+export class UpdateCourseDto extends PartialType(CreateCourseDto) {}
+
+export class UpdateLessonDto extends PartialType(CreateLessonDto) {}
+
+export class LearningAdminQueryDto {
+  @IsOptional() @IsMongoId() cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
 }

@@ -21,6 +21,7 @@ import { DatabaseService } from './database.service';
           serverSelectionTimeoutMS: config.serverSelectionTimeoutMs,
           socketTimeoutMS: config.socketTimeoutMs,
           autoIndex: config.autoIndex,
+          lazyConnection: process.env.OPENAPI_EXPORT === 'true',
         };
       },
     }),

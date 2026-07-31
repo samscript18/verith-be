@@ -22,6 +22,11 @@ export class LearningController {
     return this.learning.getPublished(slug);
   }
 
+  @Get('lessons/:slug')
+  getLesson(@Param('slug') slug: string) {
+    return this.learning.getPublishedLesson(slug);
+  }
+
   @Patch('lessons/:id/progress')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

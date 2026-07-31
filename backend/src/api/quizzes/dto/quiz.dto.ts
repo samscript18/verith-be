@@ -6,6 +6,7 @@ import {
   IsInt,
   IsMongoId,
   IsObject,
+  IsOptional,
   IsString,
   Max,
   MaxLength,
@@ -14,6 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PartialType } from '@nestjs/swagger';
 import { QuizQuestionType, QuizStatus } from '../enums/quiz.enum';
 
 class QuizOptionDto {
@@ -57,6 +59,13 @@ export class CreateQuizDto {
 
 export class UpdateQuizStatusDto {
   @IsEnum(QuizStatus) status!: QuizStatus;
+}
+
+export class UpdateQuizDto extends PartialType(CreateQuizDto) {}
+
+export class QuizAdminQueryDto {
+  @IsOptional() @IsMongoId() cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
 }
 
 class QuizAnswerDto {

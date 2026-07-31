@@ -14,6 +14,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { RequestWithId } from '../../../core/types/request-with-id.type';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../core/guards/roles.guard';
+import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
@@ -89,6 +90,14 @@ export class AdminController {
   @ApiOperation({ summary: 'Inspect verification lifecycle metadata' })
   listVerifications(@Query() query: AdminVerificationQueryDto) {
     return this.admin.listVerifications(query);
+  }
+
+  @Get('verifications/:id')
+  @ApiOperation({
+    summary: 'Inspect safe verification lifecycle metadata without input',
+  })
+  getVerification(@Param('id', ParseObjectIdPipe) id: string) {
+    return this.admin.getVerification(id);
   }
 
   @Post('verifications/:id/retry')

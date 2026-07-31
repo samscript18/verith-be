@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsInt,
   IsObject,
+  IsMongoId,
   IsOptional,
   IsString,
   Max,
@@ -10,6 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { PartialType } from '@nestjs/swagger';
 import {
   BadgeCriteriaType,
   LeaderboardPeriod,
@@ -19,6 +21,18 @@ export class LeaderboardQueryDto {
   @IsEnum(LeaderboardPeriod)
   period: LeaderboardPeriod = LeaderboardPeriod.ALL_TIME;
   @IsOptional() @IsInt() @Min(1) @Max(100) limit = 20;
+}
+
+export class RewardTransactionQueryDto {
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
 }
 
 export class CreateBadgeDto {
@@ -32,3 +46,5 @@ export class CreateBadgeDto {
   @IsObject() reward!: { xp?: number; truthPoints?: number };
   @IsOptional() @IsBoolean() active?: boolean;
 }
+
+export class UpdateBadgeDto extends PartialType(CreateBadgeDto) {}

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { AuditService } from '../../admin/services/audit.service';
+import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import {
   ConflictException,
   NotFoundException,
@@ -11,7 +13,12 @@ import { Lesson } from '../../learning/schemas/lesson.schema';
 import { LearningService } from '../../learning/services/learning.service';
 import { RewardTransactionType } from '../../gamification/enums/gamification.enum';
 import { GamificationService } from '../../gamification/services/gamification.service';
-import type { CreateQuizDto, SubmitQuizDto } from '../dto/quiz.dto';
+import type {
+  CreateQuizDto,
+  QuizAdminQueryDto,
+  SubmitQuizDto,
+  UpdateQuizDto,
+} from '../dto/quiz.dto';
 import { QuizQuestionType, QuizStatus } from '../enums/quiz.enum';
 import { QuizAttempt } from '../schemas/quiz-attempt.schema';
 import { Quiz, type QuizDocument } from '../schemas/quiz.schema';
@@ -25,7 +32,99 @@ export class QuizzesService {
     @InjectModel(Lesson.name) private readonly lessonModel: Model<Lesson>,
     private readonly learning: LearningService,
     private readonly gamification: GamificationService,
+    private readonly audit: AuditService,
   ) {}
+
+  async listAdmin(query: QuizAdminQueryDto) {
+    const records = await this.quizModel
+      .find(
+        query.cursor ? { _id: { $lt: new Types.ObjectId(query.cursor) } } : {},
+      )
+      .sort({ _id: -1 })
+      .limit(query.limit + 1)
+      .lean()
+      .exec();
+    const hasNextPage = records.length > query.limit;
+    const items = records.slice(0, query.limit);
+    return {
+      items,
+      pagination: {
+        nextCursor: hasNextPage ? items.at(-1)?._id.toString() : null,
+        previousCursor: null,
+        hasNextPage,
+        limit: query.limit,
+      },
+    };
+  }
+
+  async getAdmin(id: string) {
+    const quiz = await this.quizModel.findById(id).exec();
+    if (!quiz) throw this.notFound();
+    return this.adminProjection(quiz);
+  }
+
+  async update(userId: string, id: string, dto: UpdateQuizDto) {
+    const quiz = await this.quizModel.findById(id).exec();
+    if (!quiz) throw this.notFound();
+    if (
+      (dto.lessonId && !quiz.lessonId.equals(dto.lessonId)) ||
+      (dto.courseId && !quiz.courseId.equals(dto.courseId))
+    )
+      throw new ValidationException(
+        'A quiz cannot be moved to another course or lesson',
+      );
+    if (dto.questions)
+      this.validateQuestions({
+        courseId: quiz.courseId.toString(),
+        lessonId: quiz.lessonId.toString(),
+        title: dto.title ?? quiz.title,
+        description: dto.description ?? quiz.description,
+        passingScore: dto.passingScore ?? quiz.passingScore,
+        maxAttempts: dto.maxAttempts ?? quiz.attemptPolicy.maxAttempts,
+        rewardPolicy: dto.rewardPolicy ?? quiz.rewardPolicy,
+        questions: dto.questions,
+      });
+    const {
+      courseId: _courseId,
+      lessonId: _lessonId,
+      maxAttempts,
+      ...values
+    } = dto;
+    void _courseId;
+    void _lessonId;
+    quiz.set({
+      ...values,
+      ...(maxAttempts !== undefined ? { attemptPolicy: { maxAttempts } } : {}),
+      updatedBy: new Types.ObjectId(userId),
+    });
+    await quiz.save();
+    return this.adminProjection(quiz);
+  }
+
+  async archive(
+    actor: AuthUser,
+    id: string,
+    reason: string,
+    requestId: string,
+  ) {
+    const quiz = await this.quizModel.findById(id).exec();
+    if (!quiz) throw this.notFound();
+    const before = quiz.status;
+    quiz.status = QuizStatus.ARCHIVED;
+    quiz.updatedBy = new Types.ObjectId(actor.userId);
+    await quiz.save();
+    await this.audit.record({
+      actor,
+      action: 'QUIZ_ARCHIVED',
+      resourceType: 'QUIZ',
+      resourceId: id,
+      requestId,
+      reason,
+      safeBefore: { status: before },
+      safeAfter: { status: quiz.status },
+    });
+    return this.adminProjection(quiz);
+  }
 
   async create(userId: string, dto: CreateQuizDto) {
     const lesson = await this.lessonModel.findById(dto.lessonId).exec();
@@ -82,6 +181,34 @@ export class QuizzesService {
       .exec();
     if (!quiz) throw this.notFound();
     return this.publicProjection(quiz);
+  }
+
+  async getPublishedByLesson(lessonId: string) {
+    const quiz = await this.quizModel
+      .findOne({
+        lessonId: new Types.ObjectId(lessonId),
+        status: QuizStatus.PUBLISHED,
+      })
+      .exec();
+    if (!quiz) throw this.notFound();
+    return this.publicProjection(quiz);
+  }
+
+  async myAttempts(userId: string, quizId: string) {
+    const published = await this.quizModel.exists({
+      _id: new Types.ObjectId(quizId),
+      status: QuizStatus.PUBLISHED,
+    });
+    if (!published) throw this.notFound();
+    return this.attemptModel
+      .find({
+        userId: new Types.ObjectId(userId),
+        quizId: new Types.ObjectId(quizId),
+      })
+      .select('-answers')
+      .sort({ attemptNumber: -1 })
+      .lean()
+      .exec();
   }
 
   async submit(userId: string, id: string, dto: SubmitQuizDto) {

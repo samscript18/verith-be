@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { AuditService } from '../../admin/services/audit.service';
+import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import sanitizeHtml from 'sanitize-html';
 import {
   ConflictException,
@@ -12,6 +14,9 @@ import { Verification } from '../../verifications/schemas/verification.schema';
 import type {
   CreateCourseDto,
   CreateLessonDto,
+  LearningAdminQueryDto,
+  UpdateCourseDto,
+  UpdateLessonDto,
   UpdateLessonProgressDto,
 } from '../dto/learning.dto';
 import {
@@ -33,7 +38,121 @@ export class LearningService {
     @InjectModel(Report.name) private readonly reportModel: Model<Report>,
     @InjectModel(Verification.name)
     private readonly verificationModel: Model<Verification>,
+    private readonly audit: AuditService,
   ) {}
+
+  async listCoursesAdmin(query: LearningAdminQueryDto) {
+    return this.page(this.courseModel, query);
+  }
+
+  async getCourseAdmin(id: string) {
+    const course = await this.courseModel.findById(id).lean().exec();
+    if (!course) throw this.notFound('COURSE_NOT_FOUND');
+    const lessons = await this.lessonModel
+      .find({ courseId: course._id })
+      .sort({ sequence: 1 })
+      .lean()
+      .exec();
+    return { ...course, lessons };
+  }
+
+  async listLessonsAdmin(query: LearningAdminQueryDto) {
+    return this.page(this.lessonModel, query);
+  }
+
+  async getLessonAdmin(id: string) {
+    const lesson = await this.lessonModel.findById(id).lean().exec();
+    if (!lesson) throw this.notFound('LESSON_NOT_FOUND');
+    return lesson;
+  }
+
+  async updateCourse(userId: string, id: string, dto: UpdateCourseDto) {
+    const course = await this.courseModel.findById(id).exec();
+    if (!course) throw this.notFound('COURSE_NOT_FOUND');
+    course.set({
+      ...dto,
+      ...(dto.tags ? { tags: this.tags(dto.tags) } : {}),
+      ...(dto.prerequisiteCourseIds
+        ? {
+            prerequisiteCourseIds: dto.prerequisiteCourseIds.map(
+              (value) => new Types.ObjectId(value),
+            ),
+          }
+        : {}),
+      updatedBy: new Types.ObjectId(userId),
+    });
+    await course.save();
+    return course;
+  }
+
+  async updateLesson(userId: string, id: string, dto: UpdateLessonDto) {
+    const lesson = await this.lessonModel.findById(id).exec();
+    if (!lesson) throw this.notFound('LESSON_NOT_FOUND');
+    if (dto.courseId && !lesson.courseId.equals(dto.courseId))
+      throw new ValidationException(
+        'A lesson cannot be moved to another course',
+      );
+    const { courseId: _courseId, contentHtml, ...values } = dto;
+    void _courseId;
+    lesson.set({
+      ...values,
+      ...(contentHtml ? { sanitizedHtml: this.sanitize(contentHtml) } : {}),
+      ...(dto.tags ? { tags: this.tags(dto.tags) } : {}),
+      updatedBy: new Types.ObjectId(userId),
+    });
+    await lesson.save();
+    return lesson;
+  }
+
+  async archiveCourse(
+    actor: AuthUser,
+    id: string,
+    reason: string,
+    requestId: string,
+  ) {
+    const course = await this.courseModel.findById(id).exec();
+    if (!course) throw this.notFound('COURSE_NOT_FOUND');
+    const before = course.status;
+    course.status = CourseStatus.ARCHIVED;
+    course.updatedBy = new Types.ObjectId(actor.userId);
+    await course.save();
+    await this.audit.record({
+      actor,
+      action: 'COURSE_ARCHIVED',
+      resourceType: 'COURSE',
+      resourceId: id,
+      requestId,
+      reason,
+      safeBefore: { status: before },
+      safeAfter: { status: course.status },
+    });
+    return course;
+  }
+
+  async archiveLesson(
+    actor: AuthUser,
+    id: string,
+    reason: string,
+    requestId: string,
+  ) {
+    const lesson = await this.lessonModel.findById(id).exec();
+    if (!lesson) throw this.notFound('LESSON_NOT_FOUND');
+    const before = lesson.status;
+    lesson.status = LessonStatus.ARCHIVED;
+    lesson.updatedBy = new Types.ObjectId(actor.userId);
+    await lesson.save();
+    await this.audit.record({
+      actor,
+      action: 'LESSON_ARCHIVED',
+      resourceType: 'LESSON',
+      resourceId: id,
+      requestId,
+      reason,
+      safeBefore: { status: before },
+      safeAfter: { status: lesson.status },
+    });
+    return lesson;
+  }
 
   async createCourse(userId: string, dto: CreateCourseDto) {
     try {
@@ -158,6 +277,28 @@ export class LearningService {
     return { ...course, lessons };
   }
 
+  async getPublishedLesson(slug: string) {
+    const lesson = await this.lessonModel
+      .findOne({ slug, status: LessonStatus.PUBLISHED })
+      .select('-createdBy -updatedBy')
+      .lean()
+      .exec();
+    if (!lesson) throw this.notFound('LESSON_NOT_FOUND');
+    const course = await this.courseModel
+      .findOne({
+        _id: lesson.courseId,
+        lessonIds: lesson._id,
+        status: CourseStatus.PUBLISHED,
+      })
+      .select(
+        'title slug description difficulty estimatedDuration learningObjectives',
+      )
+      .lean()
+      .exec();
+    if (!course) throw this.notFound('LESSON_NOT_FOUND');
+    return { ...lesson, course };
+  }
+
   async updateProgress(
     userId: string,
     lessonId: string,
@@ -258,6 +399,31 @@ export class LearningService {
 
   private tags(values: string[]): string[] {
     return [...new Set(values.map((value) => value.trim().toLowerCase()))];
+  }
+
+  private async page<T extends Course | Lesson>(
+    model: Model<T>,
+    query: LearningAdminQueryDto,
+  ) {
+    const records = await model
+      .find(
+        query.cursor ? { _id: { $lt: new Types.ObjectId(query.cursor) } } : {},
+      )
+      .sort({ _id: -1 })
+      .limit(query.limit + 1)
+      .lean()
+      .exec();
+    const hasNextPage = records.length > query.limit;
+    const items = records.slice(0, query.limit);
+    return {
+      items,
+      pagination: {
+        nextCursor: hasNextPage ? items.at(-1)?._id.toString() : null,
+        previousCursor: null,
+        hasNextPage,
+        limit: query.limit,
+      },
+    };
   }
 
   private isDuplicate(error: unknown): boolean {

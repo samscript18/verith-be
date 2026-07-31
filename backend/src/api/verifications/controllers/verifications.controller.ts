@@ -153,6 +153,19 @@ export class VerificationsController {
     return this.verifications.retry(user.userId, id, request.requestId);
   }
 
+  @Post(':id/reprocess')
+  @ApiOperation({
+    summary:
+      'Create a new report version by rerunning a completed verification',
+  })
+  reprocess(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Req() request: RequestWithId,
+  ) {
+    return this.verifications.reprocess(user.userId, id, request.requestId);
+  }
+
   @Patch(':id/visibility')
   visibility(
     @CurrentUser() user: AuthUser,

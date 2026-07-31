@@ -17,6 +17,21 @@ export class QuizzesController {
     return this.quizzes.getPublished(id);
   }
 
+  @Get('lesson/:lessonId')
+  byLesson(@Param('lessonId', ParseObjectIdPipe) lessonId: string) {
+    return this.quizzes.getPublishedByLesson(lessonId);
+  }
+
+  @Get(':id/attempts')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  attempts(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    return this.quizzes.myAttempts(user.userId, id);
+  }
+
   @Post(':id/attempts')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

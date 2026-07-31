@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AdminModule } from '../admin/admin.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LearningModule } from '../learning/learning.module';
 import { GamificationModule } from '../gamification/gamification.module';
@@ -11,6 +12,7 @@ import { QuizzesService } from './services/quizzes.service';
 
 @Module({
   imports: [
+    AdminModule,
     LearningModule,
     GamificationModule,
     MongooseModule.forFeature([

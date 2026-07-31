@@ -42,6 +42,9 @@ import {
 import { TokenService } from '../services/token.service';
 import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 
+const AUTH_COOKIE_PATH = '/api/v1/auth';
+const CSRF_COOKIE_PATH = '/';
+
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -165,7 +168,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     await this.authService.logout(user.sessionId);
-    response.clearCookie('verith_refresh', { path: '/api/v1/auth' });
+    this.clearBrowserCookies(response);
   }
 
   @Post('logout-all')
@@ -177,7 +180,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     await this.authService.logoutAll(user.userId);
-    response.clearCookie('verith_refresh', { path: '/api/v1/auth' });
+    this.clearBrowserCookies(response);
   }
 
   @Get('me')
@@ -215,7 +218,7 @@ export class AuthController {
       httpOnly: true,
       secure: this.authConfig.cookieSecure,
       sameSite: this.authConfig.cookieSameSite,
-      path: '/api/v1/auth',
+      path: AUTH_COOKIE_PATH,
       maxAge: this.authConfig.refreshExpiresDays * 24 * 60 * 60 * 1000,
       ...(this.authConfig.cookieDomain
         ? { domain: this.authConfig.cookieDomain }
@@ -225,7 +228,7 @@ export class AuthController {
       httpOnly: false,
       secure: this.authConfig.cookieSecure,
       sameSite: this.authConfig.cookieSameSite,
-      path: '/api/v1/auth',
+      path: CSRF_COOKIE_PATH,
       maxAge: this.authConfig.refreshExpiresDays * 24 * 60 * 60 * 1000,
       ...(this.authConfig.cookieDomain
         ? { domain: this.authConfig.cookieDomain }
@@ -236,5 +239,10 @@ export class AuthController {
       accessTokenExpiresIn: result.accessTokenExpiresIn,
       user: result.user,
     };
+  }
+
+  private clearBrowserCookies(response: Response): void {
+    response.clearCookie('verith_refresh', { path: AUTH_COOKIE_PATH });
+    response.clearCookie('verith_csrf', { path: CSRF_COOKIE_PATH });
   }
 }

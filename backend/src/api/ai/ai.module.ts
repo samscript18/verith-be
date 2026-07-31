@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AiHealthController } from './controllers/ai-health.controller';
+import { PromptAdminController } from './controllers/prompt-admin.controller';
+import { ProviderConfigAdminController } from './controllers/provider-config-admin.controller';
+import { AdminModule } from '../admin/admin.module';
 import {
   AI_PROVIDERS,
   type AiProvider,
@@ -13,19 +16,33 @@ import {
   ProviderExecution,
   ProviderExecutionSchema,
 } from './schemas/provider-execution.schema';
+import {
+  ProviderRuntimeConfig,
+  ProviderRuntimeConfigSchema,
+} from './schemas/provider-runtime-config.schema';
 import { AiRouterService } from './services/ai-router.service';
 import { PromptRegistryService } from './services/prompt-registry.service';
 import { ProviderHealthService } from './services/provider-health.service';
 import { CorePromptSeedService } from './services/core-prompt-seed.service';
+import { ProviderConfigService } from './services/provider-config.service';
 
 @Module({
   imports: [
+    AdminModule,
     MongooseModule.forFeature([
       { name: AiPrompt.name, schema: AiPromptSchema },
       { name: ProviderExecution.name, schema: ProviderExecutionSchema },
+      {
+        name: ProviderRuntimeConfig.name,
+        schema: ProviderRuntimeConfigSchema,
+      },
     ]),
   ],
-  controllers: [AiHealthController],
+  controllers: [
+    AiHealthController,
+    PromptAdminController,
+    ProviderConfigAdminController,
+  ],
   providers: [
     GeminiProvider,
     GroqProvider,
@@ -43,12 +60,14 @@ import { CorePromptSeedService } from './services/core-prompt-seed.service';
     ProviderHealthService,
     AiRouterService,
     CorePromptSeedService,
+    ProviderConfigService,
   ],
   exports: [
     AI_PROVIDERS,
     AiRouterService,
     PromptRegistryService,
     ProviderHealthService,
+    ProviderConfigService,
     MongooseModule,
   ],
 })

@@ -1,9 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
   Param,
   Patch,
   Post,
+  Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -13,8 +17,15 @@ import { RolesGuard } from '../../../core/guards/roles.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
+import type { RequestWithId } from '../../../core/types/request-with-id.type';
+import { AdminReasonDto } from '../../admin/dto/admin.dto';
 import { UserRole } from '../../users/enums/user-role.enum';
-import { CreateQuizDto, UpdateQuizStatusDto } from '../dto/quiz.dto';
+import {
+  CreateQuizDto,
+  QuizAdminQueryDto,
+  UpdateQuizDto,
+  UpdateQuizStatusDto,
+} from '../dto/quiz.dto';
 import { QuizzesService } from '../services/quizzes.service';
 
 @ApiTags('Quizzes Admin')
@@ -25,9 +36,38 @@ import { QuizzesService } from '../services/quizzes.service';
 export class QuizzesAdminController {
   constructor(private readonly quizzes: QuizzesService) {}
 
+  @Get()
+  list(@Query() query: QuizAdminQueryDto) {
+    return this.quizzes.listAdmin(query);
+  }
+
+  @Get(':id')
+  detail(@Param('id', ParseObjectIdPipe) id: string) {
+    return this.quizzes.getAdmin(id);
+  }
+
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateQuizDto) {
     return this.quizzes.create(user.userId, dto);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() dto: UpdateQuizDto,
+  ) {
+    return this.quizzes.update(user.userId, id, dto);
+  }
+
+  @Delete(':id')
+  archive(
+    @CurrentUser() actor: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() dto: AdminReasonDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.quizzes.archive(actor, id, dto.reason, request.requestId);
   }
 
   @Patch(':id/status')

@@ -25,6 +25,8 @@
     "test:integration": "jest --config ./test/jest-integration.json",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:external": "jest --config ./test/jest-external.json",
+    "openapi:export": "ts-node scripts/export-openapi.ts",
+    "openapi:types": "openapi-typescript openapi.json -o ../frontend/src/generated/api-schema.ts",
     "load-test": "node scripts/load-test.mjs"
   },
   "dependencies": {
@@ -86,6 +88,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
     "jest": "^30.0.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.2.2",

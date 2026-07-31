@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AdminModule } from '../admin/admin.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GamificationModule } from '../gamification/gamification.module';
 import { ChallengesAdminController } from './controllers/challenges-admin.controller';
@@ -12,6 +13,7 @@ import { ChallengesService } from './services/challenges.service';
 
 @Module({
   imports: [
+    AdminModule,
     GamificationModule,
     MongooseModule.forFeature([
       { name: Challenge.name, schema: ChallengeSchema },
