@@ -3,6 +3,8 @@ import {
   Delete,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Post,
   Query,
   RawBodyRequest,
@@ -79,7 +81,8 @@ export class WhatsAppController {
   @Delete('link')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  unlink(@CurrentUser() user: AuthUser) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  unlink(@CurrentUser() user: AuthUser): Promise<void> {
     return this.links.unlink(user.userId);
   }
 }

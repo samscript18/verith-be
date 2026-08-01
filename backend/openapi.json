@@ -3955,7 +3955,7 @@
         "operationId": "WhatsAppController_unlink",
         "parameters": [],
         "responses": {
-          "200": {
+          "204": {
             "description": ""
           }
         },

@@ -106,7 +106,7 @@ export class WhatsAppLinkService {
       : null;
   }
 
-  async unlink(userId: string) {
+  async unlink(userId: string): Promise<void> {
     const result = await this.links.updateOne(
       {
         userId: new Types.ObjectId(userId),
