@@ -156,6 +156,15 @@ export class NotificationsService {
     };
   }
 
+  async unreadCount(userId: string) {
+    const unreadCount = await this.notifications.countDocuments({
+      userId: new Types.ObjectId(userId),
+      readAt: { $exists: false },
+      deletedAt: { $exists: false },
+    });
+    return { unreadCount };
+  }
+
   async markRead(userId: string, id: string) {
     const notification = await this.notifications.findOneAndUpdate(
       {

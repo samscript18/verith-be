@@ -9,12 +9,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
-import { NotificationQueryDto } from '../dto/notification.dto';
+import {
+  NotificationQueryDto,
+  NotificationUnreadCountDto,
+} from '../dto/notification.dto';
 import { NotificationsService } from '../services/notifications.service';
 
 @ApiTags('Notifications')
@@ -23,6 +26,13 @@ import { NotificationsService } from '../services/notifications.service';
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
+
+  @Get('unread-count')
+  @ApiOkResponse({ type: NotificationUnreadCountDto })
+  unreadCount(@CurrentUser() user: AuthUser) {
+    return this.notifications.unreadCount(user.userId);
+  }
+
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() query: NotificationQueryDto) {
     return this.notifications.list(user.userId, query);

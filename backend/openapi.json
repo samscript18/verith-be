@@ -3798,6 +3798,32 @@
         ]
       }
     },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationUnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "NotificationsController_list",
@@ -4544,6 +4570,20 @@
       "UpdateChallengeStatusDto": {
         "type": "object",
         "properties": {}
+      },
+      "NotificationUnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "unreadCount": {
+            "type": "number",
+            "description": "Number of persisted notifications not yet marked as read",
+            "example": 3,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "unreadCount"
+        ]
       }
     }
   }

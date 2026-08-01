@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsMongoId, IsOptional, Max, Min } from 'class-validator';
 
 export class NotificationQueryDto {
@@ -15,4 +15,14 @@ export class NotificationQueryDto {
   @IsOptional()
   @IsMongoId()
   cursor?: string;
+}
+
+export class NotificationUnreadCountDto {
+  @ApiProperty({
+    description: 'Number of persisted notifications not yet marked as read',
+    example: 3,
+    minimum: 0,
+    type: Number,
+  })
+  unreadCount!: number;
 }
