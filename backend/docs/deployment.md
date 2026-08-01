@@ -34,6 +34,33 @@ Before routing traffic:
 6. smoke-test authentication and a non-provider health route;
 7. retain the prior image digest for rollback.
 
+## Browser authentication across separate hosts
+
+When the Next.js frontend and API use different providers, configure the
+frontend's `BACKEND_API_URL` with the public API origin. The frontend forwards
+`/api/v1/*` through its own origin so `verith_refresh` and `verith_csrf` remain
+first-party cookies instead of third-party cookies.
+
+For a Vercel frontend and Render API, use:
+
+```text
+# Vercel
+BACKEND_API_URL=https://your-api.onrender.com
+
+# Render
+FRONTEND_URL=https://your-frontend.vercel.app
+ALLOWED_ORIGINS=https://your-frontend.vercel.app
+COOKIE_DOMAIN=
+COOKIE_SECURE=true
+COOKIE_SAME_SITE=lax
+TRUST_PROXY=true
+```
+
+Do not set `COOKIE_DOMAIN` to either the Vercel or Render hostname. A cookie
+domain cannot be shared across unrelated parent domains. Redeploy the frontend
+after changing `BACKEND_API_URL`, because rewrites are resolved by Next.js at
+build/start time.
+
 Shutdown uses Nest lifecycle hooks. HTTP stops accepting requests, BullMQ
 workers close through their lifecycle integration, and MongoDB/Redis/logging
 providers receive application-shutdown callbacks. Platform termination grace

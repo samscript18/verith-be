@@ -48,6 +48,11 @@ import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 const AUTH_COOKIE_PATH = '/api/v1/auth';
 const CSRF_COOKIE_PATH = '/';
 
+type DeliveredAuthentication = Omit<AuthenticationResult, 'refreshToken'> & {
+  refreshToken?: string;
+  csrfToken?: string;
+};
+
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -84,9 +89,7 @@ export class AuthController {
     @Req() request: Request,
     @Headers('x-client-type') clientType: string | undefined,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<
-    Omit<AuthenticationResult, 'refreshToken'> & { refreshToken?: string }
-  > {
+  ): Promise<DeliveredAuthentication> {
     const userAgentSummary = request.header('user-agent')?.slice(0, 300);
     const result = await this.authService.authenticateWithGoogle(dto, {
       ...(request.ip ? { ipHash: request.ip } : {}),
@@ -116,9 +119,7 @@ export class AuthController {
     @Req() request: Request,
     @Headers('x-client-type') clientType: string | undefined,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<
-    Omit<AuthenticationResult, 'refreshToken'> & { refreshToken?: string }
-  > {
+  ): Promise<DeliveredAuthentication> {
     const userAgentSummary = request.header('user-agent')?.slice(0, 300);
     const result = await this.authService.login(dto, {
       ...(request.ip ? { ipHash: request.ip } : {}),
@@ -136,9 +137,7 @@ export class AuthController {
     @Headers('x-csrf-token') csrfHeader: string | undefined,
     @Headers('x-client-type') clientType: string | undefined,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<
-    Omit<AuthenticationResult, 'refreshToken'> & { refreshToken?: string }
-  > {
+  ): Promise<DeliveredAuthentication> {
     const cookieToken = request.cookies as Record<string, string> | undefined;
     const token = dto.token ?? cookieToken?.verith_refresh;
     if (!token) {
@@ -242,8 +241,9 @@ export class AuthController {
     response: Response,
     result: AuthenticationResult,
     clientType: string | undefined,
-  ): Omit<AuthenticationResult, 'refreshToken'> & { refreshToken?: string } {
+  ): DeliveredAuthentication {
     if (clientType === 'mobile') return result;
+    const csrfToken = this.tokenService.createOpaqueToken();
     response.cookie('verith_refresh', result.refreshToken, {
       httpOnly: true,
       secure: this.authConfig.cookieSecure,
@@ -254,7 +254,7 @@ export class AuthController {
         ? { domain: this.authConfig.cookieDomain }
         : {}),
     });
-    response.cookie('verith_csrf', this.tokenService.createOpaqueToken(), {
+    response.cookie('verith_csrf', csrfToken, {
       httpOnly: false,
       secure: this.authConfig.cookieSecure,
       sameSite: this.authConfig.cookieSameSite,
@@ -267,6 +267,7 @@ export class AuthController {
     return {
       accessToken: result.accessToken,
       accessTokenExpiresIn: result.accessTokenExpiresIn,
+      csrfToken,
       user: result.user,
     };
   }
