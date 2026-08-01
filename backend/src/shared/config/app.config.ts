@@ -9,7 +9,6 @@ export interface AppConfig {
   frontendUrl: string;
   allowedOrigins: string[];
   trustProxy: boolean;
-  logLevel: string;
   swaggerEnabled: boolean;
 }
 
@@ -25,6 +24,5 @@ export default registerAs('app', (): AppConfig => ({
     .map((origin) => origin.trim())
     .filter(Boolean),
   trustProxy: process.env.TRUST_PROXY === 'true',
-  logLevel: process.env.LOG_LEVEL ?? 'debug',
   swaggerEnabled: process.env.SWAGGER_ENABLED !== 'false',
 }));

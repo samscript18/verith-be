@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { LoggerModule } from 'nestjs-pino';
 import { ApiModule } from './api/api.module';
 import { CoreModule } from './core/core.module';
 import {
@@ -21,7 +20,6 @@ import {
   redisConfig,
   searchConfig,
   whatsappConfig,
-  type AppConfig,
 } from './shared/config';
 import { envSchema } from './shared/schemas/env.schema';
 import { SharedModule } from './shared/shared.module';
@@ -65,30 +63,6 @@ const envFilePath = [
       ],
       validationSchema: envSchema,
       validationOptions: { abortEarly: false },
-    }),
-    LoggerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const config = configService.getOrThrow<AppConfig>('app');
-        return {
-          pinoHttp: {
-            level: config.logLevel,
-            redact: {
-              paths: [
-                'req.headers.authorization',
-                'req.headers.cookie',
-                'res.headers["set-cookie"]',
-                '*.password',
-                '*.token',
-                '*.accessToken',
-                '*.refreshToken',
-              ],
-              censor: '[REDACTED]',
-            },
-            quietReqLogger: true,
-          },
-        };
-      },
     }),
     ThrottlerModule.forRootAsync({
       imports: [RedisModule],

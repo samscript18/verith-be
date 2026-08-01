@@ -6,22 +6,21 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import type { NextFunction, Request, Response } from 'express';
-import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { RequestValidationException } from './core/exceptions';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { ResponseInterceptor } from './core/interceptors/response.interceptor';
 import type { AppConfig } from './shared/config';
+import { nestLogLevels } from './shared/utils/nest-log-levels';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bufferLogs: true,
+    logger: nestLogLevels(),
     rawBody: true,
   });
   const configService = app.get(ConfigService);
   const config = configService.getOrThrow<AppConfig>('app');
 
-  app.useLogger(app.get(PinoLogger));
   app.enableShutdownHooks();
   app.disable('x-powered-by');
 

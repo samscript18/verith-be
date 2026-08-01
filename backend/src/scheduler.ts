@@ -1,12 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { nestLogLevels } from './shared/utils/nest-log-levels';
 
 async function bootstrapScheduler() {
   const app = await NestFactory.createApplicationContext(AppModule, {
-    bufferLogs: true,
+    logger: nestLogLevels(),
   });
-  app.useLogger(app.get(PinoLogger));
   app.enableShutdownHooks();
 }
 
