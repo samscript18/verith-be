@@ -341,11 +341,14 @@ async function seed() {
       {
         ...courseValues,
         status: 'PUBLISHED',
-        publishedAt,
         updatedBy: admin._id,
       },
       admin._id,
-      { lessonIds: [], prerequisiteCourseIds: [] },
+      {
+        lessonIds: [],
+        prerequisiteCourseIds: [],
+        publishedAt,
+      },
     );
 
     const lessonQuery = { courseId: course._id, slug: lesson.slug };
@@ -363,10 +366,10 @@ async function seed() {
         ...lessonValues,
         courseId: course._id,
         status: 'PUBLISHED',
-        publishedAt,
         updatedBy: admin._id,
       },
       admin._id,
+      { publishedAt },
     );
 
     await courses.updateOne(
@@ -397,10 +400,10 @@ async function seed() {
         rewardPolicy: quiz.rewardPolicy,
         questions: quiz.questions,
         status: 'PUBLISHED',
-        publishedAt,
         updatedBy: admin._id,
       },
       admin._id,
+      { publishedAt },
     );
 
     seeded.courses.push({ id: String(course._id), slug: courseSeed.slug });
@@ -414,11 +417,10 @@ async function seed() {
       { slug: challengeSeed.slug },
       {
         ...challengeSeed,
-        publishAt: publishedAt,
-        expiresAt,
         status: 'PUBLISHED',
       },
       admin._id,
+      { publishAt: publishedAt, expiresAt },
     );
     seeded.challenges.push({
       id: String(challenge._id),

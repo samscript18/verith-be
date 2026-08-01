@@ -74,6 +74,7 @@ export const envSchema = Joi.object({
   GROQ_API_KEY: optionalSecret,
   OPENROUTER_API_KEY: optionalSecret,
   OPENROUTER_SITE_URL: Joi.string()
+    .trim()
     .uri({ scheme: ['https'] })
     .allow('')
     .optional(),
@@ -105,6 +106,7 @@ export const envSchema = Joi.object({
     .allow('')
     .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
   WHATSAPP_REPORT_DEEP_LINK_BASE: Joi.string()
+    .trim()
     .uri({ scheme: ['https'] })
     .allow('')
     .optional(),

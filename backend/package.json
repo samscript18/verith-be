@@ -12,6 +12,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
+    "prestart:prod": "npm run seed:learning",
     "start:prod": "node dist/main",
     "start:worker": "PROCESS_ROLE=worker node dist/worker",
     "start:scheduler": "PROCESS_ROLE=scheduler node dist/scheduler",
