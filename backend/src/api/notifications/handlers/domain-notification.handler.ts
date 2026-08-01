@@ -21,6 +21,7 @@ export class DomainNotificationHandler {
       type: NotificationType.VERIFICATION_COMPLETED,
       title: 'Verification complete',
       message: 'Your Verith verification report is ready to review.',
+      actionUrl: `/app/verifications/${encodeURIComponent(event.payload.verificationId)}`,
       idempotencyReference: `event:${event.id}:notification`,
       metadata: {
         verificationId: event.payload.verificationId,
@@ -39,6 +40,7 @@ export class DomainNotificationHandler {
       title: 'Verification could not be completed',
       message:
         'Your verification could not be completed. You can review its status in Verith.',
+      actionUrl: `/app/verifications/${encodeURIComponent(event.payload.verificationId)}`,
       idempotencyReference: `event:${event.id}:notification`,
       metadata: {
         verificationId: event.payload.verificationId,
@@ -68,6 +70,9 @@ export class DomainNotificationHandler {
       type: NotificationType.SECURITY_ALERT,
       ...content,
       idempotencyReference: `event:${event.id}:notification`,
+      metadata: {
+        securityAlertKind: event.payload.kind,
+      },
     });
   }
 }

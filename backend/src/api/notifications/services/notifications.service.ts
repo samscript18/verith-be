@@ -109,12 +109,13 @@ export class NotificationsService {
       .lean()
       .exec();
     if (!user || user.deletedAt) return;
-    const result = await this.mail.sendNotification(
-      user.email,
-      notification.title,
-      notification.message,
-      notification.actionUrl,
-    );
+    const result = await this.mail.sendNotification(user.email, {
+      subject: notification.title,
+      message: notification.message,
+      type: notification.type,
+      metadata: notification.metadata,
+      ...(notification.actionUrl ? { actionUrl: notification.actionUrl } : {}),
+    });
     notification.emailAttempts += 1;
     notification.emailStatus =
       result.state === ProviderState.OPERATIONAL

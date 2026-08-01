@@ -1,8 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer, { type Transporter } from 'nodemailer';
-import type { MailConfig } from '../config';
+import type { AppConfig, MailConfig } from '../config';
 import { ProviderState } from '../enums/provider-state.enum';
+import {
+  renderGenericNotificationTemplate,
+  renderPasswordChangedTemplate,
+  renderPasswordResetTemplate,
+  renderSecurityAlertTemplate,
+  renderVerificationCompletedTemplate,
+  renderVerificationFailedTemplate,
+  renderVerifyEmailTemplate,
+  type RenderedMailTemplate,
+} from './templates';
 
 export interface MailDeliveryResult {
   state: ProviderState;
@@ -10,12 +20,22 @@ export interface MailDeliveryResult {
   failureCode?: string;
 }
 
+export interface NotificationMailInput {
+  subject: string;
+  message: string;
+  actionUrl?: string;
+  type?: string;
+  metadata?: Record<string, unknown>;
+}
+
 @Injectable()
 export class MailService {
+  private readonly appConfig: AppConfig;
   private readonly config: MailConfig;
   private readonly transporter?: Transporter;
 
   constructor(configService: ConfigService) {
+    this.appConfig = configService.getOrThrow<AppConfig>('app');
     this.config = configService.getOrThrow<MailConfig>('mail');
     if (this.config.configured) {
       this.transporter = nodemailer.createTransport({
@@ -27,11 +47,112 @@ export class MailService {
     }
   }
 
-  async sendActionLink(
+  sendEmailVerification(
     recipient: string,
-    subject: string,
     actionUrl: string,
-    actionLabel: string,
+    expiresInMinutes: number,
+  ): Promise<MailDeliveryResult> {
+    return this.renderAndDeliver(recipient, () =>
+      renderVerifyEmailTemplate({
+        actionUrl,
+        expiresInMinutes,
+        productUrl: this.appConfig.frontendUrl,
+      }),
+    );
+  }
+
+  sendPasswordReset(
+    recipient: string,
+    actionUrl: string,
+    expiresInMinutes: number,
+  ): Promise<MailDeliveryResult> {
+    return this.renderAndDeliver(recipient, () =>
+      renderPasswordResetTemplate({
+        actionUrl,
+        expiresInMinutes,
+        productUrl: this.appConfig.frontendUrl,
+      }),
+    );
+  }
+
+  sendNotification(
+    recipient: string,
+    input: NotificationMailInput,
+  ): Promise<MailDeliveryResult> {
+    return this.renderAndDeliver(recipient, () =>
+      this.notificationTemplate(input),
+    );
+  }
+
+  private notificationTemplate(
+    input: NotificationMailInput,
+  ): RenderedMailTemplate {
+    const shared = {
+      subject: input.subject,
+      message: input.message,
+      productUrl: this.appConfig.frontendUrl,
+      ...(input.actionUrl ? { actionUrl: input.actionUrl } : {}),
+      ...(input.metadata ? { metadata: input.metadata } : {}),
+    };
+
+    if (
+      input.type === 'VERIFICATION_COMPLETED' ||
+      input.type === 'REPORT_READY'
+    ) {
+      return renderVerificationCompletedTemplate(shared);
+    }
+    if (input.type === 'VERIFICATION_FAILED') {
+      return renderVerificationFailedTemplate(shared);
+    }
+    if (input.type === 'SECURITY_ALERT') {
+      const securityAlertKind =
+        input.metadata?.securityAlertKind ??
+        (input.subject === 'Password changed'
+          ? 'PASSWORD_CHANGED'
+          : input.subject === 'Password reset completed'
+            ? 'PASSWORD_RESET'
+            : undefined);
+      if (securityAlertKind === 'PASSWORD_CHANGED') {
+        return renderPasswordChangedTemplate({
+          message: input.message,
+          productUrl: this.appConfig.frontendUrl,
+        });
+      }
+      return renderSecurityAlertTemplate({
+        ...shared,
+        ...(securityAlertKind
+          ? {
+              metadata: {
+                ...input.metadata,
+                securityAlertKind,
+              },
+            }
+          : {}),
+      });
+    }
+    return renderGenericNotificationTemplate({
+      ...shared,
+      ...(input.type ? { type: input.type } : {}),
+    });
+  }
+
+  private renderAndDeliver(
+    recipient: string,
+    render: () => RenderedMailTemplate,
+  ): Promise<MailDeliveryResult> {
+    try {
+      return this.deliver(recipient, render());
+    } catch {
+      return Promise.resolve({
+        state: ProviderState.UNAVAILABLE,
+        failureCode: 'MAIL_TEMPLATE_INVALID',
+      });
+    }
+  }
+
+  private async deliver(
+    recipient: string,
+    template: RenderedMailTemplate,
   ): Promise<MailDeliveryResult> {
     if (!this.transporter) {
       return {
@@ -42,11 +163,14 @@ export class MailService {
 
     try {
       const result = (await this.transporter.sendMail({
-        from: `"${this.config.fromName}" <${this.config.fromEmail}>`,
+        from: {
+          name: this.config.fromName,
+          address: this.config.fromEmail,
+        },
         to: recipient,
-        subject,
-        text: `${actionLabel}: ${actionUrl}`,
-        html: `<p>${actionLabel}</p><p><a href="${this.escapeHtml(actionUrl)}">${actionLabel}</a></p>`,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
       })) as unknown;
       const messageId = this.getMessageId(result);
       return {
@@ -59,49 +183,6 @@ export class MailService {
         failureCode: 'MAIL_DELIVERY_FAILED',
       };
     }
-  }
-
-  async sendNotification(
-    recipient: string,
-    subject: string,
-    message: string,
-    actionUrl?: string,
-  ): Promise<MailDeliveryResult> {
-    if (!this.transporter)
-      return {
-        state: ProviderState.NOT_CONFIGURED,
-        failureCode: 'MAIL_NOT_CONFIGURED',
-      };
-    try {
-      const safeMessage = this.escapeHtml(message);
-      const safeUrl = actionUrl ? this.escapeHtml(actionUrl) : undefined;
-      const result = (await this.transporter.sendMail({
-        from: `"${this.config.fromName}" <${this.config.fromEmail}>`,
-        to: recipient,
-        subject,
-        text: actionUrl ? `${message}\n${actionUrl}` : message,
-        html: `<p>${safeMessage}</p>${safeUrl ? `<p><a href="${safeUrl}">View in Verith</a></p>` : ''}`,
-      })) as unknown;
-      const messageId = this.getMessageId(result);
-      return {
-        state: ProviderState.OPERATIONAL,
-        ...(messageId ? { messageId } : {}),
-      };
-    } catch {
-      return {
-        state: ProviderState.UNAVAILABLE,
-        failureCode: 'MAIL_DELIVERY_FAILED',
-      };
-    }
-  }
-
-  private escapeHtml(value: string): string {
-    return value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
   }
 
   private getMessageId(value: unknown): string | undefined {

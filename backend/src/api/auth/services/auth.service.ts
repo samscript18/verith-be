@@ -257,11 +257,10 @@ export class AuthService {
       this.authConfig.passwordResetTtlMinutes,
     );
     const actionUrl = `${this.appConfig.frontendUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
-    await this.mailService.sendActionLink(
+    await this.mailService.sendPasswordReset(
       user.email,
-      'Reset your Verith password',
       actionUrl,
-      'Reset password',
+      this.authConfig.passwordResetTtlMinutes,
     );
   }
 
@@ -371,11 +370,10 @@ export class AuthService {
       this.authConfig.emailVerificationTtlMinutes,
     );
     const actionUrl = `${this.appConfig.frontendUrl}/verify-email?token=${encodeURIComponent(rawToken)}`;
-    return this.mailService.sendActionLink(
+    return this.mailService.sendEmailVerification(
       user.email,
-      'Verify your Verith email',
       actionUrl,
-      'Verify email',
+      this.authConfig.emailVerificationTtlMinutes,
     );
   }
 
