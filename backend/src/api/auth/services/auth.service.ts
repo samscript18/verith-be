@@ -21,6 +21,7 @@ import {
   MailService,
   type MailDeliveryResult,
 } from '../../../shared/mail/mail.service';
+import { parseUserAgent } from '../../../shared/utils/user-agent';
 import { AuthProvider } from '../../users/enums/auth-provider.enum';
 import { UserStatus } from '../../users/enums/user-status.enum';
 import type { UserDocument } from '../../users/schemas/user.schema';
@@ -327,16 +328,19 @@ export class AuthService {
       })
       .sort({ lastUsedAt: -1 })
       .exec();
-    return sessions.map((session) => ({
-      id: session.id,
-      deviceName: session.deviceName,
-      platform: session.platform,
-      browser: session.browser,
-      userAgentSummary: session.userAgentSummary,
-      createdAt: session.createdAt,
-      lastUsedAt: session.lastUsedAt,
-      expiresAt: session.expiresAt,
-    }));
+    return sessions.map((session) => {
+      const parsed = parseUserAgent(session.userAgentSummary);
+      return {
+        id: session.id,
+        deviceName: session.deviceName ?? parsed.deviceName,
+        platform: session.platform ?? parsed.platform,
+        browser: session.browser ?? parsed.browser,
+        userAgentSummary: session.userAgentSummary,
+        createdAt: session.createdAt,
+        lastUsedAt: session.lastUsedAt,
+        expiresAt: session.expiresAt,
+      };
+    });
   }
 
   async revokeSession(userId: string, sessionId: string): Promise<void> {
@@ -447,6 +451,8 @@ export class AuthService {
   ): Promise<AuthenticationResult> {
     const sessionId = new Types.ObjectId();
     const rawToken = `${sessionId.toString()}.${this.tokenService.createOpaqueToken()}`;
+    const parsedUserAgent = parseUserAgent(context.userAgentSummary);
+    const deviceName = context.deviceName ?? parsedUserAgent.deviceName;
     const session = await this.sessionModel.create({
       _id: sessionId,
       userId: user._id,
@@ -455,6 +461,11 @@ export class AuthService {
       lastUsedAt: new Date(),
       expiresAt: this.tokenService.refreshExpiry(),
       ...context,
+      ...(deviceName ? { deviceName } : {}),
+      ...(parsedUserAgent.platform
+        ? { platform: parsedUserAgent.platform }
+        : {}),
+      ...(parsedUserAgent.browser ? { browser: parsedUserAgent.browser } : {}),
       ...(context.ipHash
         ? { ipHash: this.tokenService.hash(context.ipHash) }
         : {}),
