@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -11,24 +12,38 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { PartialType } from '@nestjs/swagger';
+import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   BadgeCriteriaType,
   LeaderboardPeriod,
 } from '../enums/gamification.enum';
 
 export class LeaderboardQueryDto {
+  @ApiPropertyOptional({
+    default: LeaderboardPeriod.ALL_TIME,
+    enum: LeaderboardPeriod,
+  })
   @IsEnum(LeaderboardPeriod)
   period: LeaderboardPeriod = LeaderboardPeriod.ALL_TIME;
-  @IsOptional() @IsInt() @Min(1) @Max(100) limit = 20;
+
+  @ApiPropertyOptional({ default: 20, maximum: 100, minimum: 1, type: Number })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
 }
 
 export class RewardTransactionQueryDto {
+  @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsMongoId()
   cursor?: string;
 
+  @ApiPropertyOptional({ default: 20, maximum: 100, minimum: 1, type: Number })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)

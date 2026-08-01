@@ -2,6 +2,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Query,
@@ -37,6 +39,7 @@ export class NotificationsController {
     return this.notifications.markAllRead(user.userId);
   }
   @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   remove(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseObjectIdPipe) id: string,

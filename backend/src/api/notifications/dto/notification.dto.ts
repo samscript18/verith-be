@@ -1,5 +1,18 @@
+import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsMongoId, IsOptional, Max, Min } from 'class-validator';
+
 export class NotificationQueryDto {
-  @IsOptional() @IsInt() @Min(1) @Max(100) limit = 20;
-  @IsOptional() @IsMongoId() cursor?: string;
+  @ApiPropertyOptional({ default: 20, maximum: 100, minimum: 1, type: Number })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
 }
