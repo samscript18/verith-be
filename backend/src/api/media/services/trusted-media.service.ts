@@ -55,4 +55,42 @@ export class TrustedMediaService {
       );
     return { mimeType, base64Data: bytes.toString('base64') };
   }
+
+  async videoBytes(
+    value: string,
+  ): Promise<{ mimeType: string; base64Data: string }> {
+    const url = this.assertTrustedUrl(value);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(60000),
+      redirect: 'error',
+    });
+    if (!response.ok)
+      throw new ApplicationException(
+        'The video asset could not be retrieved',
+        503,
+        'MEDIA_RETRIEVAL_FAILED',
+      );
+    const mimeType = response.headers.get('content-type')?.split(';')[0] ?? '';
+    if (!['video/mp4', 'video/webm'].includes(mimeType))
+      throw new ApplicationException(
+        'The media asset is not a supported video',
+        422,
+        'MEDIA_CONTENT_TYPE_UNSUPPORTED',
+      );
+    const declaredLength = Number(response.headers.get('content-length') ?? 0);
+    if (declaredLength > this.config.maxVideoBytes)
+      throw new ApplicationException(
+        'The video exceeds the inline analysis limit',
+        422,
+        'MEDIA_TOO_LARGE',
+      );
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > this.config.maxVideoBytes)
+      throw new ApplicationException(
+        'The video exceeds the inline analysis limit',
+        422,
+        'MEDIA_TOO_LARGE',
+      );
+    return { mimeType, base64Data: bytes.toString('base64') };
+  }
 }

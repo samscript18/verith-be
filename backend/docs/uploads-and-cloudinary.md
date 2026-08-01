@@ -21,10 +21,11 @@ Confirmation updates the user's avatar URL and marks the asset attached. Generic
 - Asset lookup deliberately returns the same not-found response for nonexistent and foreign assets.
 - Attached assets cannot be removed through the generic deletion route.
 
-Image assets accept `jpg`, `jpeg`, `png`, `webp`, `gif`, `avif`, and `heic`
-up to 10 MiB. Audio assets accept `mp3`, `wav`, `m4a`, `aac`, `ogg`, `webm`,
-and `flac` up to 25 MiB. These limits are code defaults shared by the upload
-and WhatsApp paths.
+Image assets accept `jpg`, `jpeg`, `png`, `webp`, `gif`, and `avif` up to 10
+MiB. Audio assets accept `mp3`, `wav`, `m4a`, `ogg`, `webm`, and `flac` up to
+25 MiB. Verification video accepts `mp4` and `webm` up to 12 MiB and 60
+seconds. The backend re-checks authoritative Cloudinary byte, format, and video
+duration metadata during confirmation; browser checks are only early feedback.
 
 ## Configuration and provider states
 

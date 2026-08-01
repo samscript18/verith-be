@@ -227,8 +227,17 @@ export class SafeFetchService {
   private pinnedAgent(address: string, family: 4 | 6): Agent {
     return new Agent({
       connect: {
-        lookup: (_hostname, _options, callback) =>
-          callback(null, address, family),
+        lookup: (_hostname, options, callback) => {
+          // Modern Node/Undici may request `all: true` for automatic family
+          // selection. Returning the legacy scalar shape in that case makes
+          // Undici connect to `undefined` and every public fetch fails with
+          // ERR_INVALID_IP_ADDRESS.
+          if (typeof options === 'object' && options.all) {
+            callback(null, [{ address, family }]);
+            return;
+          }
+          callback(null, address, family);
+        },
       },
     });
   }

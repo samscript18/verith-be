@@ -71,6 +71,31 @@ export class CorePromptSeedService implements OnModuleInit {
         .exec(),
       this.model
         .updateOne(
+          { key: 'verification.video-analysis', version: 1 },
+          {
+            $setOnInsert: {
+              key: 'verification.video-analysis',
+              task: 'VIDEO_UNDERSTANDING',
+              version: 1,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Analyze the supplied short video using both its visual and audio streams. Put only a verbatim rendering of audible speech in spokenText and only faithfully transcribed visible text in onScreenText; do not summarize either field. Preserve timestamps for key moments and separate direct observations from interpretation. Identify dates, URLs, publisher marks, edits, missing context, and uncertainty only when visibly or audibly supported. Do not claim forensic authenticity, identity certainty, or definitive AI generation. Return only schema-valid JSON.',
+              userPromptTemplate:
+                'Inspect this verification video. Return a cautious timestamped account of what is visibly and audibly supported.',
+              supportedProviders: [AiProviderName.GEMINI],
+              supportedModels: [],
+              outputSchemaVersion: 'video-analysis.v1',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary: 'Initial short-video understanding prompt',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
           { key: 'verification.analysis', version: 1 },
           {
             $setOnInsert: {

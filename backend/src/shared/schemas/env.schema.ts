@@ -57,6 +57,11 @@ export const envSchema = Joi.object({
     .trim()
     .allow('')
     .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
+  MAX_VIDEO_BYTES: Joi.number()
+    .integer()
+    .min(1048576)
+    .max(104857600)
+    .default(12582912),
 
   MAIL_HOST: optionalSecret,
   MAIL_PORT: Joi.number().port().default(587),

@@ -22,6 +22,7 @@ import { MediaAnalysis } from '../../media/schemas/media-analysis.schema';
 import { Transcript } from '../../media/schemas/transcript.schema';
 import { VerificationStatus } from '../../verifications/enums/verification-status.enum';
 import { VerificationStage } from '../../verifications/enums/verification-stage.enum';
+import { VerificationVisibility } from '../../verifications/enums/verification-visibility.enum';
 import { Claim } from '../../verifications/schemas/claim.schema';
 import type { VerificationDocument } from '../../verifications/schemas/verification.schema';
 import { Verification } from '../../verifications/schemas/verification.schema';
@@ -200,6 +201,12 @@ export class ReportService {
       ...(media?.limitations ?? []),
       'This report distinguishes retrieved evidence from model-assisted inference and may change when new evidence becomes available.',
     ];
+    const visibility =
+      verification.visibility === VerificationVisibility.PUBLIC
+        ? ReportVisibility.PUBLIC
+        : verification.visibility === VerificationVisibility.UNLISTED
+          ? ReportVisibility.UNLISTED
+          : ReportVisibility.PRIVATE;
     const report = new this.reportModel({
       verificationId: id,
       version,
@@ -244,7 +251,11 @@ export class ReportService {
       methodologyVersions: {
         report: ReportService.SCHEMA_VERSION,
         analysis: analysis?.methodVersion ?? 'unavailable',
-        media: media ? 'image-analysis.v1' : 'not-applicable',
+        media: media
+          ? media.mediaKind === 'VIDEO' || media.likelyContentType === 'video'
+            ? 'video-analysis.v1'
+            : 'image-analysis.v1'
+          : 'not-applicable',
         transcription: transcript ? 'groq-transcription.v1' : 'not-applicable',
       },
       providerSummary: {
@@ -254,7 +265,13 @@ export class ReportService {
       },
       schemaVersion: ReportService.SCHEMA_VERSION,
       generatedAt: new Date(),
-      visibility: ReportVisibility.PRIVATE,
+      visibility,
+      ...(visibility !== ReportVisibility.PRIVATE
+        ? {
+            publicSlug: randomBytes(24).toString('base64url'),
+            publishedAt: new Date(),
+          }
+        : {}),
     });
     await report.save();
     const errors = this.validate(report, claims, evidence);
@@ -552,8 +569,13 @@ export class ReportService {
       mediaAnalysis: report.mediaAnalysis
         ? {
             status: report.mediaAnalysis.status,
+            mediaKind:
+              report.mediaAnalysis.mediaKind ??
+              (report.mediaAnalysis.likelyContentType === 'video'
+                ? 'VIDEO'
+                : 'IMAGE'),
             language: report.mediaAnalysis.language,
-            confidence: report.mediaAnalysis.confidence,
+            confidence: report.mediaAnalysis.confidence ?? null,
             likelyContentType: report.mediaAnalysis.likelyContentType ?? null,
             potentialCropping: report.mediaAnalysis.potentialCropping ?? null,
             reverseImageStatus: report.mediaAnalysis.reverseImageStatus,
@@ -582,8 +604,14 @@ export class ReportService {
     return {
       status: media.status,
       fullText: media.fullText,
+      mediaKind:
+        media.mediaKind ??
+        (media.likelyContentType === 'video' ? 'VIDEO' : 'IMAGE'),
+      spokenText: media.spokenText ?? null,
+      onScreenText: media.lines ?? [],
+      blocks: media.blocks ?? [],
       language: media.language,
-      confidence: media.confidence,
+      confidence: media.confidence ?? null,
       uncertainRegions: media.uncertainRegions,
       visibleDates: media.visibleDates,
       visibleUrls: media.visibleUrls,

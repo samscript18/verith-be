@@ -20,14 +20,18 @@ export class MediaAnalysis {
   provider!: string;
   @Prop({ required: true })
   fullText!: string;
+  @Prop({ enum: ['IMAGE', 'VIDEO'] })
+  mediaKind?: 'IMAGE' | 'VIDEO';
+  @Prop()
+  spokenText?: string;
   @Prop({ type: [Object], default: [] })
   blocks!: Record<string, unknown>[];
   @Prop({ type: [String], default: [] })
   lines!: string[];
   @Prop({ required: true })
   language!: string;
-  @Prop({ required: true, min: 0, max: 1 })
-  confidence!: number;
+  @Prop({ min: 0, max: 1 })
+  confidence?: number;
   @Prop({ type: [String], default: [] })
   uncertainRegions!: string[];
   @Prop({ type: [String], default: [] })

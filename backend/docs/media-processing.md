@@ -4,8 +4,9 @@
 
 Only confirmed assets already attached to the verification are processed. The
 stored delivery URL must use HTTPS, the exact `res.cloudinary.com` host, and
-the configured Cloudinary cloud-name path. Image downloads reject redirects,
-non-image content types, timeouts, and configured or Gemini inline-size limits.
+the configured Cloudinary cloud-name path. Media downloads reject redirects,
+unexpected content types, timeouts, and configured or Gemini inline-size
+limits.
 
 ## Images and screenshots
 
@@ -29,6 +30,24 @@ No reverse-image provider is currently configured. The durable state is
 `NOT_CONFIGURED`, matches are empty, and the API never claims an earliest
 appearance or silently substitutes search snippets.
 
+## Video
+
+Short MP4 and WebM clips are accepted up to 12 MiB and 60 seconds. The backend
+retrieves the confirmed Cloudinary asset through the same trusted-media
+boundary and sends it to Gemini as inline video data. This keeps the complete
+request below Gemini's inline request limit without introducing a second media
+provider.
+
+The structured result keeps spoken text, on-screen text, and timestamped model
+observations distinct. Verith deterministically builds the downstream claim
+extraction input from those fields; it does not ask the model for a free-form
+summary and present that summary as a transcript. No video confidence score is
+invented when the provider does not return a calibrated value.
+
+Video analysis samples frames and can miss brief edits, rapid action, small
+text, or off-screen context. It is not a forensic deepfake, authenticity, or
+identity assessment. These limitations remain attached to the report.
+
 ## Audio
 
 Groq speech-to-text uses the real `/audio/transcriptions` endpoint with the
@@ -41,5 +60,5 @@ probability of correctness. If quality metadata is absent, confidence remains
 unavailable and a limitation is recorded. The transcript then enters the same
 language, claim, evidence, and analysis pipeline as text.
 
-`GET /api/v1/verifications/:id/media` is owner-scoped and returns the image
-analysis and/or transcript.
+`GET /api/v1/verifications/:id/media` is owner-scoped and returns image or
+video analysis and/or an audio transcript.

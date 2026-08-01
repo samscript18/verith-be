@@ -18,6 +18,8 @@ export interface SearchResult {
   title: string;
   url: string;
   snippet: string;
+  /** Cleaned page content returned by the search provider, never a snippet. */
+  rawContent?: string;
   providerScore: number;
 }
 

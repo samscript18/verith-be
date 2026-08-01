@@ -30,7 +30,7 @@ export default registerAs('ai', (): AiConfig => ({
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
     baseUrl: 'https://generativelanguage.googleapis.com',
-    timeoutMs: 30000,
+    timeoutMs: 120000,
     models: {
       text: FREE_AI_MODELS.gemini,
       vision: FREE_AI_MODELS.gemini,

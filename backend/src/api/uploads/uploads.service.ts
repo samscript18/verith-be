@@ -35,6 +35,7 @@ export interface SignedUploadResult {
   context: string;
   allowedFormats: string[];
   maxBytes: number;
+  maxDurationSeconds?: number;
   expiresAt: Date;
 }
 
@@ -61,6 +62,7 @@ export class UploadsService {
       assetType,
       this.config.maxImageBytes,
       this.config.maxAudioBytes,
+      this.config.maxVideoBytes,
     );
     const assetId = new Types.ObjectId();
     const publicId = [
@@ -108,6 +110,9 @@ export class UploadsService {
       context,
       allowedFormats: policy.allowedFormats,
       maxBytes: policy.maxBytes,
+      ...(policy.maxDurationSeconds
+        ? { maxDurationSeconds: policy.maxDurationSeconds }
+        : {}),
       expiresAt,
     };
   }
@@ -375,6 +380,7 @@ export class UploadsService {
       asset.assetType,
       this.config.maxImageBytes,
       this.config.maxAudioBytes,
+      this.config.maxVideoBytes,
     );
     const format = providerAsset.format?.toLowerCase();
     if (
@@ -386,7 +392,11 @@ export class UploadsService {
       !format ||
       !policy.allowedFormats.includes(format) ||
       providerAsset.bytes <= 0 ||
-      providerAsset.bytes > policy.maxBytes
+      providerAsset.bytes > policy.maxBytes ||
+      (policy.maxDurationSeconds !== undefined &&
+        (typeof providerAsset.duration !== 'number' ||
+          providerAsset.duration <= 0 ||
+          providerAsset.duration > policy.maxDurationSeconds))
     ) {
       throw new ConflictException(
         'The provider asset does not match the signed upload policy',
@@ -399,7 +409,9 @@ export class UploadsService {
     const format = asset.format?.toLowerCase() ?? 'octet-stream';
     return assetType === AssetType.VERIFICATION_AUDIO
       ? `audio/${format}`
-      : `image/${format === 'jpg' ? 'jpeg' : format}`;
+      : assetType === AssetType.VERIFICATION_VIDEO
+        ? `video/${format}`
+        : `image/${format === 'jpg' ? 'jpeg' : format}`;
   }
 
   private toResponse(asset: MediaAssetDocument): Record<string, unknown> {

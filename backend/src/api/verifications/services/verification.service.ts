@@ -375,6 +375,7 @@ export class VerificationService {
         VerificationSourceType.IMAGE,
         VerificationSourceType.SCREENSHOT,
         VerificationSourceType.AUDIO,
+        VerificationSourceType.VIDEO,
         VerificationSourceType.WHATSAPP_IMAGE,
         VerificationSourceType.WHATSAPP_AUDIO,
       ].includes(dto.sourceType) &&
@@ -401,6 +402,8 @@ export class VerificationService {
       ].includes(sourceType)
     )
       return [AssetType.VERIFICATION_AUDIO];
+    if (sourceType === VerificationSourceType.VIDEO)
+      return [AssetType.VERIFICATION_VIDEO];
     if (sourceType === VerificationSourceType.SCREENSHOT)
       return [AssetType.VERIFICATION_SCREENSHOT];
     return [AssetType.VERIFICATION_IMAGE];

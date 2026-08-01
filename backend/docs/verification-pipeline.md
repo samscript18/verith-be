@@ -70,12 +70,18 @@ documented in [verification-analysis.md](verification-analysis.md).
 evaluations, confidence factors, uncertainty, limitations, overall verdict,
 risk, and analysis findings.
 
-## Phase 9 image and audio
+## Phase 9 image, audio, and video
 
 Image and screenshot inputs pass through attached-asset validation, trusted
 Cloudinary retrieval, Gemini image/OCR analysis, and the normal claim/evidence
 pipeline when visible text exists. Audio inputs use real Groq transcription
 with segment timestamps before entering that same pipeline.
+
+Short video inputs pass through the same attachment and trusted-retrieval
+boundary, then Gemini inspects the visual and audio streams. Spoken text,
+on-screen text, and timestamped visual observations enter the normal
+claim/evidence pipeline. The report exposes frame-sampling and non-forensic
+limitations and leaves confidence unavailable rather than manufacturing it.
 
 Media-specific details and honest unsupported states are documented in
 [media-processing.md](media-processing.md). `GET
@@ -101,7 +107,11 @@ Unavailable URL states are preserved as `LOGIN_REQUIRED`, `PAYWALLED`, `BLOCKED`
 
 ## Inputs and ownership
 
-The public authenticated route accepts `TEXT`, `URL`, `IMAGE`, `SCREENSHOT`, and `AUDIO`. WhatsApp source types are rejected here and will be accepted only through the signed webhook flow. Media requests require a confirmed, compatible, owner-controlled asset. Attachment uses an atomic conditional update so an asset cannot be assigned to two verifications.
+The public authenticated route accepts `TEXT`, `URL`, `IMAGE`, `SCREENSHOT`,
+`AUDIO`, and `VIDEO`. WhatsApp source types are rejected here and accepted only
+through the signed webhook flow. Media requests require a confirmed,
+compatible, owner-controlled asset. Attachment uses an atomic conditional
+update so an asset cannot be assigned to two verifications.
 
 All reads, mutations, event history, and streams are scoped to the authenticated owner. Missing and foreign records return the same not-found response.
 

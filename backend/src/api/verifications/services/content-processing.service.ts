@@ -88,6 +88,18 @@ export class ContentProcessingService {
           requestId,
           jobId,
         });
+      } else if (verification.sourceType === VerificationSourceType.VIDEO) {
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.MEDIA_INVESTIGATION,
+          status: VerificationEventStatus.COMPLETED,
+          progress: 20,
+          messageCode: 'VIDEO_UNDERSTANDING_COMPLETED',
+          safeMessage:
+            'The video’s visual and audio context was analyzed with timestamps',
+          requestId,
+          jobId,
+        });
       } else if (
         [
           VerificationSourceType.AUDIO,
@@ -349,6 +361,7 @@ export class ContentProcessingService {
         VerificationSourceType.IMAGE,
         VerificationSourceType.SCREENSHOT,
         VerificationSourceType.AUDIO,
+        VerificationSourceType.VIDEO,
         VerificationSourceType.WHATSAPP_IMAGE,
         VerificationSourceType.WHATSAPP_AUDIO,
       ].includes(verification.sourceType)

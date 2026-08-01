@@ -272,7 +272,22 @@ export class AuthController {
   }
 
   private clearBrowserCookies(response: Response): void {
-    response.clearCookie('verith_refresh', { path: AUTH_COOKIE_PATH });
-    response.clearCookie('verith_csrf', { path: CSRF_COOKIE_PATH });
+    const sharedOptions = {
+      secure: this.authConfig.cookieSecure,
+      sameSite: this.authConfig.cookieSameSite,
+      ...(this.authConfig.cookieDomain
+        ? { domain: this.authConfig.cookieDomain }
+        : {}),
+    } as const;
+    response.clearCookie('verith_refresh', {
+      ...sharedOptions,
+      httpOnly: true,
+      path: AUTH_COOKIE_PATH,
+    });
+    response.clearCookie('verith_csrf', {
+      ...sharedOptions,
+      httpOnly: false,
+      path: CSRF_COOKIE_PATH,
+    });
   }
 }

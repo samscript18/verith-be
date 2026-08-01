@@ -8,6 +8,7 @@ export interface CloudinaryConfig {
   folder: string;
   maxImageBytes: number;
   maxAudioBytes: number;
+  maxVideoBytes: number;
   pendingTtlMinutes: number;
 }
 
@@ -23,5 +24,6 @@ export default registerAs('cloudinary', (): CloudinaryConfig => ({
   folder: 'verith',
   maxImageBytes: 10485760,
   maxAudioBytes: 26214400,
+  maxVideoBytes: Number(process.env.MAX_VIDEO_BYTES ?? 12582912),
   pendingTtlMinutes: 60,
 }));

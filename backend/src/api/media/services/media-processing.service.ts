@@ -36,6 +36,22 @@ interface ImageOutput {
   limitations: string[];
 }
 
+interface VideoOutput {
+  spokenText: string;
+  onScreenText: string[];
+  language: string;
+  keyMoments: Array<{
+    timestamp: string;
+    description: string;
+    evidenceType: 'VISUAL' | 'AUDIO' | 'BOTH';
+  }>;
+  visibleDates: string[];
+  visibleUrls: string[];
+  visiblePublisherNames: string[];
+  observations: string[];
+  limitations: string[];
+}
+
 @Injectable()
 export class MediaProcessingService {
   constructor(
@@ -73,6 +89,8 @@ export class MediaProcessingService {
       ].includes(verification.sourceType)
     )
       return this.processAudio(verification, asset, asset.secureUrl);
+    if (verification.sourceType === VerificationSourceType.VIDEO)
+      return this.processVideo(verification, asset, asset.secureUrl, requestId);
     return this.processImage(verification, asset, asset.secureUrl, requestId);
   }
 
@@ -118,6 +136,7 @@ export class MediaProcessingService {
           status: MediaAnalysisStatus.COMPLETE,
           provider: result.provider,
           fullText: output.fullText,
+          mediaKind: 'IMAGE',
           blocks: [],
           lines: output.lines,
           language: output.language,
@@ -186,6 +205,168 @@ export class MediaProcessingService {
       { upsert: true, returnDocument: 'after', runValidators: true },
     );
     return { text: result.text, language: result.language };
+  }
+
+  private async processVideo(
+    verification: VerificationDocument,
+    asset: MediaAssetDocument,
+    url: string,
+    requestId: string,
+  ): Promise<{ text: string; language: string }> {
+    const media = await this.trusted.videoBytes(url);
+    const result = await this.ai.execute({
+      capability: AiCapability.VIDEO_UNDERSTANDING,
+      promptKey: 'verification.video-analysis',
+      variables: {},
+      outputSchemaName: 'video_analysis',
+      outputSchemaVersion: 'video-analysis.v1',
+      outputJsonSchema: this.videoJsonSchema(),
+      outputValidator: this.videoJoiSchema(),
+      requestId,
+      verificationId: verification.id,
+      temperature: 0.1,
+      maxOutputTokens: 7000,
+      media,
+    });
+    const output = result.output;
+    const extractedText = [
+      output.spokenText.trim()
+        ? `Spoken content:\n${output.spokenText.trim()}`
+        : '',
+      output.onScreenText.length
+        ? `On-screen text:\n${output.onScreenText.join('\n')}`
+        : '',
+      output.keyMoments.length
+        ? `Timestamped visual observations:\n${output.keyMoments
+            .map((moment) => `${moment.timestamp}: ${moment.description}`)
+            .join('\n')}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    const limitations = [
+      ...output.limitations,
+      'Video understanding samples frames and may miss brief edits, fast action, small text, or off-screen context.',
+      'The analysis is not a forensic authenticity or identity assessment.',
+      'No calibrated video-analysis confidence score is available.',
+      'Timestamped visual descriptions are model observations, not a verbatim transcript.',
+    ];
+    await this.analysisModel.findOneAndUpdate(
+      { verificationId: verification._id },
+      {
+        $set: {
+          verificationId: verification._id,
+          mediaAssetId: asset._id,
+          status: MediaAnalysisStatus.COMPLETE,
+          provider: result.provider,
+          fullText: extractedText,
+          mediaKind: 'VIDEO',
+          spokenText: output.spokenText,
+          blocks: output.keyMoments,
+          lines: output.onScreenText,
+          language: output.language,
+          uncertainRegions: [],
+          visibleDates: output.visibleDates,
+          visibleUrls: output.visibleUrls,
+          visiblePublisherNames: output.visiblePublisherNames,
+          likelyContentType: 'video',
+          aiIndicator: AiContentIndicator.INCONCLUSIVE,
+          aiIndicatorConfidence: 0,
+          aiObservations: output.observations,
+          aiLimitations: [
+            'No specialized synthetic-video detector was used.',
+            ...limitations,
+          ],
+          specializedDetectorUsed: false,
+          reverseImageStatus: ReverseImageStatus.NOT_CONFIGURED,
+          reverseImageMatches: [],
+          limitations,
+          promptVersion: result.promptVersion,
+        },
+        $unset: {
+          confidence: 1,
+          potentialCropping: 1,
+        },
+      },
+      { upsert: true, returnDocument: 'after', runValidators: true },
+    );
+    return { text: extractedText, language: output.language };
+  }
+
+  private videoJoiSchema(): Joi.ObjectSchema<VideoOutput> {
+    const strings = Joi.array()
+      .items(Joi.string().max(2000))
+      .max(200)
+      .required();
+    return Joi.object<VideoOutput>({
+      spokenText: Joi.string().allow('').max(100000).required(),
+      onScreenText: strings,
+      language: Joi.string().max(20).required(),
+      keyMoments: Joi.array()
+        .items(
+          Joi.object({
+            timestamp: Joi.string()
+              .pattern(/^\d{2}:\d{2}(?::\d{2})?$/)
+              .required(),
+            description: Joi.string().max(2000).required(),
+            evidenceType: Joi.string()
+              .valid('VISUAL', 'AUDIO', 'BOTH')
+              .required(),
+          }),
+        )
+        .max(200)
+        .required(),
+      visibleDates: strings,
+      visibleUrls: strings,
+      visiblePublisherNames: strings,
+      observations: strings,
+      limitations: strings,
+    }).required();
+  }
+
+  private videoJsonSchema(): Record<string, unknown> {
+    const strings = { type: 'array', items: { type: 'string' } };
+    return {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'spokenText',
+        'onScreenText',
+        'language',
+        'keyMoments',
+        'visibleDates',
+        'visibleUrls',
+        'visiblePublisherNames',
+        'observations',
+        'limitations',
+      ],
+      properties: {
+        spokenText: { type: 'string' },
+        onScreenText: strings,
+        language: { type: 'string' },
+        keyMoments: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['timestamp', 'description', 'evidenceType'],
+            properties: {
+              timestamp: { type: 'string' },
+              description: { type: 'string' },
+              evidenceType: {
+                type: 'string',
+                enum: ['VISUAL', 'AUDIO', 'BOTH'],
+              },
+            },
+          },
+        },
+        visibleDates: strings,
+        visibleUrls: strings,
+        visiblePublisherNames: strings,
+        observations: strings,
+        limitations: strings,
+      },
+    };
   }
 
   private imageJoiSchema(): Joi.ObjectSchema<ImageOutput> {

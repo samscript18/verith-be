@@ -21,9 +21,17 @@ export class GeminiProvider implements AiProvider {
   private readonly capabilities = new Set([
     AiCapability.TEXT_REASONING,
     AiCapability.STRUCTURED_EXTRACTION,
+    AiCapability.CLAIM_EXTRACTION,
+    AiCapability.SUMMARIZATION,
+    AiCapability.CONTEXT_ANALYSIS,
+    AiCapability.EVIDENCE_SYNTHESIS,
+    AiCapability.REPORT_GENERATION,
+    AiCapability.MANIPULATION_ANALYSIS,
+    AiCapability.BIAS_ANALYSIS,
     AiCapability.IMAGE_UNDERSTANDING,
     AiCapability.OCR_FALLBACK,
     AiCapability.AUDIO_REASONING,
+    AiCapability.VIDEO_UNDERSTANDING,
     AiCapability.TRANSLATION,
   ]);
 
@@ -43,6 +51,7 @@ export class GeminiProvider implements AiProvider {
       AiCapability.IMAGE_UNDERSTANDING,
       AiCapability.OCR_FALLBACK,
       AiCapability.AUDIO_REASONING,
+      AiCapability.VIDEO_UNDERSTANDING,
     ].includes(capability)
       ? 'vision'
       : 'text';

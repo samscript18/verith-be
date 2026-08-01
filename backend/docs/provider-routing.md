@@ -27,12 +27,15 @@ application calculations.
 
 Gemini image analysis uses an inline image part plus a schema-constrained text
 instruction. If Gemini is unavailable, OpenRouter receives the image as a data
-URL and its free router selects a compatible multimodal model. Groq
+URL and its free router selects a compatible multimodal model. Short-video
+understanding uses Gemini inline video with a 12 MiB/60-second application
+boundary and has no silent provider fallback. Groq
 transcription is a separate speech-to-text adapter rather than a text-reasoning
 capability. Its official
 [speech-to-text contract](https://console.groq.com/docs/speech-to-text) supplies
 verbose segment metadata. Gemini inline requests follow the official
-[image-understanding contract](https://ai.google.dev/gemini-api/docs/generate-content/image-understanding).
+[image-understanding contract](https://ai.google.dev/gemini-api/docs/generate-content/image-understanding)
+and [video-understanding contract](https://ai.google.dev/gemini-api/docs/video-understanding).
 
 The wire contracts follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content), [Groq chat-completions API](https://console.groq.com/docs/api-reference), and [OpenRouter structured-output documentation](https://openrouter.ai/docs/guides/features/structured-outputs).
 

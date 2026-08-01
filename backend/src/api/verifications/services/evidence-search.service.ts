@@ -24,6 +24,7 @@ import { TextNormalizationService } from './text-normalization.service';
 interface EvidenceRetrieval {
   article: ArticleExtractionResult | null;
   failureCode?: string;
+  extractionSource?: 'DIRECT_FETCH' | 'TAVILY_EXTRACTED_CONTENT';
 }
 
 @Injectable()
@@ -121,7 +122,7 @@ export class EvidenceSearchService {
         const normalizedUrl = this.normalizeUrl(result.url);
         if (!normalizedUrl || seenUrls.has(normalizedUrl)) continue;
         seenUrls.add(normalizedUrl);
-        const retrieval = await this.retrieve(result.url);
+        const retrieval = await this.retrieve(result);
         const document = this.toEvidence(
           verificationId,
           claim,
@@ -143,16 +144,41 @@ export class EvidenceSearchService {
     return count;
   }
 
-  private async retrieve(url: string): Promise<EvidenceRetrieval> {
+  private async retrieve(result: {
+    url: string;
+    title: string;
+    rawContent?: string;
+  }): Promise<EvidenceRetrieval> {
     try {
-      return { article: await this.articles.extract(url) };
+      return {
+        article: await this.articles.extract(result.url),
+        extractionSource: 'DIRECT_FETCH',
+      };
     } catch (error) {
+      const failureCode =
+        error instanceof ApplicationException
+          ? error.code
+          : 'EVIDENCE_DIRECT_FETCH_FAILED';
+      const text = this.normalization.normalize(result.rawContent ?? '');
+      if (failureCode !== 'VALIDATION_ERROR' && text.length >= 100) {
+        return {
+          article: {
+            // Provider-extracted content is useful but remains explicitly
+            // partial because Verith did not retrieve the origin directly.
+            state: UrlExtractionState.PARTIALLY_EXTRACTED,
+            sourceUrl: result.url,
+            canonicalUrl: result.url,
+            title: result.title,
+            text,
+            confidence: text.length >= 500 ? 0.7 : 0.45,
+          },
+          failureCode,
+          extractionSource: 'TAVILY_EXTRACTED_CONTENT',
+        };
+      }
       return {
         article: null,
-        failureCode:
-          error instanceof ApplicationException
-            ? error.code
-            : 'EVIDENCE_SOURCE_FETCH_FAILED',
+        failureCode,
       };
     }
   }
@@ -168,6 +194,7 @@ export class EvidenceSearchService {
       url: string;
       snippet: string;
       providerScore: number;
+      rawContent?: string;
     },
     retrieval: EvidenceRetrieval,
   ): Partial<Evidence> {
@@ -235,6 +262,9 @@ export class EvidenceSearchService {
         providerScore: result.providerScore,
         ...(retrieval.failureCode
           ? { retrievalFailureCode: retrieval.failureCode }
+          : {}),
+        ...(retrieval.extractionSource
+          ? { extractionSource: retrieval.extractionSource }
           : {}),
       },
     };

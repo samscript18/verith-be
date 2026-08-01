@@ -217,7 +217,11 @@ export class AiRouterService {
     ) {
       return [AiProviderName.GEMINI, AiProviderName.OPENROUTER];
     }
-    if (capability === AiCapability.AUDIO_REASONING) {
+    if (
+      [AiCapability.AUDIO_REASONING, AiCapability.VIDEO_UNDERSTANDING].includes(
+        capability,
+      )
+    ) {
       return [AiProviderName.GEMINI];
     }
     if (

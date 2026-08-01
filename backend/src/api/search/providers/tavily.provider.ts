@@ -17,6 +17,7 @@ interface TavilyResult {
   url?: unknown;
   content?: unknown;
   score?: unknown;
+  raw_content?: unknown;
 }
 
 interface TavilyResponse {
@@ -56,7 +57,9 @@ export class TavilyProvider implements SearchProvider {
       topic: 'general',
       max_results: Math.min(Math.max(request.limit, 1), 20),
       include_answer: false,
-      include_raw_content: false,
+      // Tavily extraction is a fallback when the hardened direct fetch cannot
+      // open a public source. Search snippets remain metadata, never evidence.
+      include_raw_content: 'text',
     };
     if (request.includeDomains?.length)
       body.include_domains = request.includeDomains;
@@ -108,6 +111,10 @@ export class TavilyProvider implements SearchProvider {
             typeof result.content === 'string' && result.content.trim()
               ? result.content.trim()
               : result.title,
+          ...(typeof result.raw_content === 'string' &&
+          result.raw_content.trim().length >= 100
+            ? { rawContent: result.raw_content.trim() }
+            : {}),
           providerScore: Number(score.toFixed(4)),
         },
       ];

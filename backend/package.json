@@ -27,6 +27,8 @@
     "test:external": "jest --config ./test/jest-external.json",
     "openapi:export": "ts-node scripts/export-openapi.ts",
     "openapi:types": "openapi-typescript openapi.json -o ../frontend/src/generated/api-schema.ts",
+    "smoke:auth": "node scripts/auth-smoke.mjs",
+    "seed:learning": "node --env-file-if-exists=.env scripts/seed-learning-content.mjs",
     "load-test": "node scripts/load-test.mjs"
   },
   "dependencies": {
