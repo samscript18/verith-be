@@ -71,6 +71,11 @@ export const envSchema = Joi.object({
     .uri({ scheme: ['https'] })
     .allow('')
     .optional(),
+  TAVILY_API_KEY: optionalSecret,
+  TAVILY_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .allow('')
+    .optional(),
 
   WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   WHATSAPP_PHONE_NUMBER_ID: Joi.string()

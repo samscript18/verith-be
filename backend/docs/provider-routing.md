@@ -59,17 +59,17 @@ belong to free-tier projects without billing enabled.
 
 ## Search providers
 
-Phase 7 uses two credential-free search providers in a code-defined order:
+Phase 7 uses two search providers in a code-defined order:
 
-1. GDELT DOC 2.0 searches recent global news and returns source article URLs.
-2. Wikipedia REST search supplies reference material when GDELT is unavailable
-   or returns no results.
+1. Tavily searches current web sources and returns ranked titles, URLs, and
+   discovery snippets when `TAVILY_API_KEY` is configured.
+2. Wikipedia REST search supplies reference material when Tavily is not
+   configured, is unavailable, or returns no results.
 
-No paid search key is accepted or required. Search snippets are discovery
-metadata, not evidence; the application retrieves each selected page through
-its SSRF-safe fetch boundary before creating an available evidence record.
-GDELT does not expose article excerpts, so its headline is retained only as the
-bounded pre-retrieval snippet.
+Search snippets are discovery metadata, not evidence; the application retrieves
+each selected page through its SSRF-safe fetch boundary before creating an
+available evidence record. Tavily is optional so an absent key produces an
+explicit `NOT_CONFIGURED` health state and preserves the Wikipedia fallback.
 
 The router retries only timeout and transient availability failures. Missing
 configuration, authentication rejection, and rate limiting remain distinct.
@@ -77,6 +77,6 @@ configuration, authentication rejection, and rate limiting remain distinct.
 latency, result/credit counts, primary/fallback relationship, and a safe
 failure code. It does not store the submitted query.
 
-`GET /api/v1/integrations/search/health` is administrator-only. Both health
-checks are credential-free. Results are cached for five minutes; normal
-searches do not incur a separate preflight call.
+`GET /api/v1/integrations/search/health` is administrator-only. Results are
+cached for five minutes; normal searches do not incur a separate preflight
+call or consume an additional Tavily credit.

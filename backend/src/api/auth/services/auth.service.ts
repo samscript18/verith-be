@@ -48,6 +48,8 @@ export interface AuthenticationResult {
   user: Record<string, unknown>;
 }
 
+const EMAIL_VERIFICATION_RESEND_COOLDOWN_MS = 3 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -97,6 +99,15 @@ export class AuthService {
   async resendVerification(email: string): Promise<MailDeliveryResult | null> {
     const user = await this.usersService.findByEmail(email);
     if (!user || user.status !== UserStatus.PENDING_VERIFICATION) return null;
+    const recentlyIssued = await this.authTokenModel.exists({
+      userId: user._id,
+      purpose: AuthTokenPurpose.EMAIL_VERIFICATION,
+      consumedAt: { $exists: false },
+      createdAt: {
+        $gt: new Date(Date.now() - EMAIL_VERIFICATION_RESEND_COOLDOWN_MS),
+      },
+    });
+    if (recentlyIssued) return null;
     return this.issueEmailVerification(user);
   }
 

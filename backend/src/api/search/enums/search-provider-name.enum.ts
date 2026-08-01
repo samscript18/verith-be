@@ -1,7 +1,6 @@
 export enum SearchProviderName {
+  // Historical GDELT evidence and execution records remain readable.
   GDELT = 'GDELT',
   WIKIPEDIA = 'WIKIPEDIA',
-  // Retained so historical evidence records created before free-only routing
-  // remain readable.
   TAVILY = 'TAVILY',
 }

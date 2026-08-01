@@ -2,7 +2,7 @@
 
 Unit tests use Jest and Nest testing utilities. E2E tests use Supertest. Integration tests use real MongoDB, Redis, and BullMQ. Test doubles are permitted only at external boundaries, including AI generation and remotely hosted article responses.
 
-Live provider tests are isolated behind `npm run test:external` and explicit environment flags. Normal CI never sends real email or WhatsApp messages and never consumes external AI/search quota. Phase 7 integration coverage uses deterministic AI, search, and page-retrieval boundaries to prove evidence persistence and duplicate lineage. Router coverage verifies explicit GDELT-to-Wikipedia fallback; unsafe URLs remain covered without a network call.
+Live provider tests are isolated behind `npm run test:external` and explicit environment flags. Normal CI never sends real email or WhatsApp messages and never consumes external AI/search quota. Phase 7 integration coverage uses deterministic AI, search, and page-retrieval boundaries to prove evidence persistence and duplicate lineage. Router coverage verifies primary-search-to-Wikipedia fallback; unsafe URLs remain covered without a network call.
 
 Phase 8 extends the deterministic integration boundary through evidence
 relationship validation, claim evaluation, persisted confidence factors,

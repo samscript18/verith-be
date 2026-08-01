@@ -58,7 +58,8 @@ npm run build
 Only deployment-specific addresses and secrets remain in `.env.example`; limits,
 retention, provider URLs, provider order, and no-cost model names are defaults
 in code. AI keys must belong to free-tier projects without billing enabled.
-Search uses credential-free GDELT and Wikipedia fallback. Cloudinary remains
+Search uses Tavily when `TAVILY_API_KEY` is configured and falls back to
+Wikipedia when Tavily is unavailable or returns no results. Cloudinary remains
 optional at application startup, but upload requests return
 `CLOUDINARY_NOT_CONFIGURED` unless all three Cloudinary credentials are
 present.

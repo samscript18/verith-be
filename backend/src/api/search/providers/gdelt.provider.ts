@@ -21,6 +21,10 @@ interface GdeltResponse {
   articles?: unknown;
 }
 
+// Legacy implementation retained only for historical compatibility tests.
+// SearchModule no longer registers or routes requests to GDELT.
+const LEGACY_GDELT_BASE_URL = 'https://api.gdeltproject.org/api/v2/doc/doc';
+
 @Injectable()
 export class GdeltProvider implements SearchProvider {
   readonly provider = SearchProviderName.GDELT;
@@ -51,7 +55,7 @@ export class GdeltProvider implements SearchProvider {
 
     let response: Response;
     try {
-      response = await fetch(`${this.config.gdeltBaseUrl}?${params}`, {
+      response = await fetch(`${LEGACY_GDELT_BASE_URL}?${params}`, {
         headers: {
           accept: 'application/json',
           'user-agent': 'VerithBot/1.0 (+https://verith.example/bot)',
