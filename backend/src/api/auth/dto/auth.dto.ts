@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
+  IsEnum,
   IsOptional,
   IsString,
   Length,
@@ -8,6 +9,11 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+
+export enum GoogleAuthIntent {
+  LOGIN = 'LOGIN',
+  REGISTER = 'REGISTER',
+}
 
 export class RegisterDto {
   @ApiProperty({ example: 'person@example.com' })
@@ -45,6 +51,33 @@ export class LoginDto {
   @IsString()
   @MaxLength(100)
   deviceName?: string;
+}
+
+export class GoogleAuthDto {
+  @ApiProperty({
+    description: 'Google Identity Services ID-token credential',
+  })
+  @IsString()
+  @Length(100, 10000)
+  credential!: string;
+
+  @ApiProperty({ enum: GoogleAuthIntent })
+  @IsEnum(GoogleAuthIntent)
+  intent!: GoogleAuthIntent;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  deviceName?: string;
+}
+
+export class GoogleAuthConfigDto {
+  @ApiProperty()
+  enabled!: boolean;
+
+  @ApiProperty({ nullable: true })
+  clientId!: string | null;
 }
 
 export class TokenDto {

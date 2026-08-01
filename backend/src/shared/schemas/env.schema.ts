@@ -33,6 +33,7 @@ export const envSchema = Joi.object({
   JWT_ACCESS_SECRET: Joi.string().min(32).required(),
   HASHING_PEPPER: Joi.string().min(32).required(),
   DATA_EXPORT_ENCRYPTION_KEY: Joi.string().min(32).required(),
+  GOOGLE_CLIENT_ID: optionalSecret,
   COOKIE_DOMAIN: Joi.string().trim().allow('').optional(),
   COOKIE_SECURE: Joi.boolean().truthy('true').falsy('false').default(false),
   COOKIE_SAME_SITE: Joi.string().valid('strict', 'lax', 'none').default('lax'),

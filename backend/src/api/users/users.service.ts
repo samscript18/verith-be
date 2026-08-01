@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { createHash } from 'node:crypto';
 import type { Model, Types } from 'mongoose';
 import { ConflictException, NotFoundException } from '../../core/exceptions';
 import type {
@@ -7,6 +8,7 @@ import type {
   UpdatePrivacyDto,
   UpdateProfileDto,
 } from './dto/update-user.dto';
+import { AuthProvider } from './enums/auth-provider.enum';
 import { UserStatus } from './enums/user-status.enum';
 import { User, type UserDocument } from './schemas/user.schema';
 
@@ -15,6 +17,15 @@ export interface CreateUserInput {
   username: string;
   passwordHash: string;
   displayName?: string;
+}
+
+export interface CreateGoogleUserInput {
+  email: string;
+  googleSubject: string;
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
 }
 
 @Injectable()
@@ -41,6 +52,49 @@ export class UsersService {
     }
   }
 
+  async createGoogle(input: CreateGoogleUserInput): Promise<UserDocument> {
+    const suffix = createHash('sha256')
+      .update(input.googleSubject)
+      .digest('hex')
+      .slice(0, 8);
+    const emailStem = input.email.split('@')[0] ?? 'verith_user';
+    const base =
+      emailStem
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 21) || 'verith_user';
+    const username = `${base}_${suffix}`.slice(0, 30);
+
+    try {
+      return await this.userModel.create({
+        email: input.email,
+        emailNormalized: this.normalize(input.email),
+        username,
+        usernameNormalized: this.normalize(username),
+        authProvider: AuthProvider.GOOGLE,
+        googleSubject: input.googleSubject,
+        status: UserStatus.ACTIVE,
+        emailVerifiedAt: new Date(),
+        ...(input.displayName
+          ? { displayName: input.displayName.slice(0, 80) }
+          : {}),
+        ...(input.firstName ? { firstName: input.firstName.slice(0, 80) } : {}),
+        ...(input.lastName ? { lastName: input.lastName.slice(0, 80) } : {}),
+        ...(input.avatar ? { avatar: input.avatar } : {}),
+      });
+    } catch (error) {
+      if (this.isDuplicateKey(error)) {
+        throw new ConflictException(
+          'This Google identity is already connected to a Verith account',
+          'GOOGLE_ACCOUNT_ALREADY_EXISTS',
+        );
+      }
+      throw error;
+    }
+  }
+
   findByIdentifierWithPassword(
     identifier: string,
   ): Promise<UserDocument | null> {
@@ -60,6 +114,10 @@ export class UsersService {
     return this.userModel
       .findOne({ emailNormalized: this.normalize(email) })
       .exec();
+  }
+
+  findByGoogleSubject(googleSubject: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ googleSubject }).exec();
   }
 
   async findByIdOrThrow(userId: string): Promise<UserDocument> {
@@ -212,6 +270,7 @@ export class UsersService {
       displayName: user.displayName,
       bio: user.bio,
       avatar: user.avatar,
+      authProvider: user.authProvider ?? AuthProvider.LOCAL,
       createdAt: user.createdAt,
     };
   }

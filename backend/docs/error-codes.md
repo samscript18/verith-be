@@ -7,6 +7,15 @@
 | `INTERNAL_SERVER_ERROR` | 500 | An unexpected server error occurred. |
 | `INVALID_CREDENTIALS` | 401 | Login credentials are invalid. |
 | `EMAIL_VERIFICATION_REQUIRED` | 401 | The account must verify its email. |
+| `USE_GOOGLE_SIGN_IN` | 401 | The account was created with Google and cannot use password login. |
+| `USE_PASSWORD_SIGN_IN` | 401 | The account was created with email and password and cannot use Google login. |
+| `GOOGLE_ACCOUNT_NOT_FOUND` | 401 | Google login was requested before a Google account was registered. |
+| `GOOGLE_CREDENTIAL_INVALID` | 401 | Google rejected or could not verify the supplied ID token. |
+| `GOOGLE_IDENTITY_INCOMPLETE` | 401 | The Google token lacked a stable subject or verified email. |
+| `GOOGLE_ACCOUNT_HAS_NO_PASSWORD` | 401 | A password operation was requested for a Google account. |
+| `GOOGLE_ACCOUNT_ALREADY_EXISTS` | 409 | The Google identity is already registered with Verith. |
+| `GOOGLE_EMAIL_ALREADY_REGISTERED` | 409 | The verified Google email belongs to another Verith authentication method. |
+| `GOOGLE_AUTH_NOT_CONFIGURED` | 503 | The backend has no Google web client ID. |
 | `INVALID_REFRESH_TOKEN` | 401 | The refresh credential is invalid, revoked, or expired. |
 | `REFRESH_TOKEN_REUSE_DETECTED` | 401 | A rotated credential was reused; its family was revoked. |
 | `SESSION_REVOKED` | 401 | The access token references an inactive session. |

@@ -557,6 +557,53 @@
         ]
       }
     },
+    "/api/v1/auth/google/config": {
+      "get": {
+        "operationId": "AuthController_googleConfiguration",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleAuthConfigDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get the public Google authentication client",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/google": {
+      "post": {
+        "operationId": "AuthController_googleAuthentication",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Register or log in with a Google ID token",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
     "/api/v1/auth/verify-email": {
       "post": {
         "operationId": "AuthController_verifyEmail",
@@ -4192,6 +4239,45 @@
           "email",
           "username",
           "password"
+        ]
+      },
+      "GoogleAuthConfigDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "clientId": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "enabled",
+          "clientId"
+        ]
+      },
+      "GoogleAuthDto": {
+        "type": "object",
+        "properties": {
+          "credential": {
+            "type": "string",
+            "description": "Google Identity Services ID-token credential"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "LOGIN",
+              "REGISTER"
+            ]
+          },
+          "deviceName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential",
+          "intent"
         ]
       },
       "TokenDto": {

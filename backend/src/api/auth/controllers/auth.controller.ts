@@ -17,6 +17,7 @@ import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiCookieAuth,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
@@ -29,6 +30,8 @@ import type { AuthUser } from '../interfaces/auth-user.interface';
 import {
   ChangePasswordDto,
   EmailDto,
+  GoogleAuthConfigDto,
+  GoogleAuthDto,
   LoginDto,
   RefreshDto,
   RegisterDto,
@@ -63,6 +66,33 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a user and request email verification' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Get('google/config')
+  @ApiOperation({ summary: 'Get the public Google authentication client' })
+  @ApiOkResponse({ type: GoogleAuthConfigDto })
+  googleConfiguration(): GoogleAuthConfigDto {
+    return this.authService.googleConfiguration();
+  }
+
+  @Post('google')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Register or log in with a Google ID token' })
+  async googleAuthentication(
+    @Body() dto: GoogleAuthDto,
+    @Req() request: Request,
+    @Headers('x-client-type') clientType: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<
+    Omit<AuthenticationResult, 'refreshToken'> & { refreshToken?: string }
+  > {
+    const userAgentSummary = request.header('user-agent')?.slice(0, 300);
+    const result = await this.authService.authenticateWithGoogle(dto, {
+      ...(request.ip ? { ipHash: request.ip } : {}),
+      ...(userAgentSummary ? { userAgentSummary } : {}),
+    });
+    return this.deliverAuthentication(response, result, clientType);
   }
 
   @Post('verify-email')

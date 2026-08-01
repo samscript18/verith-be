@@ -2,12 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import bcrypt from 'bcrypt';
+import { OAuth2Client, type TokenPayload } from 'google-auth-library';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
 import {
   AuthenticationException,
   ConflictException,
+  ExternalProviderException,
 } from '../../../core/exceptions';
 import {
   DomainEventName,
@@ -19,15 +21,18 @@ import {
   MailService,
   type MailDeliveryResult,
 } from '../../../shared/mail/mail.service';
+import { AuthProvider } from '../../users/enums/auth-provider.enum';
 import { UserStatus } from '../../users/enums/user-status.enum';
 import type { UserDocument } from '../../users/schemas/user.schema';
 import { UsersService } from '../../users/users.service';
 import type {
   ChangePasswordDto,
+  GoogleAuthDto,
   LoginDto,
   RegisterDto,
   ResetPasswordDto,
 } from '../dto/auth.dto';
+import { GoogleAuthIntent } from '../dto/auth.dto';
 import {
   AuthToken,
   AuthTokenPurpose,
@@ -53,6 +58,7 @@ const EMAIL_VERIFICATION_RESEND_COOLDOWN_MS = 3 * 60 * 1000;
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly googleClient = new OAuth2Client();
   private readonly authConfig: AuthConfig;
   private readonly appConfig: AppConfig;
 
@@ -118,14 +124,110 @@ export class AuthService {
     const user = await this.usersService.findByIdentifierWithPassword(
       dto.identifier,
     );
-    const passwordValid =
-      user && (await bcrypt.compare(dto.password, user.passwordHash));
+    if (
+      user &&
+      (user.authProvider ?? AuthProvider.LOCAL) === AuthProvider.GOOGLE
+    ) {
+      throw new AuthenticationException(
+        'This account uses Google authentication',
+        'USE_GOOGLE_SIGN_IN',
+      );
+    }
+    const passwordValid = Boolean(
+      user?.passwordHash &&
+      (await bcrypt.compare(dto.password, user.passwordHash)),
+    );
     if (!user || !passwordValid) {
       throw new AuthenticationException(
         'Invalid email, username, or password',
         'INVALID_CREDENTIALS',
       );
     }
+    this.assertLoginAllowed(user);
+    const result = await this.createSession(user, {
+      ...context,
+      ...(dto.deviceName ? { deviceName: dto.deviceName } : {}),
+    });
+    await this.usersService.recordLogin(user._id);
+    return result;
+  }
+
+  googleConfiguration(): { enabled: boolean; clientId: string | null } {
+    return {
+      enabled: Boolean(this.authConfig.googleClientId),
+      clientId: this.authConfig.googleClientId ?? null,
+    };
+  }
+
+  async authenticateWithGoogle(
+    dto: GoogleAuthDto,
+    context: SessionContext,
+  ): Promise<AuthenticationResult> {
+    const clientId = this.authConfig.googleClientId;
+    if (!clientId) {
+      throw new ExternalProviderException(
+        'Google authentication is not configured',
+        'GOOGLE_AUTH_NOT_CONFIGURED',
+      );
+    }
+
+    let payload: TokenPayload | undefined;
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: dto.credential,
+        audience: clientId,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw new AuthenticationException(
+        'Google could not verify this identity',
+        'GOOGLE_CREDENTIAL_INVALID',
+      );
+    }
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      throw new AuthenticationException(
+        'Google did not provide a verified account identity',
+        'GOOGLE_IDENTITY_INCOMPLETE',
+      );
+    }
+
+    let user = await this.usersService.findByGoogleSubject(payload.sub);
+    if (dto.intent === GoogleAuthIntent.REGISTER) {
+      if (user) {
+        throw new ConflictException(
+          'This Google account already has a Verith workspace',
+          'GOOGLE_ACCOUNT_ALREADY_EXISTS',
+        );
+      }
+      const emailAccount = await this.usersService.findByEmail(payload.email);
+      if (emailAccount) {
+        throw new ConflictException(
+          'This email belongs to an account created with another sign-in method',
+          'GOOGLE_EMAIL_ALREADY_REGISTERED',
+        );
+      }
+      user = await this.usersService.createGoogle({
+        email: payload.email,
+        googleSubject: payload.sub,
+        ...(payload.name ? { displayName: payload.name } : {}),
+        ...(payload.given_name ? { firstName: payload.given_name } : {}),
+        ...(payload.family_name ? { lastName: payload.family_name } : {}),
+        ...(payload.picture ? { avatar: payload.picture } : {}),
+      });
+    } else if (!user) {
+      const emailAccount = await this.usersService.findByEmail(payload.email);
+      if (emailAccount) {
+        throw new AuthenticationException(
+          'This account was created with email and password',
+          'USE_PASSWORD_SIGN_IN',
+        );
+      }
+      throw new AuthenticationException(
+        'No Google-created Verith account was found',
+        'GOOGLE_ACCOUNT_NOT_FOUND',
+      );
+    }
+
     this.assertLoginAllowed(user);
     const result = await this.createSession(user, {
       ...context,
@@ -261,7 +363,12 @@ export class AuthService {
 
   async forgotPassword(email: string): Promise<void> {
     const user = await this.usersService.findByEmail(email);
-    if (!user || user.status === UserStatus.DELETED) return;
+    if (
+      !user ||
+      user.status === UserStatus.DELETED ||
+      (user.authProvider ?? AuthProvider.LOCAL) !== AuthProvider.LOCAL
+    )
+      return;
     const rawToken = await this.createAuthToken(
       user._id,
       AuthTokenPurpose.PASSWORD_RESET,
@@ -298,7 +405,16 @@ export class AuthService {
       (await this.usersService.findByIdOrThrow(userId)).email,
     );
     if (
-      !user ||
+      user &&
+      (user.authProvider ?? AuthProvider.LOCAL) === AuthProvider.GOOGLE
+    ) {
+      throw new AuthenticationException(
+        'Password changes are unavailable for Google accounts',
+        'GOOGLE_ACCOUNT_HAS_NO_PASSWORD',
+      );
+    }
+    if (
+      !user?.passwordHash ||
       !(await bcrypt.compare(dto.currentPassword, user.passwordHash))
     ) {
       throw new AuthenticationException(

@@ -21,6 +21,16 @@ Administrative APIs are protected by access JWTs and role checks. `ADMIN` and
 - `GET /api/v1/admin/analytics/overview` computes 30-day user, verification,
   provider-execution, and WhatsApp aggregates from MongoDB.
 
+## Suspended and disabled accounts
+
+`SUSPENDED` represents a temporary moderation hold while an account or incident
+is reviewed. `DISABLED` represents an administrative deactivation intended to
+remain in place until an administrator deliberately restores the account. The
+current enforcement is intentionally identical for both states: active sessions
+are revoked immediately, protected requests are rejected, and new login is
+blocked. Neither state currently has an automatic expiry; an administrator can
+return either one to `ACTIVE` with an audited status change.
+
 Every sensitive mutation requires a human-readable reason of 10–1000
 characters. Audit records contain only safe before/after state, are append-only
 through the application API, and are indexed by actor, resource, and action.
