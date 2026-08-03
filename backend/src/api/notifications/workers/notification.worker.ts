@@ -6,7 +6,11 @@ import {
 } from '../notification.constants';
 import { NotificationsService } from '../services/notifications.service';
 
-@Processor(NOTIFICATION_QUEUE, { concurrency: 5 })
+@Processor(NOTIFICATION_QUEUE, {
+  concurrency: 5,
+  drainDelay: 60,
+  stalledInterval: 120_000,
+})
 export class NotificationWorker extends WorkerHost {
   constructor(private readonly notifications: NotificationsService) {
     super();

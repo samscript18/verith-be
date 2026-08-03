@@ -15,6 +15,7 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
+  @SkipThrottle()
   @HealthCheck()
   @ApiOperation({ summary: 'Check application readiness' })
   @ApiOkResponse({ description: 'All required dependencies are ready' })
@@ -34,6 +35,7 @@ export class HealthController {
   }
 
   @Get('ready')
+  @SkipThrottle()
   @HealthCheck()
   @ApiOperation({ summary: 'Check MongoDB and Redis readiness' })
   readinessAlias(): Promise<HealthCheckResult> {

@@ -4,7 +4,13 @@ import type { VerificationJobData } from '../interfaces/verification-job.interfa
 import { VerificationOrchestratorService } from '../services/verification-orchestrator.service';
 import { VERIFICATION_QUEUE } from '../verification.constants';
 
-@Processor(VERIFICATION_QUEUE, { concurrency: 5 })
+// BullMQ wakes a blocking worker as soon as a job arrives. These longer idle
+// intervals therefore cut empty-queue Redis traffic without delaying work.
+@Processor(VERIFICATION_QUEUE, {
+  concurrency: 5,
+  drainDelay: 60,
+  stalledInterval: 120_000,
+})
 export class VerificationWorker extends WorkerHost {
   constructor(private readonly orchestrator: VerificationOrchestratorService) {
     super();

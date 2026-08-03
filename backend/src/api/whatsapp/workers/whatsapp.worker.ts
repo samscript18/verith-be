@@ -3,7 +3,11 @@ import type { Job } from 'bullmq';
 import { WHATSAPP_INBOUND_JOB, WHATSAPP_QUEUE } from '../whatsapp.constants';
 import { WhatsAppService } from '../services/whatsapp.service';
 
-@Processor(WHATSAPP_QUEUE, { concurrency: 5 })
+@Processor(WHATSAPP_QUEUE, {
+  concurrency: 5,
+  drainDelay: 60,
+  stalledInterval: 120_000,
+})
 export class WhatsAppWorker extends WorkerHost {
   constructor(private readonly whatsapp: WhatsAppService) {
     super();

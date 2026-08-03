@@ -25,6 +25,9 @@ import { WhatsAppWorker } from './workers/whatsapp.worker';
 import { runsWorkers } from '../../shared/utils/process-role';
 import { VerificationCompletedWhatsAppHandler } from './handlers/verification-completed.handler';
 
+const runsWhatsAppWorker =
+  runsWorkers() && process.env.WHATSAPP_ENABLED === 'true';
+
 @Module({
   imports: [
     UploadsModule,
@@ -43,7 +46,7 @@ import { VerificationCompletedWhatsAppHandler } from './handlers/verification-co
     WhatsAppLinkService,
     WhatsAppService,
     VerificationCompletedWhatsAppHandler,
-    ...(runsWorkers() ? [WhatsAppWorker] : []),
+    ...(runsWhatsAppWorker ? [WhatsAppWorker] : []),
   ],
   exports: [WhatsAppService, WhatsAppLinkService],
 })

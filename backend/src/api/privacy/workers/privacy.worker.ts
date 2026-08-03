@@ -5,7 +5,11 @@ import type { PrivacyQueueJob } from '../interfaces/privacy-job.interface';
 import { PRIVACY_QUEUE } from '../privacy.constants';
 import { PrivacyService } from '../services/privacy.service';
 
-@Processor(PRIVACY_QUEUE, { concurrency: 2 })
+@Processor(PRIVACY_QUEUE, {
+  concurrency: 2,
+  drainDelay: 60,
+  stalledInterval: 120_000,
+})
 export class PrivacyWorker extends WorkerHost {
   constructor(private readonly privacy: PrivacyService) {
     super();
