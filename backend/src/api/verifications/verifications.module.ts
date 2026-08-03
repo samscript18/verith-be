@@ -1,9 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import type { RedisOptions } from 'ioredis';
-import type { RedisConfig } from '../../shared/config';
 import { UploadsModule } from '../uploads/uploads.module';
 import { AiModule } from '../ai/ai.module';
 import { VerificationStreamController } from './controllers/verification-stream.controller';
@@ -44,21 +41,6 @@ import { MediaModule } from '../media/media.module';
 import { ReportsModule } from '../reports/reports.module';
 import { runsWorkers } from '../../shared/utils/process-role';
 
-const redisOptions = (value: string): RedisOptions => {
-  const url = new URL(value);
-  return {
-    host: url.hostname,
-    port: Number(url.port || 6379),
-    ...(url.username ? { username: decodeURIComponent(url.username) } : {}),
-    ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
-    ...(url.pathname.length > 1 ? { db: Number(url.pathname.slice(1)) } : {}),
-    ...(url.protocol === 'rediss:'
-      ? { tls: { servername: url.hostname } }
-      : {}),
-    maxRetriesPerRequest: null,
-  };
-};
-
 @Module({
   imports: [
     UploadsModule,
@@ -75,15 +57,6 @@ const redisOptions = (value: string): RedisOptions => {
       { name: Claim.name, schema: ClaimSchema },
       { name: ExtractedContent.name, schema: ExtractedContentSchema },
     ]),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: redisOptions(
-          configService.getOrThrow<RedisConfig>('redis').url,
-        ),
-        prefix: 'verith:bull',
-      }),
-    }),
     BullModule.registerQueue({ name: VERIFICATION_QUEUE }),
   ],
   controllers: [VerificationsController, VerificationStreamController],
