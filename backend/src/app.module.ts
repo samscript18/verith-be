@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -11,6 +11,7 @@ import { CoreModule } from './core/core.module';
 import {
   aiConfig,
   appConfig,
+  type AppConfig,
   authConfig,
   cloudinaryConfig,
   databaseConfig,
@@ -66,11 +67,16 @@ const envFilePath = [
     }),
     ThrottlerModule.forRootAsync({
       imports: [RedisModule],
-      inject: [REDIS_CLIENT],
-      useFactory: (redis: Redis) => ({
-        storage: new RedisThrottlerStorage(redis),
-        throttlers: [{ name: 'default', ttl: 60000, limit: 120 }],
-      }),
+      inject: [REDIS_CLIENT, ConfigService],
+      useFactory: (redis: Redis, config: ConfigService) => {
+        const app = config.getOrThrow<AppConfig>('app');
+        return {
+          ...(app.throttlerStorage === 'redis'
+            ? { storage: new RedisThrottlerStorage(redis) }
+            : {}),
+          throttlers: [{ name: 'default', ttl: 60000, limit: 120 }],
+        };
+      },
     }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),

@@ -7,8 +7,8 @@ import { PrivacyService } from '../services/privacy.service';
 
 @Processor(PRIVACY_QUEUE, {
   concurrency: 2,
-  drainDelay: 60,
-  stalledInterval: 120_000,
+  drainDelay: 300,
+  stalledInterval: 600_000,
 })
 export class PrivacyWorker extends WorkerHost {
   constructor(private readonly privacy: PrivacyService) {

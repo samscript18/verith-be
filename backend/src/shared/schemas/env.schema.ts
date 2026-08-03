@@ -22,6 +22,7 @@ export const envSchema = Joi.object({
   PROCESS_ROLE: Joi.string()
     .valid('all', 'api', 'worker', 'scheduler')
     .optional(),
+  THROTTLER_STORAGE: Joi.string().valid('redis', 'memory').default('redis'),
 
   MONGODB_URI: Joi.string()
     .uri({ scheme: ['mongodb', 'mongodb+srv'] })

@@ -8,8 +8,8 @@ import { NotificationsService } from '../services/notifications.service';
 
 @Processor(NOTIFICATION_QUEUE, {
   concurrency: 5,
-  drainDelay: 60,
-  stalledInterval: 120_000,
+  drainDelay: 300,
+  stalledInterval: 600_000,
 })
 export class NotificationWorker extends WorkerHost {
   constructor(private readonly notifications: NotificationsService) {

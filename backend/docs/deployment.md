@@ -17,6 +17,21 @@ and integration testing. Scale API and worker replicas independently; run at
 least one scheduler replica. MongoDB leases prevent duplicate outbox delivery
 claims, and the Redis lock prevents duplicate retention sweeps.
 
+## Single-service / free-tier deployment
+
+If one service must run the API, workers, and scheduler together, use
+`PROCESS_ROLE=all` as a temporary cost-conscious deployment topology. Also set
+`THROTTLER_STORAGE=memory`. This prevents the global HTTP rate limiter from
+writing to Redis for every normal request; Redis remains dedicated to BullMQ.
+Do not horizontally scale this topology. When more than one API instance serves
+traffic, split the roles as above and set `THROTTLER_STORAGE=redis` on the API
+service so rate limiting remains shared.
+
+BullMQ workers long-poll an empty queue for five minutes and check stalled jobs
+every ten minutes. New jobs still wake a waiting worker immediately. This keeps
+idle Redis command usage low while accepting a slower recovery window for a
+truly stalled job.
+
 MongoDB and Redis are mandatory, authenticated, private-network dependencies.
 Use a managed MongoDB replica set for transactions and point-in-time recovery.
 Use durable Redis with an eviction policy compatible with BullMQ. Store all
