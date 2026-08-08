@@ -36,6 +36,11 @@ export interface SearchProviderHealth {
   checkedAt: Date;
   latencyMs: number;
   safeCode?: string;
+  configuredKeys?: number;
+  healthyKeys?: number;
+  cooldownKeys?: number;
+  disabledKeys?: number;
+  nextAvailableAt?: Date;
 }
 
 export interface SearchProvider {

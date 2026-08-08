@@ -21,4 +21,12 @@ export class AnalyticsController {
   overview() {
     return this.analytics.overview();
   }
+
+  @Get('pilots')
+  @ApiOperation({
+    summary: 'Get privacy-thresholded mission and pilot aggregates',
+  })
+  pilots() {
+    return this.analytics.pilots();
+  }
 }

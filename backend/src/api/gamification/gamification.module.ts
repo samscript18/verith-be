@@ -15,20 +15,38 @@ import {
 } from './schemas/reward-transaction.schema';
 import { UserBadge, UserBadgeSchema } from './schemas/user-badge.schema';
 import { GamificationService } from './services/gamification.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import {
+  AchievementEvent,
+  AchievementEventSchema,
+} from './schemas/achievement-event.schema';
+import { GamificationCatalogService } from './services/gamification-catalog.service';
+import {
+  Verification,
+  VerificationSchema,
+} from '../verifications/schemas/verification.schema';
+import { GamificationDomainHandler } from './handlers/gamification-domain.handler';
 
 @Module({
   imports: [
     AdminModule,
+    NotificationsModule,
     MongooseModule.forFeature([
       { name: RewardTransaction.name, schema: RewardTransactionSchema },
       { name: GamificationProfile.name, schema: GamificationProfileSchema },
       { name: Badge.name, schema: BadgeSchema },
       { name: UserBadge.name, schema: UserBadgeSchema },
       { name: User.name, schema: UserSchema },
+      { name: AchievementEvent.name, schema: AchievementEventSchema },
+      { name: Verification.name, schema: VerificationSchema },
     ]),
   ],
   controllers: [GamificationController, GamificationAdminController],
-  providers: [GamificationService],
+  providers: [
+    GamificationService,
+    GamificationCatalogService,
+    GamificationDomainHandler,
+  ],
   exports: [GamificationService, MongooseModule],
 })
 export class GamificationModule {}

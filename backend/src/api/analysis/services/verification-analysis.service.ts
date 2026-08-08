@@ -98,11 +98,16 @@ export class VerificationAnalysisService {
     requestId: string,
   ): Promise<VerificationAnalysis> {
     const id = new Types.ObjectId(verificationId);
-    const [claims, evidence, content] = await Promise.all([
+    const [claims, content] = await Promise.all([
       this.claimModel.find({ verificationId: id }).sort({ sequence: 1 }).exec(),
-      this.evidenceModel.find({ verificationId: id }).exec(),
       this.contentModel.findOne({ verificationId: id }).lean().exec(),
     ]);
+    const evidence = await this.evidenceModel
+      .find({
+        verificationId: id,
+        claimId: { $in: claims.map((claim) => claim._id) },
+      })
+      .exec();
     const output = await this.ai.execute({
       capability: AiCapability.EVIDENCE_SYNTHESIS,
       promptKey: 'verification.analysis',

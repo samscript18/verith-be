@@ -47,6 +47,10 @@ export class MailService {
     }
   }
 
+  isConfigured(): boolean {
+    return Boolean(this.transporter);
+  }
+
   sendEmailVerification(
     recipient: string,
     actionUrl: string,

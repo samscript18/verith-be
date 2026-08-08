@@ -5,6 +5,7 @@ import type { RedisOptions } from 'ioredis';
 import type { RedisConfig } from './config';
 import { MailService } from './mail/mail.service';
 import { SafeFetchService } from './services/safe-fetch.service';
+import { ProviderKeyPoolService } from './providers/provider-key-pool.service';
 
 const redisOptions = (value: string): RedisOptions => {
   const url = new URL(value);
@@ -32,7 +33,7 @@ const redisOptions = (value: string): RedisOptions => {
       }),
     }),
   ],
-  providers: [MailService, SafeFetchService],
-  exports: [MailService, SafeFetchService],
+  providers: [MailService, SafeFetchService, ProviderKeyPoolService],
+  exports: [MailService, SafeFetchService, ProviderKeyPoolService],
 })
 export class SharedModule {}

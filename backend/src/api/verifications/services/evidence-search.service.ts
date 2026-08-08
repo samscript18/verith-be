@@ -12,9 +12,11 @@ import {
   EvidenceRelationship,
 } from '../../evidence/enums/evidence.enum';
 import { Evidence } from '../../evidence/schemas/evidence.schema';
+import type { RoutedSearchResult } from '../../search/interfaces/search-router.interface';
 import { SearchRouterService } from '../../search/services/search-router.service';
 import { ClaimVerifiability } from '../enums/claim.enum';
 import { UrlExtractionState } from '../enums/url-extraction-state.enum';
+import { UrlSourceKind } from '../enums/url-source-kind.enum';
 import { Claim, type ClaimDocument } from '../schemas/claim.schema';
 import type { ArticleExtractionResult } from './article-extraction.service';
 import { ArticleExtractionService } from './article-extraction.service';
@@ -47,9 +49,10 @@ export class EvidenceSearchService {
     verificationId: string,
     requestId: string,
   ): Promise<number> {
+    const verificationObjectId = new Types.ObjectId(verificationId);
     const claims = await this.claimModel
       .find({
-        verificationId: new Types.ObjectId(verificationId),
+        verificationId: verificationObjectId,
         verifiability: {
           $in: [
             ClaimVerifiability.VERIFIABLE,
@@ -59,17 +62,37 @@ export class EvidenceSearchService {
       })
       .sort({ sequence: 1 })
       .exec();
-    await this.evidenceModel.deleteMany({ verificationId }).exec();
+    await this.evidenceModel
+      .deleteMany({ verificationId: verificationObjectId })
+      .exec();
     let total = 0;
+    const searchCache = new Map<string, Promise<RoutedSearchResult>>();
+    const retrievalCache = new Map<string, Promise<EvidenceRetrieval>>();
     for (const claim of claims) {
-      total += await this.forClaim(verificationId, claim, requestId);
+      total += await this.forClaim(
+        verificationId,
+        claim,
+        requestId,
+        searchCache,
+        retrievalCache,
+      );
     }
     return total;
   }
 
   async list(verificationId: string): Promise<Record<string, unknown>[]> {
+    const verificationObjectId = new Types.ObjectId(verificationId);
+    const claims = await this.claimModel
+      .find({ verificationId: verificationObjectId })
+      .select('_id')
+      .lean()
+      .exec();
+    const claimIds = claims.map((claim) => claim._id);
     const records = await this.evidenceModel
-      .find({ verificationId: new Types.ObjectId(verificationId) })
+      .find({
+        verificationId: verificationObjectId,
+        claimId: { $in: claimIds },
+      })
       .sort({ claimId: 1, relevanceScore: -1, createdAt: 1 })
       .lean()
       .exec();
@@ -104,25 +127,33 @@ export class EvidenceSearchService {
     verificationId: string,
     claim: ClaimDocument,
     requestId: string,
+    searchCache: Map<string, Promise<RoutedSearchResult>>,
+    retrievalCache: Map<string, Promise<EvidenceRetrieval>>,
   ): Promise<number> {
     let count = 0;
     const seenUrls = new Set<string>();
     for (const query of claim.searchQueries) {
       if (count >= this.config.maxEvidencePerClaim) break;
-      const page = await this.search.search({
-        query: query.query,
-        limit: Math.min(5, this.config.maxEvidencePerClaim - count),
-        safeSearch: true,
-        requestId,
-        verificationId,
-        claimId: claim.id,
-      });
+      const queryKey = this.normalizeQuery(query.query);
+      let pendingSearch = searchCache.get(queryKey);
+      if (!pendingSearch) {
+        pendingSearch = this.search.search({
+          query: query.query,
+          limit: Math.min(4, this.config.maxEvidencePerClaim - count),
+          safeSearch: true,
+          requestId,
+          verificationId,
+          claimId: claim.id,
+        });
+        searchCache.set(queryKey, pendingSearch);
+      }
+      const page = await pendingSearch;
       for (const result of page.results) {
         if (count >= this.config.maxEvidencePerClaim) break;
         const normalizedUrl = this.normalizeUrl(result.url);
         if (!normalizedUrl || seenUrls.has(normalizedUrl)) continue;
         seenUrls.add(normalizedUrl);
-        const retrieval = await this.retrieve(result);
+        const retrieval = await this.retrieve(result, retrievalCache);
         const document = this.toEvidence(
           verificationId,
           claim,
@@ -144,7 +175,20 @@ export class EvidenceSearchService {
     return count;
   }
 
-  private async retrieve(result: {
+  private retrieve(
+    result: { url: string; title: string; rawContent?: string },
+    cache: Map<string, Promise<EvidenceRetrieval>>,
+  ): Promise<EvidenceRetrieval> {
+    const key = this.normalizeUrl(result.url) ?? result.url;
+    let pending = cache.get(key);
+    if (!pending) {
+      pending = this.retrieveSource(result);
+      cache.set(key, pending);
+    }
+    return pending;
+  }
+
+  private async retrieveSource(result: {
     url: string;
     title: string;
     rawContent?: string;
@@ -166,11 +210,15 @@ export class EvidenceSearchService {
             // Provider-extracted content is useful but remains explicitly
             // partial because Verith did not retrieve the origin directly.
             state: UrlExtractionState.PARTIALLY_EXTRACTED,
+            outcome: 'READABLE',
             sourceUrl: result.url,
             canonicalUrl: result.url,
             title: result.title,
             text,
             confidence: text.length >= 500 ? 0.7 : 0.45,
+            sourceKind: UrlSourceKind.STANDARD_WEBPAGE,
+            strategy: 'SEARCH_PROVIDER_RAW_CONTENT',
+            retryable: false,
           },
           failureCode,
           extractionSource: 'TAVILY_EXTRACTED_CONTENT',
@@ -350,6 +398,10 @@ export class EvidenceSearchService {
     } catch {
       return null;
     }
+  }
+
+  private normalizeQuery(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, ' ');
   }
 
   private domain(value: string): string {

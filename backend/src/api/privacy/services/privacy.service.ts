@@ -6,6 +6,7 @@ import type { Queue } from 'bullmq';
 import { Connection, Model, Types } from 'mongoose';
 import { ConflictException, NotFoundException } from '../../../core/exceptions';
 import type { PrivacyConfig } from '../../../shared/config';
+import { coordinationJobOptions } from '../../../shared/queue/coordination-job-options';
 import { UserStatus } from '../../users/enums/user-status.enum';
 import {
   CLOUDINARY_PROVIDER,
@@ -77,7 +78,7 @@ export class PrivacyService {
           schemaVersion: PRIVACY_JOB_SCHEMA_VERSION,
           createdAt: new Date().toISOString(),
         },
-        { jobId, attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+        { jobId, ...coordinationJobOptions },
       );
     } catch (error) {
       await this.jobs.updateOne(
@@ -273,6 +274,7 @@ export class PrivacyService {
         db.collection('reward_transactions').deleteMany({ userId }),
         db.collection('gamification_profiles').deleteMany({ userId }),
         db.collection('user_badges').deleteMany({ userId }),
+        db.collection('achievement_events').deleteMany({ userId }),
         db.collection('notifications').deleteMany({ userId }),
         db.collection('whatsapp_links').deleteMany({ userId }),
         db.collection('whatsapp_messages').deleteMany({ linkedUserId: userId }),

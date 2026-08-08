@@ -1,9 +1,20 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import {
+  AcknowledgeCelebrationDto,
+  BadgeCatalogQueryDto,
   LeaderboardQueryDto,
   RewardTransactionQueryDto,
 } from '../dto/gamification.dto';
@@ -32,19 +43,44 @@ export class GamificationController {
   }
 
   @Get('badges')
-  badges() {
-    return this.gamification.listBadges();
+  badges(@Query() query: BadgeCatalogQueryDto) {
+    return this.gamification.listBadges(query);
   }
 
   @Get('badges/me')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  myBadges(@CurrentUser() user: AuthUser) {
-    return this.gamification.listBadges(user.userId);
+  myBadges(
+    @CurrentUser() user: AuthUser,
+    @Query() query: BadgeCatalogQueryDto,
+  ) {
+    return this.gamification.listBadges(query, user.userId);
   }
 
   @Get('leaderboards')
   leaderboard(@Query() query: LeaderboardQueryDto) {
     return this.gamification.leaderboard(query);
+  }
+
+  @Post('celebrations/claim')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  claimCelebrations(@CurrentUser() user: AuthUser) {
+    return this.gamification.claimCelebrations(user.userId);
+  }
+
+  @Patch('celebrations/:id/seen')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  acknowledgeCelebration(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: AcknowledgeCelebrationDto,
+  ) {
+    return this.gamification.acknowledgeCelebration(
+      user.userId,
+      id,
+      dto.claimToken,
+    );
   }
 }

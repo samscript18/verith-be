@@ -10,17 +10,26 @@ import {
 } from './schemas/challenge-attempt.schema';
 import { Challenge, ChallengeSchema } from './schemas/challenge.schema';
 import { ChallengesService } from './services/challenges.service';
+import { DailyChallengeService } from './services/daily-challenge.service';
+import { User, UserSchema } from '../users/schemas/user.schema';
+import { runsScheduler } from '../../shared/utils/process-role';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     AdminModule,
     GamificationModule,
+    NotificationsModule,
     MongooseModule.forFeature([
       { name: Challenge.name, schema: ChallengeSchema },
       { name: ChallengeAttempt.name, schema: ChallengeAttemptSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   controllers: [ChallengesController, ChallengesAdminController],
-  providers: [ChallengesService],
+  providers: [
+    ChallengesService,
+    ...(runsScheduler() ? [DailyChallengeService] : []),
+  ],
 })
 export class ChallengesModule {}

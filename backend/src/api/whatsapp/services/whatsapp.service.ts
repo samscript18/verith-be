@@ -11,6 +11,7 @@ import {
   ValidationException,
 } from '../../../core/exceptions';
 import type { CloudinaryConfig } from '../../../shared/config';
+import { coordinationJobOptions } from '../../../shared/queue/coordination-job-options';
 import { AssetStatus } from '../../uploads/enums/asset-status.enum';
 import { AssetType } from '../../uploads/enums/asset-type.enum';
 import { MediaAsset } from '../../uploads/schemas/media-asset.schema';
@@ -84,10 +85,7 @@ export class WhatsAppService {
         },
         {
           jobId: `whatsapp-inbound-${inbound.wamid}`,
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 2000 },
-          removeOnComplete: 1000,
-          removeOnFail: 5000,
+          ...coordinationJobOptions,
         },
       );
     }

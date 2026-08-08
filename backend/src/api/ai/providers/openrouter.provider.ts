@@ -4,6 +4,7 @@ import type { AiConfig } from '../../../shared/config';
 import { AiCapability } from '../enums/ai-capability.enum';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
 import { OpenAiCompatibleProvider } from './openai-compatible.provider';
+import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
 
 @Injectable()
 export class OpenRouterProvider extends OpenAiCompatibleProvider {
@@ -23,9 +24,12 @@ export class OpenRouterProvider extends OpenAiCompatibleProvider {
   private readonly siteUrl: string;
   private readonly appName: string;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    pools: ProviderKeyPoolService = new ProviderKeyPoolService(),
+  ) {
     const config = configService.getOrThrow<AiConfig>('ai').openRouter;
-    super(config);
+    super(config, AiProviderName.OPENROUTER, pools);
     this.siteUrl = config.siteUrl;
     this.appName = config.appName;
   }

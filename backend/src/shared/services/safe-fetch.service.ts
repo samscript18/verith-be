@@ -59,9 +59,15 @@ export class SafeFetchService {
           continue;
         }
         if (response.status === 404) throw this.failure('URL_NOT_FOUND');
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401) throw this.failure('URL_LOGIN_REQUIRED');
+        if (response.status === 403) {
           throw this.failure('URL_ACCESS_BLOCKED');
         }
+        if (response.status === 429) throw this.failure('URL_RATE_LIMITED');
+        if (response.status >= 500) {
+          throw this.failure('URL_TEMPORARY_NETWORK_FAILURE');
+        }
+        if (response.status === 204) throw this.failure('URL_CONTENT_EMPTY');
         if (!response.ok) throw this.failure('URL_FETCH_FAILED');
         const contentType = response.headers
           .get('content-type')

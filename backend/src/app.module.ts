@@ -20,6 +20,7 @@ import {
   privacyConfig,
   redisConfig,
   searchConfig,
+  usageConfig,
   whatsappConfig,
 } from './shared/config';
 import { envSchema } from './shared/schemas/env.schema';
@@ -60,6 +61,7 @@ const envFilePath = [
         privacyConfig,
         redisConfig,
         searchConfig,
+        usageConfig,
         whatsappConfig,
       ],
       validationSchema: envSchema,

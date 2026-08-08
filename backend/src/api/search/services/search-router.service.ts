@@ -41,51 +41,40 @@ export class SearchRouterService {
     const primaryProvider = candidates.find((provider) => provider.configured)!;
     let lastCode = 'SEARCH_PROVIDER_UNAVAILABLE';
     let emptyResult: RoutedSearchResult | undefined;
-    for (const provider of candidates.filter((item) => item.configured)) {
-      for (
-        let attempt = 1;
-        attempt <= this.config.maxRetries + 1;
-        attempt += 1
-      ) {
-        const startedAt = new Date();
-        try {
-          const result = await provider.search(request);
-          await this.record(request, provider, primaryProvider, startedAt, {
-            success: true,
-            resultCount: result.results.length,
-            ...(result.requestId
-              ? { providerRequestId: result.requestId }
-              : {}),
-            ...(result.creditsUsed !== undefined
-              ? { creditsUsed: result.creditsUsed }
-              : {}),
-          });
-          if (result.results.length) return result;
-          emptyResult ??= result;
-          break;
-        } catch (error) {
-          lastCode =
-            error instanceof ExternalProviderException
-              ? error.code
-              : 'SEARCH_PROVIDER_UNAVAILABLE';
-          await this.record(request, provider, primaryProvider, startedAt, {
-            success: false,
-            safeFailureCode: lastCode,
-          });
-          if (!this.retryable(lastCode)) break;
-        }
+    // Search providers already enforce their own request timeout. Use at most
+    // one request per provider and one fallback, avoiding six-call fan-out.
+    for (const provider of candidates
+      .filter((item) => item.configured)
+      .slice(0, 2)) {
+      const startedAt = new Date();
+      try {
+        const result = await provider.search(request);
+        await this.record(request, provider, primaryProvider, startedAt, {
+          success: true,
+          resultCount: result.results.length,
+          ...(result.requestId ? { providerRequestId: result.requestId } : {}),
+          ...(result.creditsUsed !== undefined
+            ? { creditsUsed: result.creditsUsed }
+            : {}),
+        });
+        if (result.results.length) return result;
+        emptyResult ??= result;
+        break;
+      } catch (error) {
+        lastCode =
+          error instanceof ExternalProviderException
+            ? error.code
+            : 'SEARCH_PROVIDER_UNAVAILABLE';
+        await this.record(request, provider, primaryProvider, startedAt, {
+          success: false,
+          safeFailureCode: lastCode,
+        });
       }
     }
     if (emptyResult) return emptyResult;
     throw new ExternalProviderException(
       'No search provider completed the request',
       lastCode,
-    );
-  }
-
-  private retryable(code: string): boolean {
-    return ['SEARCH_PROVIDER_TIMEOUT', 'SEARCH_PROVIDER_UNAVAILABLE'].includes(
-      code,
     );
   }
 

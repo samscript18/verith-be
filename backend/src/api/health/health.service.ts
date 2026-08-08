@@ -9,6 +9,12 @@ import { RedisService } from '../integrations/redis/redis.service';
 
 @Injectable()
 export class HealthService {
+  private redisHealthCache?: {
+    expiresAt: number;
+    result: HealthIndicatorResult;
+  };
+  private redisHealthPending?: Promise<HealthIndicatorResult>;
+
   constructor(
     private readonly health: HealthCheckService,
     private readonly database: DatabaseService,
@@ -42,6 +48,25 @@ export class HealthService {
   }
 
   private async redisHealth(): Promise<HealthIndicatorResult> {
+    if (this.redisHealthCache && this.redisHealthCache.expiresAt > Date.now()) {
+      return this.redisHealthCache.result;
+    }
+    if (this.redisHealthPending) return this.redisHealthPending;
+    this.redisHealthPending = this.readRedisHealth();
+    try {
+      const result = await this.redisHealthPending;
+      const isUp = result.redis?.status === 'up';
+      this.redisHealthCache = {
+        result,
+        expiresAt: Date.now() + (isUp ? 60_000 : 15_000),
+      };
+      return result;
+    } finally {
+      delete this.redisHealthPending;
+    }
+  }
+
+  private async readRedisHealth(): Promise<HealthIndicatorResult> {
     try {
       const ready = await this.redis.ping();
       return {

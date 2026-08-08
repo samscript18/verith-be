@@ -15,10 +15,12 @@ import type {
   CreateCourseDto,
   CreateLessonDto,
   LearningAdminQueryDto,
+  PublishedCourseQueryDto,
   UpdateCourseDto,
   UpdateLessonDto,
   UpdateLessonProgressDto,
 } from '../dto/learning.dto';
+import { searchPattern } from '../../../shared/utils/search-query';
 import {
   CourseStatus,
   LessonProgressStatus,
@@ -27,6 +29,8 @@ import {
 import { Course } from '../schemas/course.schema';
 import { LessonProgress } from '../schemas/lesson-progress.schema';
 import { Lesson } from '../schemas/lesson.schema';
+import { GamificationService } from '../../gamification/services/gamification.service';
+import { RewardTransactionType } from '../../gamification/enums/gamification.enum';
 
 @Injectable()
 export class LearningService {
@@ -39,10 +43,23 @@ export class LearningService {
     @InjectModel(Verification.name)
     private readonly verificationModel: Model<Verification>,
     private readonly audit: AuditService,
+    private readonly gamification: GamificationService,
   ) {}
 
   async listCoursesAdmin(query: LearningAdminQueryDto) {
-    return this.page(this.courseModel, query);
+    const filter: Record<string, unknown> = {};
+    if (query.status) filter.status = query.status;
+    if (query.difficulty) filter.difficulty = query.difficulty;
+    if (query.tag) filter.tags = query.tag.trim().toLowerCase();
+    if (query.search) {
+      const pattern = searchPattern(query.search);
+      filter.$or = [
+        { title: pattern },
+        { slug: pattern },
+        { description: pattern },
+      ];
+    }
+    return this.page(this.courseModel, query, filter);
   }
 
   async getCourseAdmin(id: string) {
@@ -57,7 +74,19 @@ export class LearningService {
   }
 
   async listLessonsAdmin(query: LearningAdminQueryDto) {
-    return this.page(this.lessonModel, query);
+    const filter: Record<string, unknown> = {};
+    if (query.status) filter.status = query.status;
+    if (query.courseId) filter.courseId = new Types.ObjectId(query.courseId);
+    if (query.tag) filter.tags = query.tag.trim().toLowerCase();
+    if (query.search) {
+      const pattern = searchPattern(query.search);
+      filter.$or = [
+        { title: pattern },
+        { slug: pattern },
+        { summary: pattern },
+      ];
+    }
+    return this.page(this.lessonModel, query, filter);
   }
 
   async getLessonAdmin(id: string) {
@@ -249,13 +278,31 @@ export class LearningService {
     return lesson;
   }
 
-  async listPublished() {
-    return this.courseModel
-      .find({ status: CourseStatus.PUBLISHED })
+  async listPublished(query: PublishedCourseQueryDto) {
+    const filter: Record<string, unknown> = {
+      status: CourseStatus.PUBLISHED,
+      ...(query.cursor
+        ? { _id: { $lt: new Types.ObjectId(query.cursor) } }
+        : {}),
+    };
+    if (query.difficulty) filter.difficulty = query.difficulty;
+    if (query.tag) filter.tags = query.tag.trim().toLowerCase();
+    if (query.search) {
+      const pattern = searchPattern(query.search);
+      filter.$or = [
+        { title: pattern },
+        { description: pattern },
+        { tags: pattern },
+      ];
+    }
+    const records = await this.courseModel
+      .find(filter)
       .select('-createdBy -updatedBy')
-      .sort({ publishedAt: -1 })
+      .sort({ _id: -1 })
+      .limit(query.limit + 1)
       .lean()
       .exec();
+    return this.pageResult(records, query.limit);
   }
 
   async getPublished(slug: string) {
@@ -320,7 +367,7 @@ export class LearningService {
         : nextProgress > 0
           ? LessonProgressStatus.IN_PROGRESS
           : LessonProgressStatus.NOT_STARTED;
-    return this.progressModel.findOneAndUpdate(
+    const progress = await this.progressModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId), lessonId: lesson._id },
       {
         $set: {
@@ -341,6 +388,21 @@ export class LearningService {
       },
       { upsert: true, returnDocument: 'after', runValidators: true },
     );
+    if (status === LessonProgressStatus.COMPLETED && !wasComplete) {
+      await this.gamification.award(userId, {
+        type: RewardTransactionType.LESSON_COMPLETED,
+        idempotencyReference: `lesson:${lesson._id.toString()}:completed`,
+        xp: 15,
+        truthPoints: 5,
+        metadata: {
+          lessonId: lesson._id.toString(),
+          courseId: lesson.courseId.toString(),
+          tags: lesson.tags,
+        },
+      });
+      await this.gamification.recordEligibleActivity(userId);
+    }
+    return progress;
   }
 
   async myProgress(userId: string, courseId: string) {
@@ -404,24 +466,36 @@ export class LearningService {
   private async page<T extends Course | Lesson>(
     model: Model<T>,
     query: LearningAdminQueryDto,
+    baseFilter: Record<string, unknown> = {},
   ) {
+    const filter = {
+      ...baseFilter,
+      ...(query.cursor
+        ? { _id: { $lt: new Types.ObjectId(query.cursor) } }
+        : {}),
+    };
     const records = await model
-      .find(
-        query.cursor ? { _id: { $lt: new Types.ObjectId(query.cursor) } } : {},
-      )
+      .find(filter)
       .sort({ _id: -1 })
       .limit(query.limit + 1)
       .lean()
       .exec();
-    const hasNextPage = records.length > query.limit;
-    const items = records.slice(0, query.limit);
+    return this.pageResult(records, query.limit);
+  }
+
+  private pageResult<T extends { _id: Types.ObjectId }>(
+    records: T[],
+    limit: number,
+  ) {
+    const hasNextPage = records.length > limit;
+    const items = records.slice(0, limit);
     return {
       items,
       pagination: {
         nextCursor: hasNextPage ? items.at(-1)?._id.toString() : null,
         previousCursor: null,
         hasNextPage,
-        limit: query.limit,
+        limit,
       },
     };
   }

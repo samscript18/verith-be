@@ -1236,6 +1236,26 @@
         ]
       }
     },
+    "/api/v1/verifications/allowance": {
+      "get": {
+        "operationId": "VerificationsController_allowance",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get today’s investigation allowance",
+        "tags": [
+          "Verifications"
+        ]
+      }
+    },
     "/api/v1/verifications/{id}": {
       "get": {
         "operationId": "VerificationsController_get",
@@ -1356,6 +1376,74 @@
           }
         ],
         "summary": "List extracted claims and search queries",
+        "tags": [
+          "Verifications"
+        ]
+      }
+    },
+    "/api/v1/verifications/{id}/guidance": {
+      "get": {
+        "operationId": "VerificationsController_guidanceFor",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the persisted guided-investigation exercise",
+        "tags": [
+          "Verifications"
+        ]
+      }
+    },
+    "/api/v1/verifications/{id}/guidance/responses": {
+      "post": {
+        "operationId": "VerificationsController_submitGuidance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitGuidedResponsesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Submit guided-investigation reasoning",
         "tags": [
           "Verifications"
         ]
@@ -2111,6 +2199,64 @@
         ]
       }
     },
+    "/api/v1/reports/{id}/check-card": {
+      "get": {
+        "operationId": "ReportsController_checkCard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a public-safe check card from report data",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/{id}/check-card.svg": {
+      "get": {
+        "operationId": "ReportsController_checkCardSvg",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a public-safe Verith Check Card",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
     "/api/v1/reports/verification/{verificationId}/versions": {
       "get": {
         "operationId": "ReportsController_versions",
@@ -2188,6 +2334,72 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/{id}/coach": {
+      "get": {
+        "operationId": "ReportsController_coachFor",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get deterministic media-literacy coaching",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/{id}/evidence/{evidenceId}/inspect": {
+      "post": {
+        "operationId": "ReportsController_inspectEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "evidenceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record that the report owner opened an evidence source",
         "tags": [
           "Reports"
         ]
@@ -2453,10 +2665,913 @@
         ]
       }
     },
+    "/api/v1/admin/analytics/overview": {
+      "get": {
+        "operationId": "AnalyticsController_overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get real operational aggregates for the last 30 days",
+        "tags": [
+          "Admin analytics"
+        ]
+      }
+    },
+    "/api/v1/admin/analytics/pilots": {
+      "get": {
+        "operationId": "AnalyticsController_pilots",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get privacy-thresholded mission and pilot aggregates",
+        "tags": [
+          "Admin analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/events": {
+      "post": {
+        "operationId": "ProductAnalyticsController_record",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordAnalyticsEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a privacy-safe product interaction",
+        "tags": [
+          "Product analytics"
+        ]
+      }
+    },
+    "/api/v1/gamification/me": {
+      "get": {
+        "operationId": "GamificationController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification"
+        ]
+      }
+    },
+    "/api/v1/gamification/transactions": {
+      "get": {
+        "operationId": "GamificationController_transactions",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification"
+        ]
+      }
+    },
+    "/api/v1/gamification/badges": {
+      "get": {
+        "operationId": "GamificationController_badges",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rarity",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "earned",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ALL",
+              "type": "string",
+              "enum": [
+                "ALL",
+                "EARNED",
+                "LOCKED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Gamification"
+        ]
+      }
+    },
+    "/api/v1/gamification/badges/me": {
+      "get": {
+        "operationId": "GamificationController_myBadges",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rarity",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "earned",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ALL",
+              "type": "string",
+              "enum": [
+                "ALL",
+                "EARNED",
+                "LOCKED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification"
+        ]
+      }
+    },
+    "/api/v1/gamification/leaderboards": {
+      "get": {
+        "operationId": "GamificationController_leaderboard",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ALL_TIME",
+              "type": "string",
+              "enum": [
+                "WEEKLY",
+                "MONTHLY",
+                "ALL_TIME"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Gamification"
+        ]
+      }
+    },
+    "/api/v1/gamification/celebrations/claim": {
+      "post": {
+        "operationId": "GamificationController_claimCelebrations",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification"
+        ]
+      }
+    },
+    "/api/v1/gamification/celebrations/{id}/seen": {
+      "patch": {
+        "operationId": "GamificationController_acknowledgeCelebration",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcknowledgeCelebrationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification"
+        ]
+      }
+    },
+    "/api/v1/admin/gamification/badges": {
+      "get": {
+        "operationId": "GamificationAdminController_listBadges",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rarity",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification Admin"
+        ]
+      },
+      "post": {
+        "operationId": "GamificationAdminController_createBadge",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBadgeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification Admin"
+        ]
+      }
+    },
+    "/api/v1/admin/gamification/badges/{id}": {
+      "get": {
+        "operationId": "GamificationAdminController_getBadge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification Admin"
+        ]
+      },
+      "patch": {
+        "operationId": "GamificationAdminController_updateBadge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBadgeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification Admin"
+        ]
+      },
+      "delete": {
+        "operationId": "GamificationAdminController_archiveBadge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Gamification Admin"
+        ]
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationUnreadCountDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_readAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "delete": {
+        "operationId": "NotificationsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/admin/notifications/product-messages": {
+      "post": {
+        "operationId": "NotificationsAdminController_broadcastProductMessage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Notifications Admin"
+        ]
+      }
+    },
+    "/api/v1/mil/profile": {
+      "get": {
+        "operationId": "MilController_profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Media Literacy"
+        ]
+      }
+    },
+    "/api/v1/mil/profile/evidence": {
+      "get": {
+        "operationId": "MilController_evidence",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Media Literacy"
+        ]
+      }
+    },
+    "/api/v1/entitlements/me": {
+      "get": {
+        "operationId": "EntitlementsController_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the current effective product entitlement",
+        "tags": [
+          "Entitlements"
+        ]
+      }
+    },
+    "/api/v1/admin/entitlements/{userId}": {
+      "put": {
+        "operationId": "EntitlementsController_grant",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantEntitlementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Grant a sponsored or administrative entitlement",
+        "tags": [
+          "Entitlements"
+        ]
+      }
+    },
     "/api/v1/learning/courses": {
       "get": {
         "operationId": "LearningController_listCourses",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "difficulty",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -2610,7 +3725,82 @@
     "/api/v1/admin/learning/courses": {
       "get": {
         "operationId": "LearningAdminController_listCourses",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "IN_REVIEW",
+                "PUBLISHED",
+                "ARCHIVED"
+              ]
+            }
+          },
+          {
+            "name": "difficulty",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -2756,7 +3946,82 @@
     "/api/v1/admin/learning/lessons": {
       "get": {
         "operationId": "LearningAdminController_listLessons",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "IN_REVIEW",
+                "PUBLISHED",
+                "ARCHIVED"
+              ]
+            }
+          },
+          {
+            "name": "difficulty",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -3088,7 +4353,68 @@
     "/api/v1/admin/quizzes": {
       "get": {
         "operationId": "QuizzesAdminController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PUBLISHED",
+                "ARCHIVED"
+              ]
+            }
+          },
+          {
+            "name": "courseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lessonId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -3269,28 +4595,9 @@
         ]
       }
     },
-    "/api/v1/gamification/me": {
+    "/api/v1/challenges": {
       "get": {
-        "operationId": "GamificationController_me",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification"
-        ]
-      }
-    },
-    "/api/v1/gamification/transactions": {
-      "get": {
-        "operationId": "GamificationController_transactions",
+        "operationId": "ChallengesController_list",
         "parameters": [
           {
             "name": "cursor",
@@ -3306,250 +4613,45 @@
             "in": "query",
             "schema": {
               "minimum": 1,
-              "maximum": 100,
-              "default": 20,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification"
-        ]
-      }
-    },
-    "/api/v1/gamification/badges": {
-      "get": {
-        "operationId": "GamificationController_badges",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Gamification"
-        ]
-      }
-    },
-    "/api/v1/gamification/badges/me": {
-      "get": {
-        "operationId": "GamificationController_myBadges",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification"
-        ]
-      }
-    },
-    "/api/v1/gamification/leaderboards": {
-      "get": {
-        "operationId": "GamificationController_leaderboard",
-        "parameters": [
-          {
-            "name": "period",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "default": "ALL_TIME",
-              "type": "string",
-              "enum": [
-                "WEEKLY",
-                "MONTHLY",
-                "ALL_TIME"
+              "maximum": 50,
+              "default": 12,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
               ]
             }
           },
           {
-            "name": "limit",
+            "name": "search",
             "required": false,
             "in": "query",
             "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20,
-              "type": "number"
+              "type": "string"
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Gamification"
-        ]
-      }
-    },
-    "/api/v1/admin/gamification/badges": {
-      "get": {
-        "operationId": "GamificationAdminController_listBadges",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
+          },
           {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification Admin"
-        ]
-      },
-      "post": {
-        "operationId": "GamificationAdminController_createBadge",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateBadgeDto"
-              }
+            "name": "difficulty",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
             }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
+          },
           {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification Admin"
-        ]
-      }
-    },
-    "/api/v1/admin/gamification/badges/{id}": {
-      "get": {
-        "operationId": "GamificationAdminController_getBadge",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
+            "name": "tag",
+            "required": false,
+            "in": "query",
             "schema": {
               "type": "string"
             }
           }
         ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification Admin"
-        ]
-      },
-      "patch": {
-        "operationId": "GamificationAdminController_updateBadge",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateBadgeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification Admin"
-        ]
-      },
-      "delete": {
-        "operationId": "GamificationAdminController_archiveBadge",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdminReasonDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Gamification Admin"
-        ]
-      }
-    },
-    "/api/v1/challenges": {
-      "get": {
-        "operationId": "ChallengesController_list",
-        "parameters": [],
         "responses": {
           "200": {
             "description": ""
@@ -3664,7 +4766,75 @@
     "/api/v1/admin/challenges": {
       "get": {
         "operationId": "ChallengesAdminController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "SCHEDULED",
+                "PUBLISHED",
+                "EXPIRED",
+                "ARCHIVED"
+              ]
+            }
+          },
+          {
+            "name": "difficulty",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -3845,146 +5015,6 @@
         ]
       }
     },
-    "/api/v1/notifications/unread-count": {
-      "get": {
-        "operationId": "NotificationsController_unreadCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationUnreadCountDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications": {
-      "get": {
-        "operationId": "NotificationsController_list",
-        "parameters": [
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20,
-              "type": "number"
-            }
-          },
-          {
-            "name": "cursor",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/{id}/read": {
-      "patch": {
-        "operationId": "NotificationsController_read",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/read-all": {
-      "patch": {
-        "operationId": "NotificationsController_readAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/{id}": {
-      "delete": {
-        "operationId": "NotificationsController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
     "/api/v1/whatsapp/link-code": {
       "post": {
         "operationId": "WhatsAppController_linkCode",
@@ -4039,26 +5069,6 @@
         ],
         "tags": [
           "WhatsApp"
-        ]
-      }
-    },
-    "/api/v1/admin/analytics/overview": {
-      "get": {
-        "operationId": "AnalyticsController_overview",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get real operational aggregates for the last 30 days",
-        "tags": [
-          "Admin analytics"
         ]
       }
     },
@@ -4145,6 +5155,239 @@
         "summary": "Download a completed account export",
         "tags": [
           "Privacy"
+        ]
+      }
+    },
+    "/api/v1/missions": {
+      "get": {
+        "operationId": "MissionsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Community Missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{slug}": {
+      "get": {
+        "operationId": "MissionsController_get",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Community Missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{slug}/join": {
+      "post": {
+        "operationId": "MissionsController_join",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinMissionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Community Missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{slug}/assessments/{phase}": {
+      "get": {
+        "operationId": "MissionsController_assessment",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "phase",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Community Missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{slug}/assessments/{phase}/attempts": {
+      "post": {
+        "operationId": "MissionsController_submit",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "phase",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitMissionAssessmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Community Missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{slug}/scenarios/complete": {
+      "post": {
+        "operationId": "MissionsController_scenario",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMissionScenarioDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Community Missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{slug}/impact": {
+      "get": {
+        "operationId": "MissionsController_impact",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Community Missions"
         ]
       }
     }
@@ -4406,6 +5649,14 @@
       "CreateVerificationDto": {
         "type": "object",
         "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "GUIDED"
+            ],
+            "default": "STANDARD"
+          },
           "sourceType": {
             "type": "string",
             "enum": [
@@ -4460,6 +5711,41 @@
       "Object": {
         "type": "object",
         "properties": {}
+      },
+      "GuidedResponseDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string"
+          },
+          "selectedOptionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "questionId"
+        ]
+      },
+      "SubmitGuidedResponsesDto": {
+        "type": "object",
+        "properties": {
+          "responses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GuidedResponseDto"
+            }
+          }
+        },
+        "required": [
+          "responses"
+        ]
       },
       "UpdateVerificationVisibilityDto": {
         "type": "object",
@@ -4555,6 +5841,67 @@
         "type": "object",
         "properties": {}
       },
+      "RecordAnalyticsEventDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AcknowledgeCelebrationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateBadgeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateBadgeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "NotificationUnreadCountDto": {
+        "type": "object",
+        "properties": {
+          "unreadCount": {
+            "type": "number",
+            "description": "Number of persisted notifications not yet marked as read",
+            "example": 3,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "unreadCount"
+        ]
+      },
+      "ProductMessageDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "actionUrl": {
+            "type": "string",
+            "example": "/app/learning"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Stable reference used to prevent duplicate broadcasts",
+            "example": "learning-catalog-august-2026"
+          }
+        },
+        "required": [
+          "title",
+          "message",
+          "reference"
+        ]
+      },
+      "GrantEntitlementDto": {
+        "type": "object",
+        "properties": {}
+      },
       "UpdateLessonProgressDto": {
         "type": "object",
         "properties": {
@@ -4635,14 +5982,6 @@
         "type": "object",
         "properties": {}
       },
-      "CreateBadgeDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateBadgeDto": {
-        "type": "object",
-        "properties": {}
-      },
       "SubmitChallengeDto": {
         "type": "object",
         "properties": {}
@@ -4659,19 +5998,17 @@
         "type": "object",
         "properties": {}
       },
-      "NotificationUnreadCountDto": {
+      "JoinMissionDto": {
         "type": "object",
-        "properties": {
-          "unreadCount": {
-            "type": "number",
-            "description": "Number of persisted notifications not yet marked as read",
-            "example": 3,
-            "minimum": 0
-          }
-        },
-        "required": [
-          "unreadCount"
-        ]
+        "properties": {}
+      },
+      "SubmitMissionAssessmentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CompleteMissionScenarioDto": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

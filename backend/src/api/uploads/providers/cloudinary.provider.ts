@@ -8,6 +8,7 @@ import type {
   CloudinaryAsset,
   CloudinaryProvider,
 } from '../interfaces/cloudinary-provider.interface';
+import { normalizeCloudinaryAsset } from './cloudinary-asset.normalizer';
 
 @Injectable()
 export class CloudinaryProviderAdapter implements CloudinaryProvider {
@@ -60,8 +61,9 @@ export class CloudinaryProviderAdapter implements CloudinaryProvider {
       const result = (await cloudinary.api.resource(publicId, {
         resource_type: resourceType,
         context: true,
+        ...(resourceType === 'video' ? { media_metadata: true } : {}),
       })) as unknown;
-      return this.normalizeAsset(result);
+      return normalizeCloudinaryAsset(result);
     } catch {
       throw new ExternalProviderException(
         'Cloudinary could not verify the uploaded asset',
@@ -86,66 +88,6 @@ export class CloudinaryProviderAdapter implements CloudinaryProvider {
         'CLOUDINARY_DELETE_FAILED',
       );
     }
-  }
-
-  private normalizeAsset(value: unknown): CloudinaryAsset {
-    if (
-      typeof value !== 'object' ||
-      value === null ||
-      !('public_id' in value) ||
-      !('resource_type' in value) ||
-      !('bytes' in value) ||
-      !('secure_url' in value) ||
-      !('version' in value)
-    ) {
-      throw new ExternalProviderException(
-        'Cloudinary returned an invalid asset response',
-        'CLOUDINARY_INVALID_RESPONSE',
-      );
-    }
-    const context = this.readContext(value);
-    return {
-      publicId: String(value.public_id),
-      resourceType: String(value.resource_type),
-      bytes: Number(value.bytes),
-      secureUrl: String(value.secure_url),
-      version: Number(value.version),
-      ...('format' in value && typeof value.format === 'string'
-        ? { format: value.format }
-        : {}),
-      ...('width' in value && value.width
-        ? { width: Number(value.width) }
-        : {}),
-      ...('height' in value && value.height
-        ? { height: Number(value.height) }
-        : {}),
-      ...('duration' in value && value.duration
-        ? { duration: Number(value.duration) }
-        : {}),
-      ...(context.ownerId ? { ownerId: context.ownerId } : {}),
-      ...(context.assetId ? { assetId: context.assetId } : {}),
-    };
-  }
-
-  private readContext(value: object): { ownerId?: string; assetId?: string } {
-    if (
-      !('context' in value) ||
-      typeof value.context !== 'object' ||
-      !value.context
-    ) {
-      return {};
-    }
-    const context = value.context;
-    const custom =
-      'custom' in context &&
-      typeof context.custom === 'object' &&
-      context.custom
-        ? context.custom
-        : context;
-    return {
-      ...('owner_id' in custom ? { ownerId: String(custom.owner_id) } : {}),
-      ...('asset_id' in custom ? { assetId: String(custom.asset_id) } : {}),
-    };
   }
 
   private isSuccessfulDeletion(value: unknown): boolean {

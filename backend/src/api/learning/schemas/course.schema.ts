@@ -38,3 +38,4 @@ export class Course {
 
 export const CourseSchema = SchemaFactory.createForClass(Course);
 CourseSchema.index({ status: 1, publishedAt: -1 });
+CourseSchema.index({ status: 1, difficulty: 1, _id: -1 });

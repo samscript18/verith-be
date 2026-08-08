@@ -15,6 +15,8 @@ export class Challenge {
   scenario!: string;
   @Prop({ required: true })
   content!: string;
+  @Prop({ type: [String], default: [], index: true })
+  tags!: string[];
   @Prop({ type: Types.ObjectId })
   mediaAssetId?: Types.ObjectId;
   @Prop({
@@ -55,6 +57,9 @@ export class Challenge {
   status!: ChallengeStatus;
   @Prop({ type: Types.ObjectId, required: true })
   createdBy!: Types.ObjectId;
+  @Prop()
+  notificationBroadcastAt?: Date;
 }
 export const ChallengeSchema = SchemaFactory.createForClass(Challenge);
 ChallengeSchema.index({ status: 1, publishAt: 1, expiresAt: 1 });
+ChallengeSchema.index({ status: 1, difficulty: 1, _id: -1 });

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
@@ -41,6 +41,7 @@ export interface SignedUploadResult {
 
 @Injectable()
 export class UploadsService {
+  private readonly logger = new Logger(UploadsService.name);
   private readonly config: CloudinaryConfig;
 
   constructor(
@@ -168,6 +169,15 @@ export class UploadsService {
             secureUrl: providerAsset.secureUrl,
             providerVersion: providerAsset.version,
             signatureVerifiedAt: new Date(),
+            metadata: {
+              ...asset.metadata,
+              ...(providerAsset.providerAssetId
+                ? { providerAssetId: providerAsset.providerAssetId }
+                : {}),
+              deliveryType: providerAsset.deliveryType,
+              uploadPolicyId: asset.id,
+              integrityStatus: 'VERIFIED',
+            },
           },
           $unset: { deleteAfter: 1 },
         },
@@ -383,26 +393,94 @@ export class UploadsService {
       this.config.maxVideoBytes,
     );
     const format = providerAsset.format?.toLowerCase();
-    if (
-      providerAsset.publicId !== asset.publicId ||
-      providerAsset.resourceType !== policy.resourceType ||
-      providerAsset.ownerId !== ownerId ||
-      providerAsset.assetId !== asset.id ||
-      providerAsset.version !== version ||
-      !format ||
-      !policy.allowedFormats.includes(format) ||
-      providerAsset.bytes <= 0 ||
-      providerAsset.bytes > policy.maxBytes ||
-      (policy.maxDurationSeconds !== undefined &&
-        (typeof providerAsset.duration !== 'number' ||
-          providerAsset.duration <= 0 ||
-          providerAsset.duration > policy.maxDurationSeconds))
-    ) {
-      throw new ConflictException(
-        'The provider asset does not match the signed upload policy',
-        'UPLOAD_POLICY_MISMATCH',
+    if (providerAsset.publicId !== asset.publicId)
+      this.policyMismatch(asset, 'publicId');
+    if (providerAsset.resourceType.toLowerCase() !== policy.resourceType)
+      this.policyMismatch(
+        asset,
+        'resourceType',
+        policy.resourceType,
+        providerAsset.resourceType,
       );
+    if (providerAsset.deliveryType.toLowerCase() !== 'upload')
+      this.policyMismatch(
+        asset,
+        'deliveryType',
+        'upload',
+        providerAsset.deliveryType,
+      );
+    if (providerAsset.ownerId !== ownerId) this.policyMismatch(asset, 'owner');
+    if (providerAsset.assetId !== asset.id)
+      this.policyMismatch(asset, 'uploadPolicyId');
+    if (providerAsset.version !== version)
+      this.policyMismatch(asset, 'version', version, providerAsset.version);
+    if (!format || !policy.allowedFormats.includes(format))
+      this.policyMismatch(asset, 'format', policy.allowedFormats, format);
+    if (!Number.isFinite(providerAsset.bytes) || providerAsset.bytes <= 0)
+      this.policyMismatch(asset, 'fileSize', 'positive', providerAsset.bytes);
+    if (providerAsset.bytes > policy.maxBytes)
+      this.policyMismatch(
+        asset,
+        'fileSize',
+        policy.maxBytes,
+        providerAsset.bytes,
+      );
+    if (policy.maxDurationSeconds !== undefined) {
+      if (
+        typeof providerAsset.duration !== 'number' ||
+        !Number.isFinite(providerAsset.duration) ||
+        providerAsset.duration <= 0
+      ) {
+        this.logger.warn({
+          event: 'cloudinary_duration_metadata_unavailable',
+          mediaAssetId: asset.id,
+          provider: asset.provider,
+          assetType: asset.assetType,
+        });
+        throw new ExternalProviderException(
+          'Cloudinary has not finished preparing the video metadata. Retry confirmation shortly; the uploaded file does not need to be uploaded again.',
+          'CLOUDINARY_DURATION_UNAVAILABLE',
+        );
+      }
+      if (providerAsset.duration > policy.maxDurationSeconds) {
+        this.policyMismatch(
+          asset,
+          'duration',
+          policy.maxDurationSeconds,
+          providerAsset.duration,
+        );
+      }
     }
+    let secureUrl: URL;
+    try {
+      secureUrl = new URL(providerAsset.secureUrl);
+    } catch {
+      this.policyMismatch(asset, 'secureUrl', 'https');
+    }
+    if (secureUrl.protocol !== 'https:')
+      this.policyMismatch(asset, 'secureUrl', 'https');
+  }
+
+  private policyMismatch(
+    asset: MediaAssetDocument,
+    field: string,
+    expected?: unknown,
+    actual?: unknown,
+  ): never {
+    this.logger.warn({
+      event: 'upload_policy_mismatch',
+      mediaAssetId: asset.id,
+      provider: asset.provider,
+      assetType: asset.assetType,
+      mismatchField: field,
+      ...(expected !== undefined ? { expected } : {}),
+      ...(actual !== undefined ? { actual } : {}),
+    });
+    throw new ConflictException(
+      'The provider asset does not match the signed upload policy',
+      'UPLOAD_POLICY_MISMATCH',
+      { field },
+    );
   }
 
   private mimeType(asset: CloudinaryAsset, assetType: AssetType): string {

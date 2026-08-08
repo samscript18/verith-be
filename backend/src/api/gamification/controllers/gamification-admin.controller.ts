@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -19,7 +20,11 @@ import type { RequestWithId } from '../../../core/types/request-with-id.type';
 import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 import { AdminReasonDto } from '../../admin/dto/admin.dto';
 import { UserRole } from '../../users/enums/user-role.enum';
-import { CreateBadgeDto, UpdateBadgeDto } from '../dto/gamification.dto';
+import {
+  BadgeAdminQueryDto,
+  CreateBadgeDto,
+  UpdateBadgeDto,
+} from '../dto/gamification.dto';
 import { GamificationService } from '../services/gamification.service';
 
 @ApiTags('Gamification Admin')
@@ -31,8 +36,8 @@ export class GamificationAdminController {
   constructor(private readonly gamification: GamificationService) {}
 
   @Get('badges')
-  listBadges() {
-    return this.gamification.listBadgesAdmin();
+  listBadges(@Query() query: BadgeAdminQueryDto) {
+    return this.gamification.listBadgesAdmin(query);
   }
 
   @Get('badges/:id')

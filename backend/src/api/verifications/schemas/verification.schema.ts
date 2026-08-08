@@ -4,6 +4,39 @@ import { VerificationSourceType } from '../enums/verification-source-type.enum';
 import { VerificationStage } from '../enums/verification-stage.enum';
 import { VerificationStatus } from '../enums/verification-status.enum';
 import { VerificationVisibility } from '../enums/verification-visibility.enum';
+import { UsageReservationStatus } from '../enums/usage-reservation-status.enum';
+import { InvestigationMode } from '../enums/investigation-mode.enum';
+
+@Schema({ _id: false })
+export class VerificationUsageReservation {
+  @Prop({ type: Types.ObjectId, required: true })
+  usageId!: Types.ObjectId;
+
+  @Prop({ default: 0, min: 0 })
+  attempt!: number;
+
+  @Prop({ required: true })
+  dateKey!: string;
+
+  @Prop({ required: true })
+  timezone!: string;
+
+  @Prop({ required: true, min: 1 })
+  cost!: number;
+
+  @Prop({ enum: UsageReservationStatus, required: true })
+  status!: UsageReservationStatus;
+
+  @Prop({ required: true })
+  resetAt!: Date;
+
+  @Prop()
+  transitionedAt?: Date;
+}
+
+const VerificationUsageReservationSchema = SchemaFactory.createForClass(
+  VerificationUsageReservation,
+);
 
 @Schema({
   timestamps: true,
@@ -11,6 +44,9 @@ import { VerificationVisibility } from '../enums/verification-visibility.enum';
   versionKey: 'version',
 })
 export class Verification {
+  @Prop({ enum: InvestigationMode, default: InvestigationMode.STANDARD })
+  mode!: InvestigationMode;
+
   @Prop({ type: Types.ObjectId, required: true })
   userId!: Types.ObjectId;
 
@@ -100,6 +136,9 @@ export class Verification {
 
   @Prop({ default: 0, select: false })
   eventSequence!: number;
+
+  @Prop({ type: VerificationUsageReservationSchema })
+  usageReservation?: VerificationUsageReservation;
 
   createdAt!: Date;
   updatedAt!: Date;

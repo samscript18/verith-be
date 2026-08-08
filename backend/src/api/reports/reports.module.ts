@@ -36,10 +36,22 @@ import {
 } from './schemas/report-feedback.schema';
 import { Report, ReportSchema } from './schemas/report.schema';
 import { ReportService } from './services/report.service';
+import { MilCoachService } from './services/mil-coach.service';
+import { CheckCardService } from './services/check-card.service';
+import { AnalyticsModule } from '../analytics/analytics.module';
+import { Lesson, LessonSchema } from '../learning/schemas/lesson.schema';
+import { Course, CourseSchema } from '../learning/schemas/course.schema';
+import {
+  Challenge,
+  ChallengeSchema,
+} from '../challenges/schemas/challenge.schema';
+import { GamificationModule } from '../gamification/gamification.module';
 
 @Module({
   imports: [
     AdminModule,
+    AnalyticsModule,
+    GamificationModule,
     MongooseModule.forFeature([
       { name: Report.name, schema: ReportSchema },
       { name: ReportFeedback.name, schema: ReportFeedbackSchema },
@@ -51,6 +63,9 @@ import { ReportService } from './services/report.service';
       { name: Evidence.name, schema: EvidenceSchema },
       { name: MediaAnalysis.name, schema: MediaAnalysisSchema },
       { name: Transcript.name, schema: TranscriptSchema },
+      { name: Lesson.name, schema: LessonSchema },
+      { name: Course.name, schema: CourseSchema },
+      { name: Challenge.name, schema: ChallengeSchema },
     ]),
   ],
   controllers: [
@@ -58,7 +73,7 @@ import { ReportService } from './services/report.service';
     PublicReportsController,
     ReportFeedbackAdminController,
   ],
-  providers: [ReportService],
-  exports: [ReportService, MongooseModule],
+  providers: [ReportService, MilCoachService, CheckCardService],
+  exports: [ReportService, MilCoachService, CheckCardService, MongooseModule],
 })
 export class ReportsModule {}

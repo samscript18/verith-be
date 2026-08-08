@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { PartialType } from '@nestjs/swagger';
+import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -45,6 +45,11 @@ export class CreateChallengeDto {
   @IsString() @MinLength(3) @MaxLength(100) slug!: string;
   @IsString() @MinLength(3) @MaxLength(3000) scenario!: string;
   @IsString() @MinLength(3) @MaxLength(10000) content!: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  tags?: string[];
   @IsOptional() @IsMongoId() mediaAssetId?: string;
   @IsArray()
   @ArrayMinSize(1)
@@ -64,8 +69,62 @@ export class UpdateChallengeStatusDto {
 }
 export class UpdateChallengeDto extends PartialType(CreateChallengeDto) {}
 export class ChallengeAdminQueryDto {
-  @IsOptional() @IsMongoId() cursor?: string;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
+  @ApiPropertyOptional({ default: 20, maximum: 100, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+  @ApiPropertyOptional({ enum: ChallengeStatus })
+  @IsOptional()
+  @IsEnum(ChallengeStatus)
+  status?: ChallengeStatus;
+  @ApiPropertyOptional({ enum: ChallengeDifficulty })
+  @IsOptional()
+  @IsEnum(ChallengeDifficulty)
+  difficulty?: ChallengeDifficulty;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  tag?: string;
+}
+export class ChallengeCatalogQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
+  @ApiPropertyOptional({ default: 12, maximum: 50, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit = 12;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+  @ApiPropertyOptional({ enum: ChallengeDifficulty })
+  @IsOptional()
+  @IsEnum(ChallengeDifficulty)
+  difficulty?: ChallengeDifficulty;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  tag?: string;
 }
 class ChallengeAnswerDto {
   @IsString() questionId!: string;

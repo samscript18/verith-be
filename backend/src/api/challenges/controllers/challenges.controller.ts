@@ -1,18 +1,29 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
-import { SubmitChallengeDto } from '../dto/challenge.dto';
+import {
+  ChallengeCatalogQueryDto,
+  SubmitChallengeDto,
+} from '../dto/challenge.dto';
 import { ChallengesService } from '../services/challenges.service';
 
 @ApiTags('Challenges')
 @Controller('challenges')
 export class ChallengesController {
   constructor(private readonly challenges: ChallengesService) {}
-  @Get() list() {
-    return this.challenges.listAvailable();
+  @Get() list(@Query() query: ChallengeCatalogQueryDto) {
+    return this.challenges.listAvailable(query);
   }
   @Get('today') today() {
     return this.challenges.today();

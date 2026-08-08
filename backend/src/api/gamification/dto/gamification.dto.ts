@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -7,6 +7,7 @@ import {
   IsMongoId,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -50,6 +51,61 @@ export class RewardTransactionQueryDto {
   limit = 20;
 }
 
+export enum BadgeEarnedFilter {
+  ALL = 'ALL',
+  EARNED = 'EARNED',
+  LOCKED = 'LOCKED',
+}
+
+export class BadgeQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
+  @ApiPropertyOptional({ default: 20, maximum: 100, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  category?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  rarity?: string;
+}
+
+export class BadgeCatalogQueryDto extends BadgeQueryDto {
+  @ApiPropertyOptional({
+    default: BadgeEarnedFilter.ALL,
+    enum: BadgeEarnedFilter,
+  })
+  @IsOptional()
+  @IsEnum(BadgeEarnedFilter)
+  earned = BadgeEarnedFilter.ALL;
+}
+
+export class BadgeAdminQueryDto extends BadgeQueryDto {
+  @ApiPropertyOptional({ type: Boolean })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
+  @IsBoolean()
+  active?: boolean;
+}
+
 export class CreateBadgeDto {
   @IsString() @MinLength(2) @MaxLength(100) name!: string;
   @IsString() @MinLength(2) @MaxLength(100) slug!: string;
@@ -63,3 +119,8 @@ export class CreateBadgeDto {
 }
 
 export class UpdateBadgeDto extends PartialType(CreateBadgeDto) {}
+
+export class AcknowledgeCelebrationDto {
+  @IsUUID()
+  claimToken!: string;
+}

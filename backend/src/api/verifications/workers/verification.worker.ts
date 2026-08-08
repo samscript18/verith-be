@@ -1,4 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import type { VerificationJobData } from '../interfaces/verification-job.interface';
 import { VerificationOrchestratorService } from '../services/verification-orchestrator.service';
@@ -14,11 +15,17 @@ import { VERIFICATION_QUEUE } from '../verification.constants';
   stalledInterval: 600_000,
 })
 export class VerificationWorker extends WorkerHost {
+  private readonly logger = new Logger(VerificationWorker.name);
+
   constructor(private readonly orchestrator: VerificationOrchestratorService) {
     super();
   }
 
   process(job: Job<VerificationJobData>): Promise<void> {
+    this.logger.debug({
+      event: 'verification_job_started',
+      attempt: job.attemptsMade + 1,
+    });
     return this.orchestrator.initialize({
       ...job.data,
       attempt: job.attemptsMade + 1,

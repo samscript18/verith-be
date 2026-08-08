@@ -25,13 +25,19 @@ import {
 } from '../dto/report.dto';
 import { ReportExportFormat } from '../enums/report.enum';
 import { ReportService } from '../services/report.service';
+import { MilCoachService } from '../services/mil-coach.service';
+import { CheckCardService } from '../services/check-card.service';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('reports')
 export class ReportsController {
-  constructor(private readonly reports: ReportService) {}
+  constructor(
+    private readonly reports: ReportService,
+    private readonly coach: MilCoachService,
+    private readonly checkCards: CheckCardService,
+  ) {}
 
   @Get('verification/:verificationId/latest')
   latest(
@@ -39,6 +45,34 @@ export class ReportsController {
     @Param('verificationId', ParseObjectIdPipe) verificationId: string,
   ) {
     return this.reports.latestOwned(user.userId, verificationId);
+  }
+
+  @Get(':id/check-card')
+  @ApiOperation({ summary: 'Get a public-safe check card from report data' })
+  checkCard(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    return this.checkCards.forOwner(user.userId, id);
+  }
+
+  @Get(':id/check-card.svg')
+  @SkipResponseEnvelope()
+  @ApiOperation({ summary: 'Download a public-safe Verith Check Card' })
+  async checkCardSvg(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const card = await this.checkCards.forOwner(user.userId, id);
+    const bytes = this.checkCards.renderSvg(card);
+    response.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="verith-check-card-v${card.reportVersion}.svg"`,
+    );
+    response.setHeader('Content-Length', String(bytes.length));
+    return new StreamableFile(bytes);
   }
 
   @Get('verification/:verificationId/versions')
@@ -55,6 +89,27 @@ export class ReportsController {
     @Param('id', ParseObjectIdPipe) id: string,
   ) {
     return this.reports.getOwned(user.userId, id);
+  }
+
+  @Get(':id/coach')
+  @ApiOperation({ summary: 'Get deterministic media-literacy coaching' })
+  coachFor(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    return this.coach.forReport(user.userId, id);
+  }
+
+  @Post(':id/evidence/:evidenceId/inspect')
+  @ApiOperation({
+    summary: 'Record that the report owner opened an evidence source',
+  })
+  inspectEvidence(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('evidenceId') evidenceId: string,
+  ) {
+    return this.reports.inspectEvidence(user.userId, id, evidenceId);
   }
 
   @Patch(':id/visibility')

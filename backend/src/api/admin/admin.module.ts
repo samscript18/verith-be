@@ -1,4 +1,3 @@
-import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Session, SessionSchema } from '../auth/schemas/session.schema';
@@ -7,7 +6,7 @@ import {
   Verification,
   VerificationSchema,
 } from '../verifications/schemas/verification.schema';
-import { VERIFICATION_QUEUE } from '../verifications/verification.constants';
+import { VerificationQueueModule } from '../verifications/verification-queue.module';
 import { AdminController } from './controllers/admin.controller';
 import { AuditLog, AuditLogSchema } from './schemas/audit-log.schema';
 import { AdminService } from './services/admin.service';
@@ -21,7 +20,7 @@ import { AuditService } from './services/audit.service';
       { name: Session.name, schema: SessionSchema },
       { name: Verification.name, schema: VerificationSchema },
     ]),
-    BullModule.registerQueue({ name: VERIFICATION_QUEUE }),
+    VerificationQueueModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, AuditService],

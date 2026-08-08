@@ -1,6 +1,8 @@
 export interface CloudinaryAsset {
+  providerAssetId?: string;
   publicId: string;
   resourceType: string;
+  deliveryType: string;
   format?: string;
   bytes: number;
   width?: number;

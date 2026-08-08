@@ -13,10 +13,12 @@ import { RewardTransactionType } from '../../gamification/enums/gamification.enu
 import { QuizQuestionType } from '../../quizzes/enums/quiz.enum';
 import type {
   CreateChallengeDto,
+  ChallengeCatalogQueryDto,
   ChallengeAdminQueryDto,
   SubmitChallengeDto,
   UpdateChallengeDto,
 } from '../dto/challenge.dto';
+import { searchPattern } from '../../../shared/utils/search-query';
 import { ChallengeStatus } from '../enums/challenge.enum';
 import { ChallengeAttempt } from '../schemas/challenge-attempt.schema';
 import { Challenge, type ChallengeDocument } from '../schemas/challenge.schema';
@@ -32,10 +34,21 @@ export class ChallengesService {
   ) {}
 
   async listAdmin(query: ChallengeAdminQueryDto) {
+    const filter: Record<string, unknown> = {};
+    if (query.status) filter.status = query.status;
+    if (query.difficulty) filter.difficulty = query.difficulty;
+    if (query.tag) filter.tags = query.tag.trim().toLowerCase();
+    if (query.search) {
+      const pattern = searchPattern(query.search);
+      filter.$or = [
+        { title: pattern },
+        { slug: pattern },
+        { scenario: pattern },
+      ];
+    }
+    if (query.cursor) filter._id = { $lt: new Types.ObjectId(query.cursor) };
     const records = await this.challenges
-      .find(
-        query.cursor ? { _id: { $lt: new Types.ObjectId(query.cursor) } } : {},
-      )
+      .find(filter)
       .sort({ _id: -1 })
       .limit(query.limit + 1)
       .lean()
@@ -71,6 +84,7 @@ export class ChallengesService {
       slug: dto.slug ?? challenge.slug,
       scenario: dto.scenario ?? challenge.scenario,
       content: dto.content ?? challenge.content,
+      tags: dto.tags ?? challenge.tags,
       ...(dto.mediaAssetId || challenge.mediaAssetId
         ? {
             mediaAssetId:
@@ -92,6 +106,7 @@ export class ChallengesService {
       throw new ValidationException('Challenge expiration must follow publish');
     challenge.set({
       ...dto,
+      ...(dto.tags ? { tags: this.tags(dto.tags) } : {}),
       ...(dto.mediaAssetId
         ? { mediaAssetId: new Types.ObjectId(dto.mediaAssetId) }
         : {}),
@@ -136,6 +151,7 @@ export class ChallengesService {
     try {
       return await this.challenges.create({
         ...dto,
+        tags: this.tags(dto.tags ?? []),
         ...(dto.mediaAssetId
           ? { mediaAssetId: new Types.ObjectId(dto.mediaAssetId) }
           : {}),
@@ -173,14 +189,42 @@ export class ChallengesService {
     return this.adminProjection(challenge);
   }
 
-  async listAvailable() {
+  async listAvailable(query: ChallengeCatalogQueryDto) {
     await this.refreshStatuses();
-    return this.challenges
-      .find(this.availableQuery())
+    const filter: Record<string, unknown> = {
+      ...this.availableQuery(),
+      ...(query.cursor
+        ? { _id: { $lt: new Types.ObjectId(query.cursor) } }
+        : {}),
+    };
+    if (query.difficulty) filter.difficulty = query.difficulty;
+    if (query.tag) filter.tags = query.tag.trim().toLowerCase();
+    if (query.search) {
+      const pattern = searchPattern(query.search);
+      filter.$or = [
+        { title: pattern },
+        { scenario: pattern },
+        { tags: pattern },
+      ];
+    }
+    const records = await this.challenges
+      .find(filter)
       .select('-questions.correctOptionIds -questions.explanation -createdBy')
-      .sort({ publishAt: -1 })
+      .sort({ _id: -1 })
+      .limit(query.limit + 1)
       .lean()
       .exec();
+    const hasNextPage = records.length > query.limit;
+    const items = records.slice(0, query.limit);
+    return {
+      items,
+      pagination: {
+        nextCursor: hasNextPage ? items.at(-1)?._id.toString() : null,
+        previousCursor: null,
+        hasNextPage,
+        limit: query.limit,
+      },
+    };
   }
 
   async today() {
@@ -278,7 +322,11 @@ export class ChallengesService {
         idempotencyReference: `challenge:${challenge._id.toString()}:completed`,
         xp: challenge.rewardPolicy.xp,
         truthPoints: challenge.rewardPolicy.truthPoints,
-        metadata: { challengeId: challenge._id.toString(), score },
+        metadata: {
+          challengeId: challenge._id.toString(),
+          score,
+          tags: challenge.tags,
+        },
       });
       await this.gamification.recordEligibleActivity(userId);
       rewardState = reward.awarded ? 'AWARDED' : 'ALREADY_AWARDED';
@@ -348,6 +396,7 @@ export class ChallengesService {
       slug: challenge.slug,
       scenario: challenge.scenario,
       content: challenge.content,
+      tags: challenge.tags,
       mediaAssetId: challenge.mediaAssetId,
       difficulty: challenge.difficulty,
       passingScore: challenge.passingScore,
@@ -398,6 +447,14 @@ export class ChallengesService {
           'Only multiple-choice questions may have multiple correct options',
         );
     }
+  }
+
+  private tags(values: string[]): string[] {
+    return [
+      ...new Set(
+        values.map((value) => value.trim().toLowerCase()).filter(Boolean),
+      ),
+    ];
   }
 
   private isDuplicate(error: unknown): boolean {

@@ -27,6 +27,8 @@ import { VerificationEventService } from './verification-event.service';
 import { LanguageDetectionService } from './language-detection.service';
 import { TextNormalizationService } from './text-normalization.service';
 import { EvidenceSearchService } from './evidence-search.service';
+import { InvestigationUsageService } from './investigation-usage.service';
+import { GuidedInvestigationService } from './guided-investigation.service';
 
 @Injectable()
 export class ContentProcessingService {
@@ -43,6 +45,8 @@ export class ContentProcessingService {
     private readonly reports: ReportService,
     private readonly domainEvents: DomainEventPublisher,
     private readonly events: VerificationEventService,
+    private readonly usage: InvestigationUsageService,
+    private readonly guidance: GuidedInvestigationService,
   ) {}
 
   async process(
@@ -118,6 +122,8 @@ export class ContentProcessingService {
         });
       }
       if (!extracted.record) {
+        await this.guidance.prepare(verification);
+        await this.usage.consume(verification);
         verification.currentStage = VerificationStage.REPORT_SYNTHESIS;
         verification.progress = 60;
         await verification.save();
@@ -187,6 +193,8 @@ export class ContentProcessingService {
         language.language,
         requestId,
       );
+      await this.guidance.prepare(verification);
+      await this.usage.consume(verification);
       verification.claimsCount = count;
       verification.currentStage = VerificationStage.SEARCH_QUERY_GENERATION;
       verification.progress = 40;
@@ -312,8 +320,9 @@ export class ContentProcessingService {
       verification.status = VerificationStatus.FAILED;
       verification.failedAt = new Date();
       verification.failureCode = code;
-      verification.failureSummary = 'Content processing could not be completed';
-      this.applyUrlFailureState(verification, code);
+      verification.failureSummary = this.failureSummary(code);
+      this.applyUrlFailureState(verification, code, requestId);
+      await this.usage.release(verification);
       await verification.save();
       await this.events.append({
         verificationId: verification.id,
@@ -324,7 +333,7 @@ export class ContentProcessingService {
             : VerificationEventStatus.FAILED,
         progress: verification.progress,
         messageCode: code,
-        safeMessage: 'Content processing could not be completed',
+        safeMessage: this.failureSummary(code),
         requestId,
         jobId,
       });
@@ -387,7 +396,10 @@ export class ContentProcessingService {
     const url =
       typeof verification.input.url === 'string' ? verification.input.url : '';
     if (!url) throw new Error('Stored URL input is unavailable');
-    const article = await this.articles.extract(url);
+    const article = await this.articles.extract(url, {
+      requestId,
+      verificationId: verification.id,
+    });
     if (
       ![
         UrlExtractionState.EXTRACTED,
@@ -397,11 +409,25 @@ export class ContentProcessingService {
       verification.urlMetadata = {
         extractionState: article.state,
         canonicalUrl: article.canonicalUrl,
+        sourceKind: article.sourceKind,
+        extractionOutcome: article.outcome,
+        extractionStrategy: article.strategy,
+        ...(article.socialPostId ? { socialPostId: article.socialPostId } : {}),
+        ...(article.state === UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+          ? {
+              retryRecommended: false,
+              alternativeSubmission: 'PASTE_TEXT_OR_UPLOAD_SCREENSHOT',
+            }
+          : {}),
       };
       throw new ApplicationException(
-        'The article content is not accessible',
+        article.state === UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+          ? 'Verith identified this X post, but X did not provide readable post content'
+          : 'The article content is not accessible',
         422,
-        `URL_${article.state}`,
+        article.state === UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+          ? 'SOCIAL_CONTENT_RESTRICTED'
+          : `URL_${article.state}`,
       );
     }
     const record = await this.upsertContent(verification.id, article.text, {
@@ -420,6 +446,10 @@ export class ContentProcessingService {
       urlMetadata: {
         extractionState: article.state,
         canonicalUrl: article.canonicalUrl,
+        sourceKind: article.sourceKind,
+        extractionOutcome: article.outcome,
+        extractionStrategy: article.strategy,
+        ...(article.socialPostId ? { socialPostId: article.socialPostId } : {}),
         publisher: article.publisher ?? null,
         author: article.author ?? null,
         publishedAt: article.publishedAt ?? null,
@@ -455,6 +485,7 @@ export class ContentProcessingService {
   private applyUrlFailureState(
     verification: VerificationDocument,
     code: string,
+    supportReference: string,
   ): void {
     if (verification.sourceType !== VerificationSourceType.URL) return;
     const state =
@@ -470,11 +501,88 @@ export class ContentProcessingService {
                 ? UrlExtractionState.UNSAFE_URL
                 : code === 'URL_ACCESS_BLOCKED'
                   ? UrlExtractionState.BLOCKED
-                  : UrlExtractionState.UNSUPPORTED;
+                  : code === 'SOCIAL_CONTENT_RESTRICTED'
+                    ? UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+                    : code === 'URL_AUTOMATION_BLOCKED'
+                      ? UrlExtractionState.AUTOMATION_BLOCKED
+                      : code === 'URL_JAVASCRIPT_REQUIRED'
+                        ? UrlExtractionState.JAVASCRIPT_REQUIRED
+                        : code === 'URL_CONTENT_EMPTY'
+                          ? UrlExtractionState.CONTENT_EMPTY
+                          : code === 'URL_CONTENT_UNREADABLE'
+                            ? UrlExtractionState.CONTENT_UNREADABLE
+                            : UrlExtractionState.UNSUPPORTED;
     verification.urlMetadata = {
       ...(verification.urlMetadata ?? {}),
       extractionState: state,
       failureCode: code,
+      supportReference,
+      ...this.urlFailureGuidance(code),
+    };
+  }
+
+  private failureSummary(code: string): string {
+    const summaries: Record<string, string> = {
+      SOCIAL_CONTENT_RESTRICTED:
+        'X did not provide readable post content. Paste the post text or upload a screenshot to continue.',
+      URL_ACCESS_BLOCKED:
+        'The publisher blocked automated access. Try again later, paste the relevant text, or upload a screenshot.',
+      URL_FETCH_TIMEOUT:
+        'The source took too long to respond. Retry shortly or submit the content directly.',
+      URL_FETCH_UNAVAILABLE:
+        'The source is temporarily unreachable. Retry shortly or submit the content directly.',
+      URL_DNS_LOOKUP_FAILED:
+        'The source address could not be found. Check the link before trying again.',
+      URL_NOT_FOUND:
+        'The linked page was not found. Check the address or submit the content directly.',
+      URL_LOGIN_REQUIRED:
+        'This page requires a login. Paste the relevant text or upload a screenshot instead.',
+      URL_PAYWALLED:
+        'This page is behind a paywall. Paste content you are permitted to share or upload a screenshot.',
+      URL_UNSUPPORTED:
+        'Verith could not find enough readable content on this page. Paste the text or upload a screenshot.',
+      URL_CONTENT_TYPE_UNSUPPORTED:
+        'This link does not point to a readable webpage. Submit the original content using the matching input type.',
+      URL_CONTENT_EMPTY:
+        'The page responded but contained no readable content. Paste the source text or upload a screenshot.',
+      URL_CONTENT_UNREADABLE:
+        'The page opened, but Verith could not identify usable source content. Paste the text or upload a screenshot.',
+      URL_JAVASCRIPT_REQUIRED:
+        'This page requires browser JavaScript that Verith does not run. Paste the text or upload a screenshot.',
+      URL_AUTOMATION_BLOCKED:
+        'The website presented an automated-access check. Paste the text or upload a screenshot.',
+      URL_RATE_LIMITED:
+        'The website is temporarily limiting requests. Try this link again later.',
+      URL_TEMPORARY_NETWORK_FAILURE:
+        'The website is temporarily unavailable. Try this link again later.',
+    };
+    return summaries[code] ?? 'Content processing could not be completed';
+  }
+
+  private urlFailureGuidance(code: string): Record<string, unknown> {
+    const retryRecommended = [
+      'URL_FETCH_TIMEOUT',
+      'URL_FETCH_UNAVAILABLE',
+      'URL_FETCH_FAILED',
+      'URL_RATE_LIMITED',
+      'URL_TEMPORARY_NETWORK_FAILURE',
+    ].includes(code);
+    const alternativeSubmission = [
+      'SOCIAL_CONTENT_RESTRICTED',
+      'URL_ACCESS_BLOCKED',
+      'URL_LOGIN_REQUIRED',
+      'URL_PAYWALLED',
+      'URL_UNSUPPORTED',
+      'URL_CONTENT_EMPTY',
+      'URL_CONTENT_UNREADABLE',
+      'URL_JAVASCRIPT_REQUIRED',
+      'URL_AUTOMATION_BLOCKED',
+    ].includes(code)
+      ? 'PASTE_TEXT_OR_UPLOAD_SCREENSHOT'
+      : undefined;
+    return {
+      retryRecommended,
+      ...(alternativeSubmission ? { alternativeSubmission } : {}),
     };
   }
 

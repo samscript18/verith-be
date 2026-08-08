@@ -162,6 +162,7 @@ const challengeSeeds = [
       'A forwarded message says every school in your state will close tomorrow, but it names no official source.',
     content:
       'Choose the action that protects people from an unverified announcement while still allowing you to investigate it.',
+    tags: ['responsible-sharing', 'source-checking', 'evidence'],
     difficulty: 'BEGINNER',
     rewardPolicy: { xp: 20, truthPoints: 8 },
     maxAttempts: 3,
@@ -209,6 +210,7 @@ const challengeSeeds = [
       'A dramatic photograph is described as a breaking event in Lagos, but an older article appears to contain the same image.',
     content:
       'Evaluate the image and caption as separate claims, then choose the evidence that best resolves the conflict.',
+    tags: ['screenshots', 'visual-verification', 'context'],
     difficulty: 'INTERMEDIATE',
     rewardPolicy: { xp: 35, truthPoints: 15 },
     maxAttempts: 3,
@@ -254,6 +256,65 @@ const challengeSeeds = [
     ],
   },
 ];
+
+const missionAssessmentQuestions = {
+  BASELINE: [
+    {
+      id: 'baseline-sharing',
+      type: 'RESPONSIBLE_SHARING',
+      prompt: 'A forwarded voice note predicts an urgent bank shutdown but names no source. What should you do first?',
+      options: [
+        { id: 'forward', text: 'Forward it so others can prepare' },
+        { id: 'verify', text: 'Pause and check current official notices and independent reporting' },
+        { id: 'believe', text: 'Believe it because the speaker sounds confident' },
+      ],
+      correctOptionIds: ['verify'],
+      explanation: 'Confidence and urgency do not replace source evidence. Check current official and independent records before sharing.',
+      competency: 'RESPONSIBLE_SHARING',
+    },
+    {
+      id: 'baseline-context',
+      type: 'MULTIPLE_CHOICE',
+      prompt: 'Which details are essential when checking a screenshot of an announcement?',
+      options: [
+        { id: 'date', text: 'The original publication date' },
+        { id: 'source', text: 'The original account or publisher' },
+        { id: 'forwards', text: 'How many times it was forwarded' },
+      ],
+      correctOptionIds: ['date', 'source'],
+      explanation: 'Date and provenance establish context. Forward counts measure attention, not accuracy.',
+      competency: 'CONTEXT_RECOGNITION',
+    },
+  ],
+  FOLLOW_UP: [
+    {
+      id: 'followup-sharing',
+      type: 'RESPONSIBLE_SHARING',
+      prompt: 'A message says “share now before this is deleted” and cites an unnamed official. What is the strongest response?',
+      options: [
+        { id: 'share', text: 'Share immediately because deletion is possible' },
+        { id: 'pause', text: 'Identify the exact claim and verify the authority before forwarding' },
+        { id: 'ignore', text: 'Assume every urgent message is false' },
+      ],
+      correctOptionIds: ['pause'],
+      explanation: 'The evidence-first response neither spreads nor dismisses the claim without checking it.',
+      competency: 'RESPONSIBLE_SHARING',
+    },
+    {
+      id: 'followup-context',
+      type: 'SOURCE_COMPARISON',
+      prompt: 'Two websites repeat one cropped notice. What would provide genuinely stronger evidence?',
+      options: [
+        { id: 'repetition', text: 'More websites copying the same notice' },
+        { id: 'original', text: 'The complete original notice with date, publisher, and an independent confirmation' },
+        { id: 'comments', text: 'Comments saying the notice looks real' },
+      ],
+      correctOptionIds: ['original'],
+      explanation: 'Original context and independent confirmation are stronger than repeated copies or reactions.',
+      competency: 'SOURCE_INDEPENDENCE',
+    },
+  ],
+};
 
 function sameId(left, right) {
   return String(left ?? '') === String(right ?? '');
@@ -304,6 +365,9 @@ async function seed() {
   const lessons = database.collection('lessons');
   const quizzes = database.collection('quizzes');
   const challenges = database.collection('challenges');
+  const missions = database.collection('missions');
+  const missionAssessments = database.collection('mission_assessments');
+  const seeded = { courses: [], lessons: [], quizzes: [], challenges: [], missions: [] };
 
   const admin = await users.findOne({ emailNormalized: ADMIN_EMAIL });
   if (!admin)
@@ -330,8 +394,6 @@ async function seed() {
       `challenge ${challengeSeed.slug}`,
     );
   }
-
-  const seeded = { courses: [], lessons: [], quizzes: [], challenges: [] };
 
   for (const courseSeed of courseSeeds) {
     const { lesson, ...courseValues } = courseSeed;
@@ -427,6 +489,90 @@ async function seed() {
       slug: challengeSeed.slug,
     });
   }
+
+  await assertSeedOwnership(
+    missions,
+    { slug: 'safe-sharing-on-whatsapp' },
+    admin._id,
+    'mission safe-sharing-on-whatsapp',
+  );
+  const learningCourse = await courses.findOne({
+    slug: 'evidence-before-sharing',
+  });
+  const missionChallenge = await challenges.findOne({
+    slug: 'pause-before-sharing',
+  });
+  const mission = await upsertOwned(
+    missions,
+    { slug: 'safe-sharing-on-whatsapp' },
+    {
+      title: 'Safe Sharing on WhatsApp',
+      summary:
+        'Practise a calm, evidence-first response to urgent forwards, voice notes, screenshots, and unsupported authority claims.',
+      topic: 'Responsible community sharing',
+      audience: 'Young people, families, schools, and community groups',
+      difficulty: 'BEGINNER',
+      startsAt: publishedAt,
+      endsAt: expiresAt,
+      status: 'PUBLISHED',
+      scenarios: [
+        {
+          id: 'old-notice',
+          title: 'The old school notice',
+          description:
+            'A synthetic school-closure notice is recirculated without its original date. Identify the claim, recover its date, and decide what you would tell the sender.',
+          synthetic: true,
+          competencies: ['DATE_AND_RECENCY', 'RESPONSIBLE_SHARING'],
+        },
+        {
+          id: 'secret-voice-note',
+          title: 'The “secret information” voice note',
+          description:
+            'A synthetic voice note claims an unnamed insider knows a bank will close. Separate the spoken claim from assumptions about the speaker and list evidence you would need.',
+          synthetic: true,
+          competencies: ['AUDIO_VIDEO_CAUTION', 'SOURCE_IDENTIFICATION'],
+        },
+      ],
+      lessonIds: learningCourse?.lessonIds ?? [],
+      challengeIds: missionChallenge ? [missionChallenge._id] : [],
+      rewardPolicy: { xp: 60, truthPoints: 25 },
+      completionCriteria: {
+        baselineRequired: true,
+        requiredScenarios: 2,
+        followUpRequired: true,
+        linkedLearningRequired: true,
+      },
+      organization: 'Verith UNESCO Hackathon Pilot',
+      privacyPolicy:
+        'Only the participant sees individual responses. Facilitator reporting must use aggregate results and minimum-group privacy thresholds.',
+      consentRequired: true,
+    },
+    admin._id,
+  );
+  for (const phase of ['BASELINE', 'FOLLOW_UP']) {
+    await missionAssessments.updateOne(
+      { missionId: mission._id, phase, version: 1 },
+      {
+        $set: {
+          questions: missionAssessmentQuestions[phase],
+          passingScore: 50,
+          maxAttempts: 1,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          missionId: mission._id,
+          phase,
+          version: 1,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true },
+    );
+  }
+  seeded.missions.push({
+    id: String(mission._id),
+    slug: 'safe-sharing-on-whatsapp',
+  });
 
   console.log(
     JSON.stringify(

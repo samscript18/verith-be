@@ -8,7 +8,6 @@ import {
   NotFoundException,
 } from '../../../core/exceptions';
 import type { AiConfig } from '../../../shared/config';
-import { ProviderState } from '../../../shared/enums/provider-state.enum';
 import { AiCapability } from '../enums/ai-capability.enum';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
 import type { AiProvider } from '../interfaces/ai-provider.interface';
@@ -19,7 +18,6 @@ import type {
 } from '../interfaces/ai-router.interface';
 import { ProviderExecution } from '../schemas/provider-execution.schema';
 import { PromptRegistryService } from './prompt-registry.service';
-import { ProviderHealthService } from './provider-health.service';
 import { ProviderConfigService } from './provider-config.service';
 
 @Injectable()
@@ -31,7 +29,6 @@ export class AiRouterService {
     @InjectModel(ProviderExecution.name)
     private readonly executionModel: Model<ProviderExecution>,
     private readonly prompts: PromptRegistryService,
-    private readonly health: ProviderHealthService,
     private readonly providerConfig: ProviderConfigService,
     configService: ConfigService,
   ) {
@@ -54,14 +51,17 @@ export class AiRouterService {
     const primaryProvider = candidates[0]!.provider;
     let lastCode = 'AI_PROVIDER_UNAVAILABLE';
 
-    for (const provider of candidates) {
+    // At most two paid/provider executions per capability: either one
+    // schema-correction attempt or one bounded provider fallback.
+    const maxProviderCalls = 2;
+    const attemptsPerProvider = Math.min(
+      maxProviderCalls,
+      this.config.maxRetries + 1,
+    );
+    let providerCalls = 0;
+    providerLoop: for (const provider of candidates.slice(0, 2)) {
       const model = provider.modelFor(request.capability);
       if (!model) continue;
-      const health = await this.health.forProvider(provider);
-      if (health.state !== ProviderState.OPERATIONAL) {
-        lastCode = health.safeCode ?? `${provider.provider}_${health.state}`;
-        continue;
-      }
       let prompt;
       try {
         prompt = await this.prompts.resolvePublished(
@@ -81,11 +81,9 @@ export class AiRouterService {
         prompt.userPromptTemplate,
         request.variables,
       );
-      for (
-        let attempt = 1;
-        attempt <= this.config.maxRetries + 1;
-        attempt += 1
-      ) {
+      for (let attempt = 1; attempt <= attemptsPerProvider; attempt += 1) {
+        if (providerCalls >= maxProviderCalls) break providerLoop;
+        providerCalls += 1;
         const startedAt = new Date();
         try {
           const result = await provider.execute({

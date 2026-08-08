@@ -80,6 +80,65 @@ export class UpdateCourseDto extends PartialType(CreateCourseDto) {}
 export class UpdateLessonDto extends PartialType(CreateLessonDto) {}
 
 export class LearningAdminQueryDto {
-  @IsOptional() @IsMongoId() cursor?: string;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
+  @ApiPropertyOptional({ default: 20, maximum: 100, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+  @ApiPropertyOptional({ enum: CourseStatus })
+  @IsOptional()
+  @IsEnum(CourseStatus)
+  status?: CourseStatus;
+  @ApiPropertyOptional({ enum: LearningDifficulty })
+  @IsOptional()
+  @IsEnum(LearningDifficulty)
+  difficulty?: LearningDifficulty;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsMongoId()
+  courseId?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  tag?: string;
+}
+
+export class PublishedCourseQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
+  @ApiPropertyOptional({ default: 12, maximum: 50, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit = 12;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+  @ApiPropertyOptional({ enum: LearningDifficulty })
+  @IsOptional()
+  @IsEnum(LearningDifficulty)
+  difficulty?: LearningDifficulty;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  tag?: string;
 }

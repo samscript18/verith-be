@@ -37,6 +37,7 @@ import {
 import { ReportExport } from '../schemas/report-export.schema';
 import { ReportFeedback } from '../schemas/report-feedback.schema';
 import { Report, type ReportDocument } from '../schemas/report.schema';
+import { GamificationService } from '../../gamification/services/gamification.service';
 
 @Injectable()
 export class ReportService {
@@ -61,6 +62,7 @@ export class ReportService {
     @InjectModel(Transcript.name)
     private readonly transcriptModel: Model<Transcript>,
     private readonly audit: AuditService,
+    private readonly gamification: GamificationService,
   ) {}
 
   async listFeedback(query: ReportFeedbackAdminQueryDto) {
@@ -138,24 +140,37 @@ export class ReportService {
     verification: VerificationDocument,
   ): Promise<ReportDocument> {
     const id = verification._id;
-    const [analysis, claims, evaluations, evidence, media, transcript, latest] =
-      await Promise.all([
-        this.analysisModel.findOne({ verificationId: id }).lean().exec(),
-        this.claimModel
-          .find({ verificationId: id })
-          .sort({ sequence: 1 })
-          .lean()
-          .exec(),
-        this.evaluationModel.find({ verificationId: id }).lean().exec(),
-        this.evidenceModel.find({ verificationId: id }).lean().exec(),
-        this.mediaModel.findOne({ verificationId: id }).lean().exec(),
-        this.transcriptModel.findOne({ verificationId: id }).lean().exec(),
-        this.reportModel
-          .findOne({ verificationId: id })
-          .sort({ version: -1 })
-          .lean()
-          .exec(),
-      ]);
+    const [
+      analysis,
+      claims,
+      evaluations,
+      allEvidence,
+      media,
+      transcript,
+      latest,
+    ] = await Promise.all([
+      this.analysisModel.findOne({ verificationId: id }).lean().exec(),
+      this.claimModel
+        .find({ verificationId: id })
+        .sort({ sequence: 1 })
+        .lean()
+        .exec(),
+      this.evaluationModel.find({ verificationId: id }).lean().exec(),
+      this.evidenceModel.find({ verificationId: id }).lean().exec(),
+      this.mediaModel.findOne({ verificationId: id }).lean().exec(),
+      this.transcriptModel.findOne({ verificationId: id }).lean().exec(),
+      this.reportModel
+        .findOne({ verificationId: id })
+        .sort({ version: -1 })
+        .lean()
+        .exec(),
+    ]);
+    const currentClaimIds = new Set(
+      claims.map((claim) => claim._id.toString()),
+    );
+    const evidence = allEvidence.filter((item) =>
+      currentClaimIds.has(item.claimId.toString()),
+    );
     if (!analysis && !media)
       throw new ValidationException(
         'No completed analysis is available for reporting',
@@ -353,6 +368,20 @@ export class ReportService {
     if ([ReportStatus.DELETED, ReportStatus.INVALID].includes(report.status))
       throw this.notFound();
     return this.privateProjection(report.toObject());
+  }
+
+  async inspectEvidence(userId: string, reportId: string, evidenceId: string) {
+    const report = await this.findOwned(userId, reportId);
+    const evidence = report.evidence.find(
+      (item) => String(item.evidenceId) === evidenceId,
+    );
+    if (!evidence) throw this.notFound();
+    const reward = await this.gamification.recordEvidenceInspection(
+      userId,
+      reportId,
+      evidenceId,
+    );
+    return { recorded: reward.awarded };
   }
 
   async setVisibility(
@@ -697,6 +726,23 @@ export class ReportService {
       );
       document.moveDown().fontSize(16).text('Summary');
       document.fontSize(10).text(String(report.summary));
+      document.moveDown().fontSize(16).text('Verith Check Card summary');
+      document
+        .fontSize(10)
+        .text(
+          `Claim: ${String(report.claims?.[0]?.text ?? 'No individual checkable claim was retained.')}`,
+          { paragraphGap: 5 },
+        );
+      document.text(`Finding: ${String(report.overallVerdict)}`, {
+        paragraphGap: 5,
+      });
+      document.text(
+        `Check next: ${String(report.recommendedActions?.[0] ?? 'Inspect the evidence and limitations before sharing.')}`,
+        { paragraphGap: 5 },
+      );
+      document.text(
+        `Important limitation: ${String(report.limitations?.[0] ?? 'Open the complete report for context.')}`,
+      );
       this.pdfList(
         document,
         'Claims',

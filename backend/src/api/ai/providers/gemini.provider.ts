@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ExternalProviderException } from '../../../core/exceptions';
 import type { AiConfig, AiProviderConfig } from '../../../shared/config';
 import { ProviderState } from '../../../shared/enums/provider-state.enum';
+import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
 import { AiCapability } from '../enums/ai-capability.enum';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
 import type {
@@ -18,6 +19,7 @@ export class GeminiProvider implements AiProvider {
   readonly provider = AiProviderName.GEMINI;
   readonly configured: boolean;
   private readonly config: AiProviderConfig;
+  private readonly keyPool;
   private readonly capabilities = new Set([
     AiCapability.TEXT_REASONING,
     AiCapability.STRUCTURED_EXTRACTION,
@@ -35,10 +37,18 @@ export class GeminiProvider implements AiProvider {
     AiCapability.TRANSLATION,
   ]);
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    pools: ProviderKeyPoolService = new ProviderKeyPoolService(),
+  ) {
     this.config = configService.getOrThrow<AiConfig>('ai').gemini;
+    this.keyPool = pools.forProvider(
+      this.provider,
+      this.config.apiKeys?.length ? this.config.apiKeys : [this.config.apiKey],
+    );
     this.configured = Boolean(
-      this.config.apiKey && Object.values(this.config.models).some(Boolean),
+      this.keyPool.status().configuredKeys &&
+      Object.values(this.config.models).some(Boolean),
     );
   }
 
@@ -61,46 +71,63 @@ export class GeminiProvider implements AiProvider {
   }
 
   async execute(request: AiExecutionRequest): Promise<AiProviderResult> {
-    const response = await providerFetch(
-      `${this.config.baseUrl}/v1beta/models/${encodeURIComponent(request.model)}:generateContent?key=${encodeURIComponent(this.config.apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: request.systemPrompt }],
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                ...(request.media
-                  ? [
-                      {
-                        inlineData: {
-                          mimeType: request.media.mimeType,
-                          data: request.media.base64Data,
-                        },
-                      },
-                    ]
-                  : []),
-                { text: request.userPrompt },
-              ],
+    const lease = this.keyPool.acquire();
+    if (!lease)
+      throw new ExternalProviderException(
+        'No healthy Gemini key is currently available',
+        `GEMINI_${ProviderState.RATE_LIMITED}`,
+      );
+    let response: Response;
+    try {
+      response = await providerFetch(
+        `${this.config.baseUrl}/v1beta/models/${encodeURIComponent(request.model)}:generateContent?key=${encodeURIComponent(lease.key)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: request.systemPrompt }],
             },
-          ],
-          generationConfig: {
-            temperature: request.temperature ?? 0.1,
-            ...(request.maxOutputTokens
-              ? { maxOutputTokens: request.maxOutputTokens }
-              : {}),
-            responseMimeType: 'application/json',
-            responseJsonSchema: request.outputJsonSchema,
-          },
-        }),
-      },
-      this.config.timeoutMs,
-      this.provider,
-    );
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  ...(request.media
+                    ? [
+                        {
+                          inlineData: {
+                            mimeType: request.media.mimeType,
+                            data: request.media.base64Data,
+                          },
+                        },
+                      ]
+                    : []),
+                  { text: request.userPrompt },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: request.temperature ?? 0.1,
+              ...(request.maxOutputTokens
+                ? { maxOutputTokens: request.maxOutputTokens }
+                : {}),
+              responseMimeType: 'application/json',
+              responseJsonSchema: request.outputJsonSchema,
+            },
+          }),
+        },
+        this.config.timeoutMs,
+        this.provider,
+      );
+      lease.succeed();
+    } catch (error) {
+      lease.fail(
+        error instanceof ExternalProviderException
+          ? error.code
+          : `GEMINI_${ProviderState.UNAVAILABLE}`,
+      );
+      throw error;
+    }
     const body = readObject(await response.json());
     const candidates = Array.isArray(body?.candidates) ? body.candidates : [];
     const candidate = readObject(candidates[0]);
@@ -139,24 +166,39 @@ export class GeminiProvider implements AiProvider {
         state: ProviderState.NOT_CONFIGURED,
         checkedAt: new Date(),
         latencyMs: 0,
+        ...this.keyPool.status(),
+      };
+    }
+    const lease = this.keyPool.acquire();
+    if (!lease) {
+      return {
+        provider: this.provider,
+        state: ProviderState.RATE_LIMITED,
+        checkedAt: new Date(),
+        latencyMs: 0,
+        safeCode: `GEMINI_${ProviderState.RATE_LIMITED}`,
+        ...this.keyPool.status(),
       };
     }
     try {
       await providerFetch(
-        `${this.config.baseUrl}/v1beta/models?key=${encodeURIComponent(this.config.apiKey)}`,
+        `${this.config.baseUrl}/v1beta/models?key=${encodeURIComponent(lease.key)}`,
         { method: 'GET' },
         this.config.timeoutMs,
         this.provider,
       );
+      lease.succeed();
       return {
         provider: this.provider,
         state: ProviderState.OPERATIONAL,
         checkedAt: new Date(),
         latencyMs: Date.now() - started,
+        ...this.keyPool.status(),
       };
     } catch (error) {
       const code =
         error instanceof ExternalProviderException ? error.code : undefined;
+      lease.fail(code ?? `GEMINI_${ProviderState.UNAVAILABLE}`);
       return {
         provider: this.provider,
         state: code?.endsWith(ProviderState.AUTHENTICATION_FAILED)
@@ -169,6 +211,7 @@ export class GeminiProvider implements AiProvider {
         checkedAt: new Date(),
         latencyMs: Date.now() - started,
         ...(code ? { safeCode: code } : {}),
+        ...this.keyPool.status(),
       };
     }
   }

@@ -4,6 +4,7 @@ import type { AiConfig } from '../../../shared/config';
 import { AiCapability } from '../enums/ai-capability.enum';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
 import { OpenAiCompatibleProvider } from './openai-compatible.provider';
+import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
 
 @Injectable()
 export class GroqProvider extends OpenAiCompatibleProvider {
@@ -18,8 +19,15 @@ export class GroqProvider extends OpenAiCompatibleProvider {
     AiCapability.TRANSLATION,
   ]);
 
-  constructor(configService: ConfigService) {
-    super(configService.getOrThrow<AiConfig>('ai').groq);
+  constructor(
+    configService: ConfigService,
+    pools: ProviderKeyPoolService = new ProviderKeyPoolService(),
+  ) {
+    super(
+      configService.getOrThrow<AiConfig>('ai').groq,
+      AiProviderName.GROQ,
+      pools,
+    );
   }
 
   modelFor(capability: AiCapability): string | null {

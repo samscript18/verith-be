@@ -1,12 +1,14 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Queue } from 'bullmq';
 import { Model, Types } from 'mongoose';
 import { NotFoundException } from '../../../core/exceptions';
 import { ProviderState } from '../../../shared/enums/provider-state.enum';
 import { MailService } from '../../../shared/mail/mail.service';
+import { coordinationJobOptions } from '../../../shared/queue/coordination-job-options';
 import { User } from '../../users/schemas/user.schema';
+import { UserStatus } from '../../users/enums/user-status.enum';
 import type { NotificationQueryDto } from '../dto/notification.dto';
 import {
   NotificationDeliveryStatus,
@@ -31,8 +33,15 @@ export interface CreateNotificationInput {
   metadata?: Record<string, unknown>;
 }
 
+export type BroadcastNotificationInput = Omit<
+  CreateNotificationInput,
+  'userId' | 'idempotencyReference'
+> & { idempotencyReference: string };
+
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     @InjectModel(Notification.name)
     private readonly notifications: Model<Notification>,
@@ -52,8 +61,9 @@ export class NotificationsService {
       user.notificationPreferences[preference] === false
     )
       return null;
-    const emailEnabled =
+    const emailRequested =
       essential || user.notificationPreferences.emailEnabled !== false;
+    const emailEnabled = emailRequested && this.mail.isConfigured();
     const existing = await this.notifications.findOne({
       userId: user._id,
       idempotencyReference: input.idempotencyReference,
@@ -71,7 +81,9 @@ export class NotificationsService {
         metadata: input.metadata ?? {},
         emailStatus: emailEnabled
           ? NotificationDeliveryStatus.PENDING
-          : NotificationDeliveryStatus.SKIPPED_PREFERENCE,
+          : !emailRequested
+            ? NotificationDeliveryStatus.SKIPPED_PREFERENCE
+            : NotificationDeliveryStatus.NOT_CONFIGURED,
       });
     } catch (error) {
       if (!this.isDuplicate(error)) throw error;
@@ -80,19 +92,61 @@ export class NotificationsService {
         idempotencyReference: input.idempotencyReference,
       });
     }
-    if (emailEnabled)
-      await this.queue.add(
-        NOTIFICATION_EMAIL_JOB,
-        { notificationId: notification.id },
-        {
-          jobId: `notification-email-${notification.id}`,
-          attempts: 5,
-          backoff: { type: 'exponential', delay: 5000 },
-          removeOnComplete: 1000,
-          removeOnFail: 5000,
-        },
-      );
+    if (emailEnabled) {
+      try {
+        await this.queue.add(
+          NOTIFICATION_EMAIL_JOB,
+          { notificationId: notification.id },
+          {
+            jobId: `notification-email-${notification.id}`,
+            ...coordinationJobOptions,
+          },
+        );
+      } catch {
+        notification.emailStatus = NotificationDeliveryStatus.FAILED;
+        notification.emailFailureCode = 'EMAIL_QUEUE_UNAVAILABLE';
+        await notification.save();
+        this.logger.warn({
+          event: 'notification_email_enqueue_failed',
+          notificationId: notification.id,
+        });
+      }
+    }
     return notification;
+  }
+
+  async broadcast(input: BroadcastNotificationInput) {
+    let cursor: Types.ObjectId | undefined;
+    let processedCount = 0;
+    let notificationCount = 0;
+    do {
+      const users = await this.users
+        .find({
+          status: UserStatus.ACTIVE,
+          deletedAt: { $exists: false },
+          ...(cursor ? { _id: { $gt: cursor } } : {}),
+        })
+        .select('_id')
+        .sort({ _id: 1 })
+        .limit(100)
+        .lean()
+        .exec();
+      if (!users.length) break;
+      const results = await Promise.all(
+        users.map((user) =>
+          this.dispatch({
+            ...input,
+            userId: user._id.toString(),
+            idempotencyReference: `${input.idempotencyReference}:${user._id.toString()}`,
+          }),
+        ),
+      );
+      processedCount += users.length;
+      notificationCount += results.filter(Boolean).length;
+      cursor = users.at(-1)?._id;
+      if (users.length < 100) break;
+    } while (cursor);
+    return { processedCount, notificationCount };
   }
 
   async deliverEmail(notificationId: string) {
@@ -105,10 +159,21 @@ export class NotificationsService {
       return;
     const user = await this.users
       .findById(notification.userId)
-      .select('email deletedAt')
+      .select('email deletedAt notificationPreferences')
       .lean()
       .exec();
     if (!user || user.deletedAt) return;
+    const preference = this.preferenceKey(notification.type);
+    const essential = notification.type === NotificationType.SECURITY_ALERT;
+    if (
+      !essential &&
+      (user.notificationPreferences.emailEnabled === false ||
+        (preference && user.notificationPreferences[preference] === false))
+    ) {
+      notification.emailStatus = NotificationDeliveryStatus.SKIPPED_PREFERENCE;
+      await notification.save();
+      return;
+    }
     const result = await this.mail.sendNotification(user.email, {
       subject: notification.title,
       message: notification.message,

@@ -10,6 +10,7 @@ import type {
   ProviderHealthResult,
 } from '../interfaces/ai-provider.interface';
 import { parseJsonText, providerFetch, readObject } from './provider-http';
+import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
 
 export abstract class OpenAiCompatibleProvider implements AiProvider {
   abstract readonly provider: AiProviderName;
@@ -21,10 +22,20 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
   }
 
   readonly configured: boolean;
+  private readonly keyPool;
 
-  protected constructor(protected readonly config: AiProviderConfig) {
+  protected constructor(
+    protected readonly config: AiProviderConfig,
+    provider: AiProviderName,
+    pools: ProviderKeyPoolService,
+  ) {
+    this.keyPool = pools.forProvider(
+      provider,
+      config.apiKeys?.length ? config.apiKeys : [config.apiKey],
+    );
     this.configured = Boolean(
-      config.apiKey && Object.values(config.models).some(Boolean),
+      this.keyPool.status().configuredKeys &&
+      Object.values(config.models).some(Boolean),
     );
   }
 
@@ -33,54 +44,71 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
   }
 
   async execute(request: AiExecutionRequest): Promise<AiProviderResult> {
-    const response = await providerFetch(
-      `${this.config.baseUrl}/chat/completions`,
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${this.config.apiKey}`,
-          'content-type': 'application/json',
-          ...this.extraHeaders(),
-        },
-        body: JSON.stringify({
-          model: request.model,
-          messages: [
-            { role: 'system', content: request.systemPrompt },
-            {
-              role: 'user',
-              content: request.media
-                ? [
-                    {
-                      type: 'image_url',
-                      image_url: {
-                        url: `data:${request.media.mimeType};base64,${request.media.base64Data}`,
-                      },
-                    },
-                    { type: 'text', text: request.userPrompt },
-                  ]
-                : request.userPrompt,
-            },
-          ],
-          temperature: request.temperature ?? 0.1,
-          ...(request.maxOutputTokens
-            ? { max_tokens: request.maxOutputTokens }
-            : {}),
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: request.outputSchemaName,
-              strict: true,
-              schema: request.outputJsonSchema,
-            },
+    const lease = this.keyPool.acquire();
+    if (!lease)
+      throw new ExternalProviderException(
+        'No healthy provider key is currently available',
+        `${this.provider}_${ProviderState.RATE_LIMITED}`,
+      );
+    let response: Response;
+    try {
+      response = await providerFetch(
+        `${this.config.baseUrl}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${lease.key}`,
+            'content-type': 'application/json',
+            ...this.extraHeaders(),
           },
-          ...(this.providerPreferences()
-            ? { provider: this.providerPreferences() }
-            : {}),
-        }),
-      },
-      this.config.timeoutMs,
-      this.provider,
-    );
+          body: JSON.stringify({
+            model: request.model,
+            messages: [
+              { role: 'system', content: request.systemPrompt },
+              {
+                role: 'user',
+                content: request.media
+                  ? [
+                      {
+                        type: 'image_url',
+                        image_url: {
+                          url: `data:${request.media.mimeType};base64,${request.media.base64Data}`,
+                        },
+                      },
+                      { type: 'text', text: request.userPrompt },
+                    ]
+                  : request.userPrompt,
+              },
+            ],
+            temperature: request.temperature ?? 0.1,
+            ...(request.maxOutputTokens
+              ? { max_tokens: request.maxOutputTokens }
+              : {}),
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: request.outputSchemaName,
+                strict: true,
+                schema: request.outputJsonSchema,
+              },
+            },
+            ...(this.providerPreferences()
+              ? { provider: this.providerPreferences() }
+              : {}),
+          }),
+        },
+        this.config.timeoutMs,
+        this.provider,
+      );
+      lease.succeed();
+    } catch (error) {
+      lease.fail(
+        error instanceof ExternalProviderException
+          ? error.code
+          : `${this.provider}_${ProviderState.UNAVAILABLE}`,
+      );
+      throw error;
+    }
     const body = readObject(await response.json());
     const choices = Array.isArray(body?.choices) ? body.choices : [];
     const choice = readObject(choices[0]);
@@ -118,6 +146,18 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
         state: ProviderState.NOT_CONFIGURED,
         checkedAt: new Date(),
         latencyMs: 0,
+        ...this.keyPool.status(),
+      };
+    }
+    const lease = this.keyPool.acquire();
+    if (!lease) {
+      return {
+        provider: this.provider,
+        state: ProviderState.RATE_LIMITED,
+        checkedAt: new Date(),
+        latencyMs: 0,
+        safeCode: `${this.provider}_${ProviderState.RATE_LIMITED}`,
+        ...this.keyPool.status(),
       };
     }
     try {
@@ -126,20 +166,27 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
         {
           method: 'GET',
           headers: {
-            authorization: `Bearer ${this.config.apiKey}`,
+            authorization: `Bearer ${lease.key}`,
             ...this.extraHeaders(),
           },
         },
         this.config.timeoutMs,
         this.provider,
       );
+      lease.succeed();
       return {
         provider: this.provider,
         state: ProviderState.OPERATIONAL,
         checkedAt: new Date(),
         latencyMs: Date.now() - started,
+        ...this.keyPool.status(),
       };
     } catch (error) {
+      lease.fail(
+        error instanceof ExternalProviderException
+          ? error.code
+          : `${this.provider}_${ProviderState.UNAVAILABLE}`,
+      );
       return {
         provider: this.provider,
         state: this.stateFromError(error),
@@ -148,6 +195,7 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
         ...(error instanceof ExternalProviderException
           ? { safeCode: error.code }
           : {}),
+        ...this.keyPool.status(),
       };
     }
   }

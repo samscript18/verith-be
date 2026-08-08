@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import type { RedisConfig } from '../../../shared/config';
@@ -14,6 +14,14 @@ import { RedisService } from './redis.service';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): Redis => {
         const config = configService.getOrThrow<RedisConfig>('redis');
+        Logger.log(
+          {
+            event: 'redis_client_created',
+            purpose: 'coordination-and-readiness',
+            lazy: true,
+          },
+          RedisModule.name,
+        );
         return new Redis(config.url, {
           lazyConnect: true,
           keyPrefix: `${config.prefix}:`,

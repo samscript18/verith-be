@@ -2,6 +2,21 @@ import Joi from 'joi';
 
 const optionalSecret = Joi.string().trim().allow('').optional();
 
+function validateDeploymentTopology(
+  value: Record<string, unknown>,
+  helpers: Joi.CustomHelpers,
+): Record<string, unknown> {
+  if (
+    Number(value.API_REPLICA_COUNT) > 1 &&
+    value.THROTTLER_STORAGE !== 'redis'
+  ) {
+    return helpers.error(
+      'deployment.distributedThrottlerRequired',
+    ) as unknown as Record<string, unknown>;
+  }
+  return value;
+}
+
 export const envSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'test', 'production')
@@ -22,7 +37,8 @@ export const envSchema = Joi.object({
   PROCESS_ROLE: Joi.string()
     .valid('all', 'api', 'worker', 'scheduler')
     .optional(),
-  THROTTLER_STORAGE: Joi.string().valid('redis', 'memory').default('redis'),
+  API_REPLICA_COUNT: Joi.number().integer().min(1).default(1),
+  THROTTLER_STORAGE: Joi.string().valid('redis', 'memory').default('memory'),
 
   MONGODB_URI: Joi.string()
     .uri({ scheme: ['mongodb', 'mongodb+srv'] })
@@ -72,18 +88,31 @@ export const envSchema = Joi.object({
   MAIL_FROM_EMAIL: Joi.string().email().allow('').optional(),
 
   GEMINI_API_KEY: optionalSecret,
+  GEMINI_API_KEYS: optionalSecret,
   GROQ_API_KEY: optionalSecret,
+  GROQ_API_KEYS: optionalSecret,
   OPENROUTER_API_KEY: optionalSecret,
+  OPENROUTER_API_KEYS: optionalSecret,
   OPENROUTER_SITE_URL: Joi.string()
     .trim()
     .uri({ scheme: ['https'] })
     .allow('')
     .optional(),
   TAVILY_API_KEY: optionalSecret,
+  TAVILY_API_KEYS: optionalSecret,
   TAVILY_BASE_URL: Joi.string()
     .uri({ scheme: ['https'] })
     .allow('')
     .optional(),
+  MAX_CLAIMS: Joi.number().integer().min(1).max(20).default(8),
+  MAX_QUERIES_PER_CLAIM: Joi.number().integer().min(1).max(5).default(2),
+  MAX_EVIDENCE_PER_CLAIM: Joi.number().integer().min(1).max(10).default(4),
+  FREE_DAILY_INVESTIGATION_LIMIT: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(3),
+  VIDEO_INVESTIGATION_COST: Joi.number().integer().min(1).max(10).default(2),
 
   WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   WHATSAPP_PHONE_NUMBER_ID: Joi.string()
@@ -112,5 +141,10 @@ export const envSchema = Joi.object({
     .allow('')
     .optional(),
 })
+  .custom(validateDeploymentTopology)
+  .messages({
+    'deployment.distributedThrottlerRequired':
+      'THROTTLER_STORAGE must be redis when API_REPLICA_COUNT is greater than 1',
+  })
   .and('CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET')
   .unknown(true);

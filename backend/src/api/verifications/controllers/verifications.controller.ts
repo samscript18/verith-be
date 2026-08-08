@@ -37,6 +37,8 @@ import { ClaimExtractionService } from '../services/claim-extraction.service';
 import { EvidenceSearchService } from '../services/evidence-search.service';
 import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
 import { MediaProcessingService } from '../../media/services/media-processing.service';
+import { GuidedInvestigationService } from '../services/guided-investigation.service';
+import { SubmitGuidedResponsesDto } from '../dto/guided-investigation.dto';
 
 @ApiTags('Verifications')
 @ApiBearerAuth()
@@ -50,6 +52,7 @@ export class VerificationsController {
     private readonly evidence: EvidenceSearchService,
     private readonly analysis: VerificationAnalysisService,
     private readonly media: MediaProcessingService,
+    private readonly guidance: GuidedInvestigationService,
   ) {}
 
   @Post()
@@ -106,6 +109,12 @@ export class VerificationsController {
     return this.verifications.list(user.userId, query);
   }
 
+  @Get('allowance')
+  @ApiOperation({ summary: 'Get today’s investigation allowance' })
+  allowance(@CurrentUser() user: AuthUser) {
+    return this.verifications.allowance(user.userId);
+  }
+
   @Get(':id')
   get(
     @CurrentUser() user: AuthUser,
@@ -133,6 +142,27 @@ export class VerificationsController {
   ) {
     await this.verifications.findOwned(user.userId, id);
     return this.claims.list(id);
+  }
+
+  @Get(':id/guidance')
+  @ApiOperation({ summary: 'Get the persisted guided-investigation exercise' })
+  async guidanceFor(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ) {
+    const verification = await this.verifications.findOwned(user.userId, id);
+    return this.guidance.get(verification);
+  }
+
+  @Post(':id/guidance/responses')
+  @ApiOperation({ summary: 'Submit guided-investigation reasoning' })
+  async submitGuidance(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() dto: SubmitGuidedResponsesDto,
+  ) {
+    const verification = await this.verifications.findOwned(user.userId, id);
+    return this.guidance.submit(verification, dto);
   }
 
   @Post(':id/cancel')

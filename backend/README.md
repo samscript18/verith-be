@@ -1,6 +1,6 @@
 # Verith Backend
 
-Verith is an explainable misinformation-verification and media-literacy platform. The backend currently includes the production foundation, authentication and user management, and owner-bound signed Cloudinary uploads.
+Verith is an evidence-first investigation and media-literacy platform. The backend includes authentication, owner-bound uploads, multimodal investigations, explainable reports, guided learning, missions, competency growth, gamification, privacy tooling, and administrative operations.
 
 ## Architecture
 
@@ -46,12 +46,12 @@ npm run test:e2e
 npm run build
 ```
 
-`npm run test:external` is reserved for explicitly enabled live provider contract tests. Normal test runs never call external AI or messaging providers.
+Normal test runs never call external AI or messaging providers. Live provider verification must remain explicit because it consumes real quotas.
 
 ## Health
 
 - `GET /api/v1/health/live` checks process liveness.
-- `GET /api/v1/health` and `/api/v1/health/ready` check MongoDB and Redis readiness.
+- `GET /api/v1/health/ready` checks essential dependencies with a short cache.
 
 ## Providers
 
@@ -75,7 +75,21 @@ The production image runs as a non-root user. MongoDB and Redis are not exposed 
 
 ## Deployment
 
-Build and run the API as a distinct process. Later phases add separate worker and scheduler entry points. See [docs/deployment.md](docs/deployment.md).
+The code supports separate API, worker, and scheduler processes or a single free-tier `PROCESS_ROLE=all` service. See [docs/deployment.md](docs/deployment.md) and the repository-level [deployment and pilot guide](../docs/verith-deployment-and-pilot-guide.md).
+
+The Render start command runs `npm run start:prod`; npm automatically invokes
+its `prestart:prod` lifecycle once before starting the API. This creates required
+indexes, verifies or creates the bootstrap super-admin, seeds the fixed badge
+catalog, and then seeds learning content. Every seed is idempotent. Badge
+seeding loads the compiled application catalog as its source of truth and
+requires an active super-admin to own newly created badge records.
+
+To seed only the fixed badges after building the backend:
+
+```bash
+npm run build
+npm run seed:badges
+```
 
 ## Troubleshooting
 

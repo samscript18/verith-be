@@ -4,6 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { ExternalProviderException } from '../../../core/exceptions';
 import type { SearchConfig } from '../../../shared/config';
 import { ProviderState } from '../../../shared/enums/provider-state.enum';
+import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
 import { SearchProviderName } from '../enums/search-provider-name.enum';
 import type {
   SearchProvider,
@@ -30,21 +31,31 @@ export class TavilyProvider implements SearchProvider {
   readonly provider = SearchProviderName.TAVILY;
   readonly configured: boolean;
   private readonly config: SearchConfig;
-  private cooldownUntil = 0;
+  private readonly keyPool;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    pools: ProviderKeyPoolService = new ProviderKeyPoolService(),
+  ) {
     this.config = configService.getOrThrow<SearchConfig>('search');
-    this.configured = Boolean(this.config.tavilyApiKey);
+    this.keyPool = pools.forProvider(
+      this.provider,
+      this.config.tavilyApiKeys?.length
+        ? this.config.tavilyApiKeys
+        : [this.config.tavilyApiKey ?? ''],
+    );
+    this.configured = this.keyPool.status().configuredKeys > 0;
   }
 
   async search(request: SearchRequest): Promise<SearchResultPage> {
-    if (!this.config.tavilyApiKey) {
+    if (!this.configured) {
       throw new ExternalProviderException(
         'Tavily is not configured',
         'SEARCH_PROVIDER_NOT_CONFIGURED',
       );
     }
-    if (this.cooldownUntil > Date.now()) {
+    const lease = this.keyPool.acquire();
+    if (!lease) {
       throw new ExternalProviderException(
         'Tavily is temporarily rate limited',
         'SEARCH_PROVIDER_RATE_LIMITED',
@@ -76,16 +87,30 @@ export class TavilyProvider implements SearchProvider {
         method: 'POST',
         headers: {
           accept: 'application/json',
-          authorization: `Bearer ${this.config.tavilyApiKey}`,
+          authorization: `Bearer ${lease.key}`,
           'content-type': 'application/json',
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(this.config.timeoutMs),
       });
+      if (!response.ok) {
+        const failure = this.httpFailure(response);
+        lease.fail(
+          failure.code,
+          this.retryAfterMs(response.headers.get('retry-after')),
+        );
+        throw failure;
+      }
+      lease.succeed();
     } catch (error) {
+      if (error instanceof ExternalProviderException) throw error;
+      lease.fail(
+        error instanceof Error && error.name === 'TimeoutError'
+          ? 'SEARCH_PROVIDER_TIMEOUT'
+          : 'SEARCH_PROVIDER_UNAVAILABLE',
+      );
       throw this.networkFailure(error);
     }
-    if (!response.ok) throw this.httpFailure(response);
 
     let payload: TavilyResponse;
     try {
@@ -138,6 +163,7 @@ export class TavilyProvider implements SearchProvider {
         checkedAt: new Date(),
         latencyMs: 0,
         safeCode: 'SEARCH_PROVIDER_NOT_CONFIGURED',
+        ...this.keyPool.status(),
       };
     }
     try {
@@ -147,6 +173,7 @@ export class TavilyProvider implements SearchProvider {
         state: ProviderState.OPERATIONAL,
         checkedAt: new Date(),
         latencyMs: Math.round(performance.now() - startedAt),
+        ...this.keyPool.status(),
       };
     } catch (error) {
       const code =
@@ -159,6 +186,7 @@ export class TavilyProvider implements SearchProvider {
         checkedAt: new Date(),
         latencyMs: Math.round(performance.now() - startedAt),
         safeCode: code,
+        ...this.keyPool.status(),
       };
     }
   }
@@ -180,14 +208,6 @@ export class TavilyProvider implements SearchProvider {
   }
 
   private httpFailure(response: Response): ExternalProviderException {
-    if (response.status === 429) {
-      const retryAfter = Number(response.headers.get('retry-after'));
-      this.cooldownUntil =
-        Date.now() +
-        (Number.isFinite(retryAfter) && retryAfter > 0
-          ? retryAfter * 1000
-          : 60_000);
-    }
     const code =
       response.status === 429
         ? 'SEARCH_PROVIDER_RATE_LIMITED'
@@ -195,6 +215,11 @@ export class TavilyProvider implements SearchProvider {
           ? 'SEARCH_PROVIDER_AUTHENTICATION_FAILED'
           : 'SEARCH_PROVIDER_UNAVAILABLE';
     return new ExternalProviderException('Tavily rejected the request', code);
+  }
+
+  private retryAfterMs(value: string | null): number | undefined {
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : undefined;
   }
 
   private rankScore(index: number, total: number): number {

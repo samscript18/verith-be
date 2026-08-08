@@ -15,8 +15,17 @@ import {
 import { VerificationSourceType } from '../enums/verification-source-type.enum';
 import { VerificationStatus } from '../enums/verification-status.enum';
 import { VerificationVisibility } from '../enums/verification-visibility.enum';
+import { InvestigationMode } from '../enums/investigation-mode.enum';
 
 export class CreateVerificationDto {
+  @ApiPropertyOptional({
+    enum: InvestigationMode,
+    default: InvestigationMode.STANDARD,
+  })
+  @IsOptional()
+  @IsEnum(InvestigationMode)
+  mode?: InvestigationMode;
+
   @ApiProperty({ enum: VerificationSourceType })
   @IsEnum(VerificationSourceType)
   sourceType!: VerificationSourceType;

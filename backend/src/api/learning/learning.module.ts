@@ -15,10 +15,12 @@ import {
 } from './schemas/lesson-progress.schema';
 import { Lesson, LessonSchema } from './schemas/lesson.schema';
 import { LearningService } from './services/learning.service';
+import { GamificationModule } from '../gamification/gamification.module';
 
 @Module({
   imports: [
     AdminModule,
+    GamificationModule,
     MongooseModule.forFeature([
       { name: Course.name, schema: CourseSchema },
       { name: Lesson.name, schema: LessonSchema },

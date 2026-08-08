@@ -8,7 +8,7 @@ export class UploadsCleanupService {
 
   constructor(private readonly uploadsService: UploadsService) {}
 
-  @Interval('upload-orphan-cleanup', 60 * 60 * 1000)
+  @Interval('upload-orphan-cleanup', 12 * 60 * 60 * 1000)
   async cleanup(): Promise<void> {
     const deleted = await this.uploadsService.cleanupExpiredPending();
     if (deleted > 0) {

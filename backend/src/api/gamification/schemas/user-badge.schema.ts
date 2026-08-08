@@ -9,10 +9,17 @@ export class UserBadge {
   userId!: Types.ObjectId;
   @Prop({ type: Types.ObjectId, required: true, index: true })
   badgeId!: Types.ObjectId;
+  @Prop({ index: true })
+  badgeCode?: string;
   @Prop({ required: true })
   idempotencyReference!: string;
   @Prop({ type: Object, default: {} })
   context!: Record<string, unknown>;
+  createdAt!: Date;
 }
 export const UserBadgeSchema = SchemaFactory.createForClass(UserBadge);
 UserBadgeSchema.index({ userId: 1, badgeId: 1 }, { unique: true });
+UserBadgeSchema.index(
+  { userId: 1, badgeCode: 1 },
+  { unique: true, sparse: true },
+);

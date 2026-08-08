@@ -23,6 +23,10 @@ import { AdminModule } from './admin/admin.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PrivacyModule } from './privacy/privacy.module';
 import { DomainEventsModule } from '../core/events/domain-events.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
+import { MilModule } from './mil/mil.module';
+import { MissionsModule } from './missions/missions.module';
+import { EntitlementsModule } from './entitlements/entitlements.module';
 
 @Module({
   imports: [
@@ -50,6 +54,10 @@ import { DomainEventsModule } from '../core/events/domain-events.module';
     AdminModule,
     AnalyticsModule,
     PrivacyModule,
+    MaintenanceModule,
+    MilModule,
+    MissionsModule,
+    EntitlementsModule,
   ],
 })
 export class ApiModule {}

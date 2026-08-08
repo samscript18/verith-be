@@ -1,4 +1,3 @@
-import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UploadsModule } from '../uploads/uploads.module';
@@ -21,7 +20,6 @@ import {
 import { VerificationEventService } from './services/verification-event.service';
 import { VerificationOrchestratorService } from './services/verification-orchestrator.service';
 import { VerificationService } from './services/verification.service';
-import { VERIFICATION_QUEUE } from './verification.constants';
 import { VerificationWorker } from './workers/verification.worker';
 import { Claim, ClaimSchema } from './schemas/claim.schema';
 import {
@@ -40,6 +38,21 @@ import { AnalysisModule } from '../analysis/analysis.module';
 import { MediaModule } from '../media/media.module';
 import { ReportsModule } from '../reports/reports.module';
 import { runsWorkers } from '../../shared/utils/process-role';
+import { UrlClassificationService } from './services/url-classification.service';
+import { VerificationQueueModule } from './verification-queue.module';
+import {
+  DailyInvestigationUsage,
+  DailyInvestigationUsageSchema,
+} from './schemas/daily-investigation-usage.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
+import { InvestigationUsageService } from './services/investigation-usage.service';
+import {
+  GuidedInvestigation,
+  GuidedInvestigationSchema,
+} from './schemas/guided-investigation.schema';
+import { GuidedInvestigationService } from './services/guided-investigation.service';
+import { MilModule } from '../mil/mil.module';
+import { EntitlementsModule } from '../entitlements/entitlements.module';
 
 @Module({
   imports: [
@@ -50,14 +63,25 @@ import { runsWorkers } from '../../shared/utils/process-role';
     AnalysisModule,
     MediaModule,
     ReportsModule,
+    MilModule,
+    EntitlementsModule,
     MongooseModule.forFeature([
       { name: Verification.name, schema: VerificationSchema },
       { name: VerificationEvent.name, schema: VerificationEventSchema },
       { name: IdempotencyRecord.name, schema: IdempotencyRecordSchema },
       { name: Claim.name, schema: ClaimSchema },
       { name: ExtractedContent.name, schema: ExtractedContentSchema },
+      {
+        name: DailyInvestigationUsage.name,
+        schema: DailyInvestigationUsageSchema,
+      },
+      { name: User.name, schema: UserSchema },
+      {
+        name: GuidedInvestigation.name,
+        schema: GuidedInvestigationSchema,
+      },
     ]),
-    BullModule.registerQueue({ name: VERIFICATION_QUEUE }),
+    VerificationQueueModule,
   ],
   controllers: [VerificationsController, VerificationStreamController],
   providers: [
@@ -67,12 +91,21 @@ import { runsWorkers } from '../../shared/utils/process-role';
     VerificationService,
     ...(runsWorkers() ? [VerificationWorker] : []),
     TextNormalizationService,
+    UrlClassificationService,
     LanguageDetectionService,
     ArticleExtractionService,
     ClaimExtractionService,
     ContentProcessingService,
     EvidenceSearchService,
+    InvestigationUsageService,
+    GuidedInvestigationService,
   ],
-  exports: [VerificationService, VerificationEventService, MongooseModule],
+  exports: [
+    VerificationService,
+    VerificationEventService,
+    InvestigationUsageService,
+    GuidedInvestigationService,
+    MongooseModule,
+  ],
 })
 export class VerificationsModule {}

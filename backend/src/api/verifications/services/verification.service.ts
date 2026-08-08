@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Queue } from 'bullmq';
 import { createHash } from 'node:crypto';
 import { Model, Types } from 'mongoose';
+import { coordinationJobOptions } from '../../../shared/queue/coordination-job-options';
 import {
   ConflictException,
   ExternalProviderException,
@@ -30,6 +31,8 @@ import {
   VERIFICATION_QUEUE,
 } from '../verification.constants';
 import { VerificationEventService } from './verification-event.service';
+import { InvestigationUsageService } from './investigation-usage.service';
+import { InvestigationMode } from '../enums/investigation-mode.enum';
 
 @Injectable()
 export class VerificationService {
@@ -37,6 +40,7 @@ export class VerificationService {
     private readonly repository: VerificationRepository,
     private readonly events: VerificationEventService,
     private readonly uploads: UploadsService,
+    private readonly usage: InvestigationUsageService,
     @InjectModel(IdempotencyRecord.name)
     private readonly idempotencyModel: Model<IdempotencyRecord>,
     @InjectQueue(VERIFICATION_QUEUE)
@@ -111,38 +115,73 @@ export class VerificationService {
       return this.toResponse(recovered);
     }
 
-    const verification = await this.repository.create({
-      _id: resourceId,
-      userId: new Types.ObjectId(userId),
-      sourceType: dto.sourceType,
-      input,
-      ...(dto.title ? { title: dto.title } : {}),
-      ...(dto.question ? { question: dto.question } : {}),
-      ...(dto.requestedLanguage
-        ? { requestedLanguage: dto.requestedLanguage }
-        : {}),
-      visibility: dto.visibility ?? VerificationVisibility.PRIVATE,
-      mediaAssetIds: dto.mediaAssetId
-        ? [new Types.ObjectId(dto.mediaAssetId)]
-        : [],
-      idempotencyKey,
-    });
-    if (dto.mediaAssetId) {
-      await this.uploads.attachToVerification(
+    let reservation;
+    try {
+      reservation = await this.usage.reserve(
         userId,
-        dto.mediaAssetId,
-        verification.id,
+        resourceId,
+        dto.sourceType,
       );
+    } catch (error) {
+      await this.idempotencyModel
+        .deleteOne({ userId: new Types.ObjectId(userId), key: idempotencyKey })
+        .exec();
+      throw error;
     }
-    await this.events.append({
-      verificationId: verification.id,
-      stage: VerificationStage.RECEIVED,
-      status: VerificationEventStatus.COMPLETED,
-      progress: 0,
-      messageCode: 'VERIFICATION_RECEIVED',
-      safeMessage: 'The verification request was received',
-      requestId,
-    });
+    let verification: VerificationDocument;
+    try {
+      verification = await this.repository.create({
+        _id: resourceId,
+        userId: new Types.ObjectId(userId),
+        mode: dto.mode ?? InvestigationMode.STANDARD,
+        sourceType: dto.sourceType,
+        input,
+        ...(dto.title ? { title: dto.title } : {}),
+        ...(dto.question ? { question: dto.question } : {}),
+        ...(dto.requestedLanguage
+          ? { requestedLanguage: dto.requestedLanguage }
+          : {}),
+        visibility: dto.visibility ?? VerificationVisibility.PRIVATE,
+        mediaAssetIds: dto.mediaAssetId
+          ? [new Types.ObjectId(dto.mediaAssetId)]
+          : [],
+        idempotencyKey,
+        usageReservation: this.usage.toStored(reservation),
+      });
+    } catch (error) {
+      await this.usage.releaseSnapshot(reservation);
+      await this.idempotencyModel
+        .deleteOne({ userId: new Types.ObjectId(userId), key: idempotencyKey })
+        .exec();
+      throw error;
+    }
+    try {
+      if (dto.mediaAssetId) {
+        await this.uploads.attachToVerification(
+          userId,
+          dto.mediaAssetId,
+          verification.id,
+        );
+      }
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.RECEIVED,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 0,
+        messageCode: 'VERIFICATION_RECEIVED',
+        safeMessage: 'The verification request was received',
+        requestId,
+      });
+    } catch (error) {
+      await this.usage.release(verification);
+      verification.status = VerificationStatus.FAILED;
+      verification.failedAt = new Date();
+      verification.failureCode = 'VERIFICATION_SETUP_FAILED';
+      verification.failureSummary =
+        'The investigation could not be prepared for processing';
+      await verification.save().catch(() => undefined);
+      throw error;
+    }
     try {
       await this.enqueue(verification.id, requestId, 0);
     } catch {
@@ -151,6 +190,7 @@ export class VerificationService {
       verification.failureCode = 'VERIFICATION_QUEUE_UNAVAILABLE';
       verification.failureSummary =
         'The verification could not be queued for processing';
+      await this.usage.release(verification);
       await verification.save();
       await this.events.append({
         verificationId: verification.id,
@@ -193,6 +233,10 @@ export class VerificationService {
     };
   }
 
+  allowance(userId: string): Promise<Record<string, unknown>> {
+    return this.usage.status(userId);
+  }
+
   async updateVisibility(
     userId: string,
     id: string,
@@ -218,6 +262,7 @@ export class VerificationService {
     }
     verification.status = VerificationStatus.CANCELLED;
     verification.cancelRequestedAt = new Date();
+    await this.usage.release(verification);
     await verification.save();
     await this.events.append({
       verificationId: id,
@@ -233,26 +278,58 @@ export class VerificationService {
 
   async retry(userId: string, id: string, requestId: string) {
     const verification = await this.findOwned(userId, id);
-    if (
-      ![VerificationStatus.FAILED, VerificationStatus.CANCELLED].includes(
-        verification.status,
-      )
-    ) {
+    if (verification.status !== VerificationStatus.FAILED) {
       throw new ConflictException(
-        'Only failed or cancelled verifications can be retried',
+        'Only failed verifications can be retried',
         'VERIFICATION_NOT_RETRYABLE',
       );
     }
-    verification.status = VerificationStatus.QUEUED;
-    verification.currentStage = VerificationStage.RECEIVED;
-    verification.progress = 0;
-    verification.retryCount += 1;
-    verification.set('cancelRequestedAt', undefined);
-    verification.set('failedAt', undefined);
-    verification.set('failureCode', undefined);
-    verification.set('failureSummary', undefined);
-    await verification.save();
-    await this.enqueue(id, requestId, verification.retryCount);
+    const retryAttempt = verification.retryCount + 1;
+    const platformReportFailure =
+      verification.currentStage === VerificationStage.REPORT_SYNTHESIS &&
+      verification.failureCode === 'VALIDATION_ERROR';
+    const reservation = platformReportFailure
+      ? undefined
+      : await this.usage.reserve(
+          userId,
+          verification._id,
+          verification.sourceType,
+          retryAttempt,
+        );
+    try {
+      verification.status = VerificationStatus.QUEUED;
+      verification.currentStage = VerificationStage.RECEIVED;
+      verification.progress = 0;
+      verification.retryCount = retryAttempt;
+      if (reservation) {
+        verification.usageReservation = this.usage.toStored(reservation);
+      }
+      verification.set('cancelRequestedAt', undefined);
+      verification.set('processingStartedAt', undefined);
+      verification.set('processingCompletedAt', undefined);
+      verification.set('failedAt', undefined);
+      verification.set('failureCode', undefined);
+      verification.set('failureSummary', undefined);
+      await verification.save();
+    } catch (error) {
+      if (reservation) await this.usage.releaseSnapshot(reservation);
+      throw error;
+    }
+    try {
+      await this.enqueue(id, requestId, verification.retryCount);
+    } catch {
+      verification.status = VerificationStatus.FAILED;
+      verification.failedAt = new Date();
+      verification.failureCode = 'VERIFICATION_QUEUE_UNAVAILABLE';
+      verification.failureSummary =
+        'The verification could not be queued for processing';
+      await this.usage.release(verification);
+      await verification.save();
+      throw new ExternalProviderException(
+        'The verification queue is unavailable',
+        'VERIFICATION_QUEUE_UNAVAILABLE',
+      );
+    }
     return this.toResponse(verification);
   }
 
@@ -340,10 +417,7 @@ export class VerificationService {
       },
       {
         jobId,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 },
-        removeOnComplete: { age: 3600, count: 1000 },
-        removeOnFail: { age: 604800, count: 5000 },
+        ...coordinationJobOptions,
       },
     );
   }
@@ -412,6 +486,7 @@ export class VerificationService {
   private toResponse(record: VerificationDocument): Record<string, unknown> {
     return {
       id: record.id,
+      mode: record.mode ?? InvestigationMode.STANDARD,
       sourceType: record.sourceType,
       status: record.status,
       currentStage: record.currentStage,
@@ -428,6 +503,15 @@ export class VerificationService {
       retryCount: record.retryCount,
       failureCode: record.failureCode,
       failureSummary: record.failureSummary,
+      usage: record.usageReservation
+        ? {
+            cost: record.usageReservation.cost,
+            status: record.usageReservation.status,
+            dateKey: record.usageReservation.dateKey,
+            timezone: record.usageReservation.timezone,
+            resetAt: record.usageReservation.resetAt,
+          }
+        : null,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       streamUrl: `/api/v1/verifications/${record.id}/stream`,

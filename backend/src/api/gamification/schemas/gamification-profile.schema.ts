@@ -27,6 +27,8 @@ export class GamificationProfile {
   badgesCount!: number;
   @Prop({ default: true })
   leaderboardEligible!: boolean;
+  @Prop({ default: 0, min: 0 })
+  achievementCatalogVersion!: number;
 }
 
 export const GamificationProfileSchema =

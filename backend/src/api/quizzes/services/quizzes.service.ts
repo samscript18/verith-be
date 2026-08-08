@@ -22,6 +22,7 @@ import type {
 import { QuizQuestionType, QuizStatus } from '../enums/quiz.enum';
 import { QuizAttempt } from '../schemas/quiz-attempt.schema';
 import { Quiz, type QuizDocument } from '../schemas/quiz.schema';
+import { searchPattern } from '../../../shared/utils/search-query';
 
 @Injectable()
 export class QuizzesService {
@@ -36,10 +37,17 @@ export class QuizzesService {
   ) {}
 
   async listAdmin(query: QuizAdminQueryDto) {
+    const filter: Record<string, unknown> = {};
+    if (query.status) filter.status = query.status;
+    if (query.courseId) filter.courseId = new Types.ObjectId(query.courseId);
+    if (query.lessonId) filter.lessonId = new Types.ObjectId(query.lessonId);
+    if (query.search) {
+      const pattern = searchPattern(query.search);
+      filter.$or = [{ title: pattern }, { description: pattern }];
+    }
+    if (query.cursor) filter._id = { $lt: new Types.ObjectId(query.cursor) };
     const records = await this.quizModel
-      .find(
-        query.cursor ? { _id: { $lt: new Types.ObjectId(query.cursor) } } : {},
-      )
+      .find(filter)
       .sort({ _id: -1 })
       .limit(query.limit + 1)
       .lean()

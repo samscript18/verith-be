@@ -60,3 +60,4 @@ export class Quiz {
 }
 
 export const QuizSchema = SchemaFactory.createForClass(Quiz);
+QuizSchema.index({ status: 1, courseId: 1, _id: -1 });

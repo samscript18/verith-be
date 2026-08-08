@@ -1,10 +1,21 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
-import { UpdateLessonProgressDto } from '../dto/learning.dto';
+import {
+  PublishedCourseQueryDto,
+  UpdateLessonProgressDto,
+} from '../dto/learning.dto';
 import { LearningService } from '../services/learning.service';
 
 @ApiTags('Learning')
@@ -13,8 +24,8 @@ export class LearningController {
   constructor(private readonly learning: LearningService) {}
 
   @Get('courses')
-  listCourses() {
-    return this.learning.listPublished();
+  listCourses(@Query() query: PublishedCourseQueryDto) {
+    return this.learning.listPublished(query);
   }
 
   @Get('courses/:slug')

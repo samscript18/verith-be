@@ -14,7 +14,25 @@ import {
   WhatsAppMessageSchema,
 } from '../whatsapp/schemas/whatsapp-message.schema';
 import { AnalyticsController } from './controllers/analytics.controller';
+import { ProductAnalyticsController } from './controllers/product-analytics.controller';
 import { AnalyticsService } from './services/analytics.service';
+import {
+  AnalyticsEvent,
+  AnalyticsEventSchema,
+} from './schemas/analytics-event.schema';
+import {
+  MissionParticipant,
+  MissionParticipantSchema,
+} from '../missions/schemas/mission-participant.schema';
+import { Mission, MissionSchema } from '../missions/schemas/mission.schema';
+import {
+  MissionAssessmentAttempt,
+  MissionAssessmentAttemptSchema,
+} from '../missions/schemas/mission-assessment-attempt.schema';
+import {
+  ReportFeedback,
+  ReportFeedbackSchema,
+} from '../reports/schemas/report-feedback.schema';
 
 @Module({
   imports: [
@@ -23,9 +41,18 @@ import { AnalyticsService } from './services/analytics.service';
       { name: Verification.name, schema: VerificationSchema },
       { name: ProviderExecution.name, schema: ProviderExecutionSchema },
       { name: WhatsAppMessage.name, schema: WhatsAppMessageSchema },
+      { name: AnalyticsEvent.name, schema: AnalyticsEventSchema },
+      { name: Mission.name, schema: MissionSchema },
+      { name: MissionParticipant.name, schema: MissionParticipantSchema },
+      {
+        name: MissionAssessmentAttempt.name,
+        schema: MissionAssessmentAttemptSchema,
+      },
+      { name: ReportFeedback.name, schema: ReportFeedbackSchema },
     ]),
   ],
-  controllers: [AnalyticsController],
+  controllers: [AnalyticsController, ProductAnalyticsController],
   providers: [AnalyticsService],
+  exports: [AnalyticsService],
 })
 export class AnalyticsModule {}

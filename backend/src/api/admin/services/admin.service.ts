@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Queue } from 'bullmq';
 import { Model, Types } from 'mongoose';
 import { ConflictException, NotFoundException } from '../../../core/exceptions';
+import { coordinationJobOptions } from '../../../shared/queue/coordination-job-options';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import { Session } from '../../auth/schemas/session.schema';
 import { UserRole } from '../../users/enums/user-role.enum';
@@ -215,13 +216,9 @@ export class AdminService {
         'VERIFICATION_NOT_FOUND',
       );
     }
-    if (
-      ![VerificationStatus.FAILED, VerificationStatus.CANCELLED].includes(
-        verification.status,
-      )
-    ) {
+    if (verification.status !== VerificationStatus.FAILED) {
       throw new ConflictException(
-        'Only failed or cancelled verifications can be retried',
+        'Only failed verifications can be retried',
         'VERIFICATION_NOT_RETRYABLE',
       );
     }
@@ -247,7 +244,7 @@ export class AdminService {
           schemaVersion: VERIFICATION_JOB_SCHEMA_VERSION,
           createdAt: new Date().toISOString(),
         },
-        { jobId },
+        { jobId, ...coordinationJobOptions },
       );
     } catch (error) {
       verification.status = before.status;

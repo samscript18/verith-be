@@ -12,8 +12,8 @@ export interface ProcessingConfig {
 
 export default registerAs('processing', (): ProcessingConfig => ({
   maxTextLength: 50000,
-  maxClaims: 20,
-  maxQueriesPerClaim: 5,
+  maxClaims: Number(process.env.MAX_CLAIMS ?? 8),
+  maxQueriesPerClaim: Number(process.env.MAX_QUERIES_PER_CLAIM ?? 2),
   urlTimeoutMs: 15000,
   urlMaxBytes: 2097152,
   urlMaxRedirects: 3,
