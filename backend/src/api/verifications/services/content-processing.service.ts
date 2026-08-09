@@ -478,7 +478,7 @@ export class ContentProcessingService {
         { upsert: true, returnDocument: 'after', runValidators: true },
       )
       .exec();
-    if (!record) throw new Error('Extracted content could not be persisted');
+    if (!record) throw new Error('Extracted content could not be saved');
     return record;
   }
 

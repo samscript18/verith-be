@@ -75,9 +75,10 @@ export class ClaimExtractionService {
       temperature: 0.1,
       maxOutputTokens: 6000,
     });
-    const claims = extraction.output.claims.filter((claim) =>
-      this.hasValidSpan(content, claim),
-    );
+    const claims = extraction.output.claims.flatMap((claim) => {
+      const sourceSpan = this.resolveSourceSpan(content, claim);
+      return sourceSpan ? [{ ...claim, sourceSpan }] : [];
+    });
     if (!claims.length) {
       throw new ValidationException(
         'No claims with valid source spans were extracted',
@@ -183,12 +184,46 @@ export class ClaimExtractionService {
     }));
   }
 
-  private hasValidSpan(content: string, claim: ExtractedClaim): boolean {
+  private resolveSourceSpan(
+    content: string,
+    claim: ExtractedClaim,
+  ): { start: number; end: number } | null {
     const { start, end } = claim.sourceSpan;
-    if (start < 0 || end <= start || end > content.length) return false;
-    const source = this.normalization.normalizeClaim(content.slice(start, end));
-    const normalizedClaim = this.normalization.normalizeClaim(claim.text);
-    return source.includes(normalizedClaim) || normalizedClaim.includes(source);
+    if (start >= 0 && end > start && end <= content.length) {
+      const source = content.slice(start, end);
+      if (this.tokenOverlap(source, claim.text) >= 0.65) return { start, end };
+    }
+
+    const exactIndex = content
+      .toLocaleLowerCase()
+      .indexOf(claim.text.trim().toLocaleLowerCase());
+    if (exactIndex >= 0) {
+      return { start: exactIndex, end: exactIndex + claim.text.trim().length };
+    }
+
+    const tokens = claim.text.match(/[\p{L}\p{N}]+/gu) ?? [];
+    if (tokens.length < 2) return null;
+    const pattern = tokens
+      .map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('[\\s\\p{P}\\p{S}]*');
+    const match = new RegExp(pattern, 'iu').exec(content);
+    return match?.index !== undefined
+      ? { start: match.index, end: match.index + match[0].length }
+      : null;
+  }
+
+  private tokenOverlap(left: string, right: string): number {
+    const tokens = (value: string) =>
+      new Set(
+        (value.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter(
+          (token) => token.length > 1,
+        ),
+      );
+    const leftTokens = tokens(left);
+    const rightTokens = tokens(right);
+    if (!leftTokens.size || !rightTokens.size) return 0;
+    const shared = [...rightTokens].filter((token) => leftTokens.has(token));
+    return shared.length / rightTokens.size;
   }
 
   private deduplicateQueries(

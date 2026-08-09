@@ -157,9 +157,13 @@ export class AuthController {
         'CSRF_VALIDATION_FAILED',
       );
     }
+    const userAgentSummary = request.header('user-agent')?.slice(0, 300);
     return this.deliverAuthentication(
       response,
-      await this.authService.refresh(token),
+      await this.authService.refresh(token, {
+        ...(request.ip ? { ipHash: request.ip } : {}),
+        ...(userAgentSummary ? { userAgentSummary } : {}),
+      }),
       clientType,
     );
   }

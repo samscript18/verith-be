@@ -6,7 +6,7 @@ Authenticated clients create a verification with `POST /api/v1/verifications` an
 
 The current worker performs only the lifecycle initialization owned by Phase 4:
 
-1. Validate the persisted input.
+1. Validate the stored input.
 2. Change the status to `PROCESSING`.
 3. Persist `INPUT_VALIDATION` as completed.
 4. Move to `CONTENT_EXTRACTION`.
@@ -45,7 +45,7 @@ Text and URL inputs now continue through:
 7. Transition to `CLAIM_EVALUATION` as pending.
 
 Search snippets are never treated as conclusive evidence. An inaccessible
-result is persisted with an explicit access status and no relevant excerpt.
+result is stored with an explicit access status and no relevant excerpt.
 Available excerpts are selected only from retrieved page content. Every
 relationship remains `INCONCLUSIVE` until Phase 8 compares claims and evidence.
 
@@ -101,7 +101,7 @@ in [reports.md](reports.md).
 
 URL retrieval is performed only by the dedicated safe-fetch service. It permits HTTP and HTTPS on their standard ports, rejects credentials and local hostnames, resolves DNS before connecting, rejects every private/loopback/link-local/reserved answer, and pins the connection to the validated address. Every redirect repeats the full validation.
 
-Responses use manual redirects, bounded redirect count, timeout, byte limit, HTML-only content types, and an identified bot user agent. Article parsing removes scripts, styles, frames, navigation, forms, advertisements, and other non-content elements; only extracted plain text and safe metadata are persisted.
+Responses use manual redirects, bounded redirect count, timeout, byte limit, HTML-only content types, and an identified bot user agent. Article parsing removes scripts, styles, frames, navigation, forms, advertisements, and other non-content elements; only extracted plain text and safe metadata are stored.
 
 Unavailable URL states are preserved as `LOGIN_REQUIRED`, `PAYWALLED`, `BLOCKED`, `UNSUPPORTED`, `NOT_FOUND`, `TIMEOUT`, or `UNSAFE_URL`. The fetcher does not bypass access controls or paywalls. Operators remain responsible for configuring a truthful bot URL and complying with publisher robots and legal policies.
 
@@ -123,9 +123,9 @@ Jobs carry job ID, verification ID, request ID, attempt, schema version, and cre
 
 ## Events and SSE
 
-Events live in a separate collection with a per-verification monotonic sequence. `GET /api/v1/verifications/:id/events?after=N` supports catch-up. The SSE endpoint first sends persisted events after the supplied sequence, then live in-process events and 15-second heartbeats.
+Events live in a separate collection with a per-verification monotonic sequence. `GET /api/v1/verifications/:id/events?after=N` supports catch-up. The SSE endpoint first sends recorded events after the supplied sequence, then live in-process events and 15-second heartbeats.
 
-Clients should reconnect with the last processed sequence in the `after` query. Persisted catch-up prevents event loss across API restarts. In-process fan-out serves clients connected to the same API instance; a Redis-backed cross-instance fan-out adapter is required before horizontally scaling the API.
+Clients should reconnect with the last processed sequence in the `after` query. Recorded catch-up prevents event loss across API restarts. In-process fan-out serves clients connected to the same API instance; a Redis-backed cross-instance fan-out adapter is required before horizontally scaling the API.
 
 Lifecycle events and cross-domain events are separate concerns. Lifecycle
 events drive owner history and SSE. After a verification completes or fails,

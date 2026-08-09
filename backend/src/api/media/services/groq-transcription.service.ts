@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ExternalProviderException } from '../../../core/exceptions';
 import type { AiConfig } from '../../../shared/config';
-import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
+import {
+  isKeyRecoverableProviderFailure,
+  ProviderKeyPoolService,
+} from '../../../shared/providers/provider-key-pool.service';
 
 interface GroqSegment {
   start?: unknown;
@@ -43,55 +46,7 @@ export class GroqTranscriptionService {
         'Groq transcription is not configured',
         'TRANSCRIPTION_PROVIDER_NOT_CONFIGURED',
       );
-    const lease = this.keyPool.acquire();
-    if (!lease)
-      throw new ExternalProviderException(
-        'Groq transcription is temporarily rate limited',
-        'TRANSCRIPTION_RATE_LIMITED',
-      );
-    const form = new FormData();
-    form.append('url', url);
-    form.append('model', model);
-    form.append('response_format', 'verbose_json');
-    form.append('timestamp_granularities[]', 'segment');
-    form.append('temperature', '0');
-    let response: Response;
-    try {
-      response = await fetch(
-        `${this.config.baseUrl.replace(/\/+$/, '')}/audio/transcriptions`,
-        {
-          method: 'POST',
-          headers: { authorization: `Bearer ${lease.key}` },
-          body: form,
-          signal: AbortSignal.timeout(this.config.timeoutMs),
-        },
-      );
-    } catch (error) {
-      const code =
-        error instanceof Error && error.name === 'TimeoutError'
-          ? 'TRANSCRIPTION_TIMEOUT'
-          : 'TRANSCRIPTION_UNAVAILABLE';
-      lease.fail(code);
-      throw new ExternalProviderException(
-        'The transcription provider is unavailable',
-        code,
-      );
-    }
-    if (!response.ok) {
-      const code =
-        response.status === 401 || response.status === 403
-          ? 'TRANSCRIPTION_AUTHENTICATION_FAILED'
-          : response.status === 429
-            ? 'TRANSCRIPTION_RATE_LIMITED'
-            : 'TRANSCRIPTION_UNAVAILABLE';
-      lease.fail(code);
-      throw new ExternalProviderException(
-        'The transcription provider rejected the request',
-        code,
-      );
-    }
-    lease.succeed();
-    const body = (await response.json()) as Record<string, unknown>;
+    const body = await this.requestTranscription(url, model);
     if (typeof body.text !== 'string')
       throw new ExternalProviderException(
         'The transcription response was invalid',
@@ -126,5 +81,67 @@ export class GroqTranscriptionService {
       ...(typeof body.duration === 'number' ? { duration: body.duration } : {}),
       segments,
     };
+  }
+
+  private async requestTranscription(
+    url: string,
+    model: string,
+  ): Promise<Record<string, unknown>> {
+    const keyCount = this.keyPool.status().configuredKeys;
+    let lastError: ExternalProviderException | undefined;
+    for (let keyAttempt = 0; keyAttempt < keyCount; keyAttempt += 1) {
+      const lease = this.keyPool.acquire();
+      if (!lease) break;
+      const form = new FormData();
+      form.append('url', url);
+      form.append('model', model);
+      form.append('response_format', 'verbose_json');
+      form.append('timestamp_granularities[]', 'segment');
+      form.append('temperature', '0');
+      try {
+        const response = await fetch(
+          `${this.config.baseUrl.replace(/\/+$/, '')}/audio/transcriptions`,
+          {
+            method: 'POST',
+            headers: { authorization: `Bearer ${lease.key}` },
+            body: form,
+            signal: AbortSignal.timeout(this.config.timeoutMs),
+          },
+        );
+        if (!response.ok) {
+          throw new ExternalProviderException(
+            'The transcription provider rejected the request',
+            response.status === 401 || response.status === 403
+              ? 'TRANSCRIPTION_AUTHENTICATION_FAILED'
+              : response.status === 429
+                ? 'TRANSCRIPTION_RATE_LIMITED'
+                : 'TRANSCRIPTION_UNAVAILABLE',
+          );
+        }
+        const body = (await response.json()) as Record<string, unknown>;
+        lease.succeed();
+        return body;
+      } catch (error) {
+        const failure =
+          error instanceof ExternalProviderException
+            ? error
+            : new ExternalProviderException(
+                'The transcription provider is unavailable',
+                error instanceof Error && error.name === 'TimeoutError'
+                  ? 'TRANSCRIPTION_TIMEOUT'
+                  : 'TRANSCRIPTION_UNAVAILABLE',
+              );
+        lease.fail(failure.code);
+        lastError = failure;
+        if (!isKeyRecoverableProviderFailure(failure.code)) throw failure;
+      }
+    }
+    throw (
+      lastError ??
+      new ExternalProviderException(
+        'Groq transcription is temporarily rate limited',
+        'TRANSCRIPTION_RATE_LIMITED',
+      )
+    );
   }
 }

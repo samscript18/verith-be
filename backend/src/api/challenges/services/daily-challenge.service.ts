@@ -5,9 +5,10 @@ import { Model, Types } from 'mongoose';
 import { UserRole } from '../../users/enums/user-role.enum';
 import { UserStatus } from '../../users/enums/user-status.enum';
 import { User } from '../../users/schemas/user.schema';
-import { DAILY_CHALLENGE_QUESTIONS } from '../data/daily-challenge-bank';
+import { dailyChallengeContent } from '../data/daily-challenge-bank';
 import { ChallengeStatus } from '../enums/challenge.enum';
 import { Challenge } from '../schemas/challenge.schema';
+import { ChallengeAttempt } from '../schemas/challenge-attempt.schema';
 import { NotificationsService } from '../../notifications/services/notifications.service';
 import { NotificationType } from '../../notifications/enums/notification.enum';
 
@@ -17,6 +18,8 @@ export class DailyChallengeService implements OnApplicationBootstrap {
 
   constructor(
     @InjectModel(Challenge.name) private readonly challenges: Model<Challenge>,
+    @InjectModel(ChallengeAttempt.name)
+    private readonly attempts: Model<ChallengeAttempt>,
     @InjectModel(User.name) private readonly users: Model<User>,
     private readonly notifications: NotificationsService,
   ) {}
@@ -29,6 +32,23 @@ export class DailyChallengeService implements OnApplicationBootstrap {
   async ensureToday(now = new Date()): Promise<void> {
     const dateKey = now.toISOString().slice(0, 10);
     const slug = `daily-media-literacy-${dateKey}`;
+    const content = dailyChallengeContent(dateKey);
+    const obsolete = await this.challenges
+      .find({
+        slug: /^daily-media-literacy-/,
+        $or: [
+          { dailyDateKey: { $ne: dateKey } },
+          { dailyContentVersion: { $ne: 2 } },
+        ],
+      })
+      .select('_id')
+      .lean()
+      .exec();
+    if (obsolete.length) {
+      const ids = obsolete.map((item) => item._id);
+      await this.attempts.deleteMany({ challengeId: { $in: ids } }).exec();
+      await this.challenges.deleteMany({ _id: { $in: ids } }).exec();
+    }
     const existing = await this.challenges
       .findOne({ slug })
       .select('_id notificationBroadcastAt')
@@ -56,18 +76,14 @@ export class DailyChallengeService implements OnApplicationBootstrap {
         { slug },
         {
           $setOnInsert: {
-            title: `Daily evidence practice · ${dateKey}`,
+            dailyDateKey: dateKey,
+            dailyContentVersion: 2,
+            title: content.title,
             slug,
-            scenario:
-              'Ten quick decisions about sources, dates, context, uncertainty, and responsible sharing.',
-            content:
-              'Use the information inside each question. These are original, synthetic media-literacy scenarios and not real investigations.',
-            tags: [
-              'daily-practice',
-              'evidence-evaluation',
-              'responsible-sharing',
-            ],
-            questions: DAILY_CHALLENGE_QUESTIONS.map((question) => ({
+            scenario: content.scenario,
+            content: content.content,
+            tags: ['daily-practice', ...content.topic.tags],
+            questions: content.questions.map((question) => ({
               ...question,
               options: question.options.map((option) => ({ ...option })),
               correctOptionIds: [...question.correctOptionIds],

@@ -12,7 +12,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "prestart:prod": "npm run db:indexes:catalog && npm run seed:super-admin && npm run seed:badges && npm run seed:learning",
+    "prestart:prod": "npm run db:indexes:application && npm run db:indexes:catalog && npm run seed:super-admin && npm run seed:badges && npm run seed:learning",
     "start:prod": "node dist/main",
     "start:worker": "PROCESS_ROLE=worker node dist/worker",
     "start:scheduler": "PROCESS_ROLE=scheduler node dist/scheduler",
@@ -27,6 +27,8 @@
     "openapi:types": "openapi-typescript openapi.json -o ../frontend/src/generated/api-schema.ts",
     "smoke:auth": "node scripts/auth-smoke.mjs",
     "db:indexes:catalog": "node --env-file-if-exists=.env scripts/create-catalog-indexes.mjs",
+    "db:indexes:application": "node --env-file-if-exists=.env scripts/create-application-indexes.mjs",
+    "db:indexes:check": "node scripts/create-application-indexes.mjs --dry-run --summary",
     "seed:super-admin": "node --env-file-if-exists=.env scripts/seed-super-admin.mjs",
     "seed:badges": "node --env-file-if-exists=.env scripts/seed-badges.mjs",
     "seed:learning": "node --env-file-if-exists=.env scripts/seed-learning-content.mjs",
@@ -65,7 +67,7 @@
     "pdfkit": "^0.19.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "sanitize-html": "^2.14.0",
+    "sanitize-html": "2.17.5",
     "undici": "^8.9.0"
   },
   "devDependencies": {

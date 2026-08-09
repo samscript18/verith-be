@@ -271,6 +271,14 @@ export class PrivacyService {
         db.collection('lesson_progress').deleteMany({ userId }),
         db.collection('quiz_attempts').deleteMany({ userId }),
         db.collection('challenge_attempts').deleteMany({ userId }),
+        db.collection('guided_investigations').deleteMany({ userId }),
+        db.collection('mission_participants').deleteMany({ userId }),
+        db.collection('mission_assessment_attempts').deleteMany({ userId }),
+        db.collection('mil_growth_profiles').deleteMany({ userId }),
+        db.collection('mil_competency_evidence').deleteMany({ userId }),
+        db.collection('analytics_events').deleteMany({ userId }),
+        db.collection('daily_investigation_usage').deleteMany({ userId }),
+        db.collection('user_entitlements').deleteMany({ userId }),
         db.collection('reward_transactions').deleteMany({ userId }),
         db.collection('gamification_profiles').deleteMany({ userId }),
         db.collection('user_badges').deleteMany({ userId }),
@@ -292,7 +300,7 @@ export class PrivacyService {
           ],
         }),
         db
-          .collection('claims')
+          .collection('verification_claims')
           .deleteMany({ verificationId: { $in: verificationIds } }),
         db
           .collection('verification_events')
@@ -316,7 +324,7 @@ export class PrivacyService {
           .collection('ai_provider_executions')
           .deleteMany({ verificationId: { $in: verificationIds } }),
         db
-          .collection('search_executions')
+          .collection('searchexecutions')
           .deleteMany({ verificationId: { $in: verificationIds } }),
         db.collection('reports').deleteMany({ _id: { $in: reportIds } }),
         db

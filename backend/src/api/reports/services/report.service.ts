@@ -380,6 +380,7 @@ export class ReportService {
       userId,
       reportId,
       evidenceId,
+      typeof evidence.sourceUrl === 'string' ? evidence.sourceUrl : undefined,
     );
     return { recorded: reward.awarded };
   }

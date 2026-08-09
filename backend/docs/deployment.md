@@ -2,7 +2,11 @@
 
 Build reproducibly with `npm ci`, `npm run build`, and `docker build .`. The
 multi-stage image contains production dependencies only and runs as the
-unprivileged `verith` user.
+unprivileged `verith` user. It also contains the database bootstrap and seed
+scripts. The image's default `npm run start:prod` command invokes
+`prestart:prod` before starting the API; do not replace that default with
+`node dist/main` unless a controlled release job has already completed the
+bootstrap successfully.
 
 Deploy the same image as three independently scalable processes:
 
@@ -41,7 +45,9 @@ dual-key/cutover process.
 
 Before routing traffic:
 
-1. run database index creation/migrations from a controlled release job;
+1. run `npm run db:indexes:application && npm run db:indexes:catalog` from a
+   controlled release job; these commands are additive and fail on incompatible
+   uniqueness or TTL definitions;
 2. deploy workers, then the API, then scheduler;
 3. require `/api/v1/health/ready` to pass;
 4. verify queues have consumers and no unexpected failed-job increase;
@@ -82,5 +88,7 @@ providers receive application-shutdown callbacks. Platform termination grace
 should be at least 30 seconds.
 
 Local `docker compose up --build` mirrors the three-process topology and reads
-`.env.local` by default. Set `ENV_FILE=/path/to/environment` to select a
-deployment-managed environment file.
+`.env.local` by default. Its worker and scheduler wait for the API to become
+healthy, ensuring the API's prestart bootstrap finishes first. Set
+`ENV_FILE=/path/to/environment` to select a deployment-managed environment
+file.

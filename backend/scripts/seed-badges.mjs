@@ -29,10 +29,12 @@ async function seedBadges() {
     throw new Error('MongoDB connection did not expose a database.');
   }
 
-  const owner = await database.collection('users').findOne(
-    { role: 'SUPER_ADMIN', status: 'ACTIVE' },
-    { projection: { _id: 1, email: 1 } },
-  );
+  const owner = await database
+    .collection('users')
+    .findOne(
+      { role: 'SUPER_ADMIN', status: 'ACTIVE' },
+      { projection: { _id: 1, email: 1 } },
+    );
   if (!owner) {
     throw new Error(
       'An ACTIVE SUPER_ADMIN must exist before the fixed badge catalog can be seeded.',
@@ -48,8 +50,9 @@ async function seedBadges() {
     const result = await badges.updateOne(
       { $or: [{ code: definition.code }, { slug: definition.slug }] },
       {
-        $set: { ...definition, active: true, updatedAt: now },
+        $set: { ...definition, updatedAt: now },
         $setOnInsert: {
+          active: true,
           createdAt: now,
           createdBy: new mongoose.Types.ObjectId(String(owner._id)),
         },
@@ -59,19 +62,6 @@ async function seedBadges() {
     if (result.upsertedCount > 0) created += 1;
     else if (result.modifiedCount > 0) updated += 1;
   }
-
-  const fixedCodes = catalog.map((badge) => badge.code);
-  const fixedSlugs = catalog.map((badge) => badge.slug);
-  const retired = await badges.updateMany(
-    {
-      active: true,
-      $nor: [
-        { code: { $in: fixedCodes } },
-        { slug: { $in: fixedSlugs } },
-      ],
-    },
-    { $set: { active: false, updatedAt: now } },
-  );
 
   console.log(
     JSON.stringify(
@@ -84,7 +74,7 @@ async function seedBadges() {
         created,
         updated,
         unchanged: catalog.length - created - updated,
-        retired: retired.modifiedCount,
+        preservedCustomBadges: true,
       },
       null,
       2,

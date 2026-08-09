@@ -35,4 +35,8 @@ export const RANK_THRESHOLDS: readonly RankDefinition[] = [
   },
 ] as const;
 
-export const ACHIEVEMENT_CATALOG_VERSION = 1;
+// Version 3 reconciles every durable, currently measurable activity producer
+// (investigations, lessons, quizzes, challenges, and community missions).
+// Evidence inspections cannot be reconstructed because opening a source is
+// intentionally recorded only when the user performs that action.
+export const ACHIEVEMENT_CATALOG_VERSION = 3;

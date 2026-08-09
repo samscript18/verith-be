@@ -29,6 +29,14 @@ export interface ProviderKeyLease {
   fail(code: string, retryAfterMs?: number): void;
 }
 
+export function isKeyRecoverableProviderFailure(code: string): boolean {
+  return (
+    code.endsWith('AUTHENTICATION_FAILED') ||
+    code.endsWith('RATE_LIMITED') ||
+    code.includes('BILLING')
+  );
+}
+
 class ProviderKeyPool {
   private readonly logger = new Logger(ProviderKeyPool.name);
   private readonly records: KeyRecord[];

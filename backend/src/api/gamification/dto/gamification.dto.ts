@@ -51,6 +51,26 @@ export class RewardTransactionQueryDto {
   limit = 20;
 }
 
+export class AchievementBackfillDto {
+  @IsString()
+  @MinLength(10)
+  @MaxLength(1000)
+  reason!: string;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsMongoId()
+  cursor?: string;
+
+  @ApiPropertyOptional({ default: 25, maximum: 100, minimum: 1, type: Number })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 25;
+}
+
 export enum BadgeEarnedFilter {
   ALL = 'ALL',
   EARNED = 'EARNED',

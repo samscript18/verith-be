@@ -1404,7 +1404,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get the persisted guided-investigation exercise",
+        "summary": "Get the guided-investigation exercise",
         "tags": [
           "Verifications"
         ]
@@ -1609,7 +1609,7 @@
             "bearer": []
           }
         ],
-        "summary": "Stream persisted and live verification events",
+        "summary": "Stream recorded and live verification events",
         "tags": [
           "Verifications"
         ]
@@ -5862,7 +5862,7 @@
         "properties": {
           "unreadCount": {
             "type": "number",
-            "description": "Number of persisted notifications not yet marked as read",
+            "description": "Number of notifications not yet marked as read",
             "example": 3,
             "minimum": 0
           }

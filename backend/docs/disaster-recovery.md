@@ -17,7 +17,7 @@
 3. Apply the erasure-tombstone ledger/audit decisions created after the restore
    point so deleted identities are not resurrected.
 4. Provision empty durable Redis, then re-enqueue only domain records whose
-   persisted state proves work is incomplete.
+   stored state proves work is incomplete.
 5. Validate provider credentials, webhook signatures, encryption keys, and
    outbound-delivery disable switches.
 6. Start workers with concurrency one, then scheduler, then API behind blocked

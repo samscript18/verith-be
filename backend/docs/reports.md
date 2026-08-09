@@ -2,7 +2,7 @@
 
 ## Synthesis and validation
 
-Reports are versioned snapshots of persisted verification data. Verdict, risk,
+Reports are versioned snapshots of recorded verification data. Verdict, risk,
 confidence, claim relationships, evidence citations, analysis findings, media
 states, and methodology versions are copied from validated Phase 8/9 records.
 The report layer does not ask a model to recalculate them.

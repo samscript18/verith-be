@@ -55,6 +55,8 @@ services:
       REDIS_URL: redis://redis:6379
       PROCESS_ROLE: worker
     depends_on:
+      backend:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
       redis:
@@ -71,6 +73,8 @@ services:
       REDIS_URL: redis://redis:6379
       PROCESS_ROLE: scheduler
     depends_on:
+      backend:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
       redis:

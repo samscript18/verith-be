@@ -27,14 +27,15 @@ export const FREE_AI_MODELS = {
 const providerKeys = (
   plural: string | undefined,
   singular: string | undefined,
-) => [
-  ...new Set(
-    (plural || singular || '')
-      .split(',')
-      .map((key) => key.trim())
-      .filter(Boolean),
-  ),
-];
+) =>
+  [
+    ...new Set(
+      (plural || singular || '')
+        .split(',')
+        .map((key) => key.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 3);
 
 export default registerAs('ai', (): AiConfig => {
   const geminiKeys = providerKeys(

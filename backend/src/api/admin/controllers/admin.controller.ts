@@ -49,7 +49,7 @@ export class AdminController {
 
   @Get('users/:id')
   @ApiOperation({ summary: 'Get safe administrative user details' })
-  getUser(@Param('id') id: string) {
+  getUser(@Param('id', ParseObjectIdPipe) id: string) {
     return this.admin.getUser(id);
   }
 
@@ -58,7 +58,7 @@ export class AdminController {
     summary: 'Change account status and revoke sessions when required',
   })
   changeStatus(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: AdminUserStatusDto,
     @CurrentUser() actor: AuthUser,
     @Req() request: RequestWithId,
@@ -74,7 +74,7 @@ export class AdminController {
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Change a user role as a super administrator' })
   changeRole(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: AdminUserRoleDto,
     @CurrentUser() actor: AuthUser,
     @Req() request: RequestWithId,
@@ -104,7 +104,7 @@ export class AdminController {
   @Throttle({ default: { limit: 5, ttl: 60 * 1000 } })
   @ApiOperation({ summary: 'Idempotently enqueue a failed verification retry' })
   retryVerification(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: AdminReasonDto,
     @CurrentUser() actor: AuthUser,
     @Req() request: RequestWithId,

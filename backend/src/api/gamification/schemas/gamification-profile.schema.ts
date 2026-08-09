@@ -29,6 +29,14 @@ export class GamificationProfile {
   leaderboardEligible!: boolean;
   @Prop({ default: 0, min: 0 })
   achievementCatalogVersion!: number;
+  /**
+   * Source-watermarks used to stop an older asynchronous recalculation from
+   * overwriting a projection produced from a newer reward ledger snapshot.
+   */
+  @Prop({ default: 0, min: 0 })
+  projectionTransactionCount!: number;
+  @Prop({ default: 0, min: 0 })
+  projectionBadgeOwnershipCount!: number;
 }
 
 export const GamificationProfileSchema =

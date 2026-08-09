@@ -43,6 +43,5 @@ export class GamificationDomainHandler {
         sourceType: verification.sourceType,
       },
     });
-    await this.gamification.recordEligibleActivity(event.payload.userId);
   }
 }

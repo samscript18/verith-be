@@ -400,7 +400,6 @@ export class LearningService {
           tags: lesson.tags,
         },
       });
-      await this.gamification.recordEligibleActivity(userId);
     }
     return progress;
   }

@@ -39,7 +39,9 @@ export class Badge {
   sortOrder!: number;
   @Prop({ enum: BadgeAvailability, default: BadgeAvailability.AVAILABLE })
   availability!: BadgeAvailability;
-  @Prop({ type: Types.ObjectId, required: true })
+  // Fixed system badges do not require a human author. Admin-created badges
+  // continue to record their actor through the service and audit ledger.
+  @Prop({ type: Types.ObjectId })
   createdBy!: Types.ObjectId;
 }
 export const BadgeSchema = SchemaFactory.createForClass(Badge);

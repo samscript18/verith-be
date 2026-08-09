@@ -50,7 +50,7 @@ export class DomainEventPublisher {
         },
       )
       .exec();
-    if (!event) throw new Error('Domain event could not be persisted');
+    if (!event) throw new Error('Domain event could not be saved');
     return this.toEnvelope<TName>(event);
   }
 

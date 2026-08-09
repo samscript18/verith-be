@@ -41,8 +41,6 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm test
-npm run test:integration
-npm run test:e2e
 npm run build
 ```
 
@@ -64,25 +62,48 @@ optional at application startup, but upload requests return
 `CLOUDINARY_NOT_CONFIGURED` unless all three Cloudinary credentials are
 present.
 
+Gemini, Groq, OpenRouter, and Tavily accept up to three comma-separated keys
+through `GEMINI_API_KEYS`, `GROQ_API_KEYS`, `OPENROUTER_API_KEYS`, and
+`TAVILY_API_KEYS`. A credential-specific authentication, billing, or rate-limit
+failure cools down or disables only the affected key and immediately tries the
+next healthy key from the same provider. Keys must be legitimately issued and
+must not be used to evade provider terms or billing limits.
+
 ## Docker
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 docker compose up --build
 ```
 
-The production image runs as a non-root user. MongoDB and Redis are not exposed by any production deployment manifest; the compose port mappings are for local development only.
+The production image runs as a non-root user. Its default command is
+`npm run start:prod`, so the same index bootstrap and idempotent seeds run before
+the API accepts traffic. The local worker and scheduler wait for the API health
+check, which means the bootstrap completes before either background process can
+consume work. MongoDB and Redis are not exposed by any production deployment
+manifest; the compose port mappings are for local development only.
 
 ## Deployment
 
 The code supports separate API, worker, and scheduler processes or a single free-tier `PROCESS_ROLE=all` service. See [docs/deployment.md](docs/deployment.md) and the repository-level [deployment and pilot guide](../docs/verith-deployment-and-pilot-guide.md).
 
 The Render start command runs `npm run start:prod`; npm automatically invokes
-its `prestart:prod` lifecycle once before starting the API. This creates required
-indexes, verifies or creates the bootstrap super-admin, seeds the fixed badge
-catalog, and then seeds learning content. Every seed is idempotent. Badge
+its `prestart:prod` lifecycle once before starting the API. This validates and
+creates every missing compiled non-gamification schema index without dropping
+existing indexes, creates the catalog/gamification indexes, verifies or creates
+the bootstrap super-admin, seeds the fixed badge catalog, and then seeds
+learning content. Index-option conflicts fail startup rather than silently
+serving without a uniqueness or TTL guarantee. Every seed is idempotent. Badge
 seeding loads the compiled application catalog as its source of truth and
 requires an active super-admin to own newly created badge records.
+
+To inspect the compiled non-gamification index manifest without connecting to
+MongoDB:
+
+```bash
+npm run build
+npm run db:indexes:check
+```
 
 To seed only the fixed badges after building the backend:
 

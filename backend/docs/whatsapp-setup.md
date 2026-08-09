@@ -34,7 +34,7 @@ Unlinking removes encrypted and hashed phone linkage values.
 ## Message processing
 
 Signed text, URL, image, and audio messages are deduplicated by Meta `wamid`,
-persisted without message body or plaintext phone number, and queued. Meta media
+stored without message body or plaintext phone number, and queued. Meta media
 is downloaded with Bearer authentication, MIME/size validated, and transferred
 server-side to Cloudinary before verification creation.
 

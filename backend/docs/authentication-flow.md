@@ -27,4 +27,4 @@ email already owned by a password account cannot be linked or used through
 Google, and a Google-created account cannot use password login, reset, or
 change flows.
 
-Raw refresh, verification, and reset tokens are never persisted. Password-reset responses are generic to prevent account enumeration.
+Raw refresh, verification, and reset tokens are never stored. Password-reset responses are generic to prevent account enumeration.

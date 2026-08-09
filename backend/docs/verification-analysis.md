@@ -1,7 +1,7 @@
 # Verification Analysis
 
 Phase 8 separates model inference from deterministic decisions. The AI provider
-receives only persisted claims, retrieved evidence excerpts, and normalized
+receives only recorded claims, retrieved evidence excerpts, and normalized
 submitted content. Its schema-constrained output may classify evidence
 relationships and extract bounded textual findings. Every returned claim ID,
 evidence ID, and text offset is checked against the verification before use.
@@ -21,7 +21,7 @@ confidence.
 - presence of a primary/official source;
 - successful structured-output validation.
 
-The normalized factors and final weighted score are persisted on each claim
+The normalized factors and final weighted score are stored on each claim
 evaluation. Duplicate and syndicated evidence does not increase independent
 source count. Low confidence resolves to `INSUFFICIENT_EVIDENCE` instead of
 forcing a directional verdict.
@@ -46,7 +46,7 @@ absolute truth.
 Manipulation findings require an exact phrase and valid offsets. Finding
 confidence is assigned by offset validation. Bias scores describe the submitted
 item only; confidence depends on whether the cited phrases occur in the content.
-Missing-context references must map to persisted evidence.
+Missing-context references must map to recorded evidence.
 
 Source assessments apply to retrieved material and available metadata.
 Government and educational domain signals may support stronger classifications.

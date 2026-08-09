@@ -33,7 +33,14 @@ export const envSchema = Joi.object({
   LOG_LEVEL: Joi.string()
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
     .default('debug'),
-  SWAGGER_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  SWAGGER_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.boolean().default(false),
+      otherwise: Joi.boolean().default(true),
+    }),
   PROCESS_ROLE: Joi.string()
     .valid('all', 'api', 'worker', 'scheduler')
     .optional(),

@@ -154,7 +154,7 @@ export class AnalyticsService {
         outputTokens: group.totalOutputTokens,
         cost: {
           state: 'UNAVAILABLE',
-          reason: 'Provider cost is not persisted',
+          reason: 'Provider cost is not stored',
         },
       })),
       whatsapp: { messages: whatsapp },

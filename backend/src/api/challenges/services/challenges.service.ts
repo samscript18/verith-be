@@ -328,7 +328,6 @@ export class ChallengesService {
           tags: challenge.tags,
         },
       });
-      await this.gamification.recordEligibleActivity(userId);
       rewardState = reward.awarded ? 'AWARDED' : 'ALREADY_AWARDED';
       await this.attempts.updateOne(
         { _id: attempt._id },

@@ -30,7 +30,10 @@ export default registerAs('app', (): AppConfig => ({
     .map((origin) => origin.trim())
     .filter(Boolean),
   trustProxy: process.env.TRUST_PROXY === 'true',
-  swaggerEnabled: process.env.SWAGGER_ENABLED !== 'false',
+  swaggerEnabled:
+    process.env.SWAGGER_ENABLED !== undefined
+      ? process.env.SWAGGER_ENABLED === 'true'
+      : process.env.NODE_ENV !== 'production',
   // A single Render service running PROCESS_ROLE=all has one API process, so
   // a process-local limiter protects it without turning every ordinary API
   // request into a managed-Redis command. Multi-instance API deployments can

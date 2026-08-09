@@ -22,7 +22,7 @@ export default registerAs('search', (): SearchConfig => {
         .map((key) => key.trim())
         .filter(Boolean),
     ),
-  ];
+  ].slice(0, 3);
   const tavilyApiKey = tavilyApiKeys[0];
   return {
     providerOrder: ['TAVILY', 'WIKIPEDIA'],

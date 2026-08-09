@@ -34,11 +34,11 @@ is sanitized before persistence with a narrow markup/HTTPS-link allowlist.
 
 Quiz answer keys and explanations are never serialized by normal quiz-read
 routes. Scoring loads the protected server document, validates submitted option
-IDs, and returns explanations only after an attempt has been persisted.
+IDs, and returns explanations only after an attempt has been recorded.
 
 # Gamification integrity and privacy
 
-Challenge answer keys follow the same protected projection and persisted-attempt
+Challenge answer keys follow the same protected projection and recorded-attempt
 rules as quizzes. Reward transactions have a unique per-user idempotency
 reference and are append-only in normal application flows. Cached totals are
 rebuilt from the ledger.

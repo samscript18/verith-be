@@ -21,6 +21,7 @@ import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 import { AdminReasonDto } from '../../admin/dto/admin.dto';
 import { UserRole } from '../../users/enums/user-role.enum';
 import {
+  AchievementBackfillDto,
   BadgeAdminQueryDto,
   CreateBadgeDto,
   UpdateBadgeDto,
@@ -38,6 +39,20 @@ export class GamificationAdminController {
   @Get('badges')
   listBadges(@Query() query: BadgeAdminQueryDto) {
     return this.gamification.listBadgesAdmin(query);
+  }
+
+  @Post('backfill')
+  @Roles(UserRole.SUPER_ADMIN)
+  backfillExistingUsers(
+    @CurrentUser() actor: AuthUser,
+    @Body() dto: AchievementBackfillDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.gamification.backfillExistingUsers(
+      actor,
+      dto,
+      request.requestId,
+    );
   }
 
   @Get('badges/:id')

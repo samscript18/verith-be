@@ -40,7 +40,7 @@ routes. Those routes return operational/configuration states and never expose
 API keys. Service liveness and MongoDB/Redis readiness remain available through
 the health module.
 
-Analytics are computed from persisted records. Empty collections produce zero
+Analytics are computed from stored records. Empty collections produce zero
 rates; unavailable dimensions are explicitly marked unavailable rather than
 synthesized. Provider cost is currently unavailable because no normalized cost
-record is persisted.
+record is stored.

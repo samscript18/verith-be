@@ -55,6 +55,7 @@ export interface AuthenticationResult {
 }
 
 const EMAIL_VERIFICATION_RESEND_COOLDOWN_MS = 3 * 60 * 1000;
+const CONCURRENT_REFRESH_GRACE_MS = 5_000;
 
 @Injectable()
 export class AuthService {
@@ -238,7 +239,10 @@ export class AuthService {
     return result;
   }
 
-  async refresh(rawToken: string): Promise<AuthenticationResult> {
+  async refresh(
+    rawToken: string,
+    context: SessionContext = {},
+  ): Promise<AuthenticationResult> {
     const sessionId = rawToken.split('.', 1)[0];
     if (!sessionId || !Types.ObjectId.isValid(sessionId)) {
       throw new AuthenticationException(
@@ -259,6 +263,15 @@ export class AuthService {
 
     const presentedHash = this.tokenService.hash(rawToken);
     if (!this.constantTimeEqual(presentedHash, session.refreshTokenHash)) {
+      if (
+        this.sameSessionContext(session, context) &&
+        Date.now() - session.lastUsedAt.getTime() <= CONCURRENT_REFRESH_GRACE_MS
+      ) {
+        throw new AuthenticationException(
+          'The session was refreshed in another browser context; retry with the current cookie',
+          'REFRESH_CONCURRENT_ROTATION',
+        );
+      }
       await this.revokeFamily(session.tokenFamilyId, 'REFRESH_TOKEN_REUSE');
       throw new AuthenticationException(
         'Refresh token reuse was detected',
@@ -290,13 +303,9 @@ export class AuthService {
       )
       .exec();
     if (!rotated) {
-      await this.revokeFamily(
-        session.tokenFamilyId,
-        'CONCURRENT_REFRESH_REUSE',
-      );
       throw new AuthenticationException(
-        'Refresh token reuse was detected',
-        'REFRESH_TOKEN_REUSE_DETECTED',
+        'The session was refreshed concurrently; retry with the current cookie',
+        'REFRESH_CONCURRENT_ROTATION',
       );
     }
     return this.buildAuthenticationResult(user, rotated, nextRawToken);
@@ -577,6 +586,19 @@ export class AuthService {
         { $set: { revokedAt: new Date(), revokedReason: reason } },
       )
       .exec();
+  }
+
+  private sameSessionContext(
+    session: SessionDocument,
+    context: SessionContext,
+  ): boolean {
+    const ipMatches =
+      !session.ipHash || !context.ipHash || session.ipHash === context.ipHash;
+    const userAgentMatches =
+      !session.userAgentSummary ||
+      !context.userAgentSummary ||
+      session.userAgentSummary === context.userAgentSummary;
+    return ipMatches && userAgentMatches;
   }
 
   private async publishSecurityAlert(

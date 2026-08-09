@@ -24,6 +24,8 @@ export class RewardTransaction {
   metadata!: Record<string, unknown>;
   @Prop({ type: Types.ObjectId })
   createdBy?: Types.ObjectId;
+  createdAt!: Date;
+  updatedAt!: Date;
 }
 
 export const RewardTransactionSchema =
@@ -32,4 +34,5 @@ RewardTransactionSchema.index(
   { userId: 1, idempotencyReference: 1 },
   { unique: true },
 );
+RewardTransactionSchema.index({ userId: 1, createdAt: -1, _id: -1 });
 RewardTransactionSchema.index({ createdAt: -1, userId: 1 });

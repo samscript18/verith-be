@@ -26,6 +26,30 @@ import {
   VerificationSchema,
 } from '../verifications/schemas/verification.schema';
 import { GamificationDomainHandler } from './handlers/gamification-domain.handler';
+import {
+  LessonProgress,
+  LessonProgressSchema,
+} from '../learning/schemas/lesson-progress.schema';
+import { Lesson, LessonSchema } from '../learning/schemas/lesson.schema';
+import {
+  QuizAttempt,
+  QuizAttemptSchema,
+} from '../quizzes/schemas/quiz-attempt.schema';
+import { Quiz, QuizSchema } from '../quizzes/schemas/quiz.schema';
+import {
+  ChallengeAttempt,
+  ChallengeAttemptSchema,
+} from '../challenges/schemas/challenge-attempt.schema';
+import {
+  Challenge,
+  ChallengeSchema,
+} from '../challenges/schemas/challenge.schema';
+import {
+  MissionParticipant,
+  MissionParticipantSchema,
+} from '../missions/schemas/mission-participant.schema';
+import { Mission, MissionSchema } from '../missions/schemas/mission.schema';
+import { GamificationReconciliationService } from './services/gamification-reconciliation.service';
 
 @Module({
   imports: [
@@ -39,6 +63,14 @@ import { GamificationDomainHandler } from './handlers/gamification-domain.handle
       { name: User.name, schema: UserSchema },
       { name: AchievementEvent.name, schema: AchievementEventSchema },
       { name: Verification.name, schema: VerificationSchema },
+      { name: LessonProgress.name, schema: LessonProgressSchema },
+      { name: Lesson.name, schema: LessonSchema },
+      { name: QuizAttempt.name, schema: QuizAttemptSchema },
+      { name: Quiz.name, schema: QuizSchema },
+      { name: ChallengeAttempt.name, schema: ChallengeAttemptSchema },
+      { name: Challenge.name, schema: ChallengeSchema },
+      { name: MissionParticipant.name, schema: MissionParticipantSchema },
+      { name: Mission.name, schema: MissionSchema },
     ]),
   ],
   controllers: [GamificationController, GamificationAdminController],
@@ -46,6 +78,7 @@ import { GamificationDomainHandler } from './handlers/gamification-domain.handle
     GamificationService,
     GamificationCatalogService,
     GamificationDomainHandler,
+    GamificationReconciliationService,
   ],
   exports: [GamificationService, MongooseModule],
 })

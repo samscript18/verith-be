@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { ExternalProviderException } from '../../../core/exceptions';
 import type { AiConfig, AiProviderConfig } from '../../../shared/config';
 import { ProviderState } from '../../../shared/enums/provider-state.enum';
-import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
+import {
+  isKeyRecoverableProviderFailure,
+  ProviderKeyPoolService,
+} from '../../../shared/providers/provider-key-pool.service';
 import { AiCapability } from '../enums/ai-capability.enum';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
 import type {
@@ -71,91 +74,102 @@ export class GeminiProvider implements AiProvider {
   }
 
   async execute(request: AiExecutionRequest): Promise<AiProviderResult> {
-    const lease = this.keyPool.acquire();
-    if (!lease)
-      throw new ExternalProviderException(
+    const keyCount = this.keyPool.status().configuredKeys;
+    let lastError: ExternalProviderException | undefined;
+    for (let keyAttempt = 0; keyAttempt < keyCount; keyAttempt += 1) {
+      const lease = this.keyPool.acquire();
+      if (!lease) break;
+      try {
+        const response = await providerFetch(
+          `${this.config.baseUrl}/v1beta/models/${encodeURIComponent(request.model)}:generateContent?key=${encodeURIComponent(lease.key)}`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: request.systemPrompt }] },
+              contents: [
+                {
+                  role: 'user',
+                  parts: [
+                    ...(request.media
+                      ? [
+                          {
+                            inlineData: {
+                              mimeType: request.media.mimeType,
+                              data: request.media.base64Data,
+                            },
+                          },
+                        ]
+                      : []),
+                    { text: request.userPrompt },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: request.temperature ?? 0.1,
+                ...(request.maxOutputTokens
+                  ? { maxOutputTokens: request.maxOutputTokens }
+                  : {}),
+                responseMimeType: 'application/json',
+                responseJsonSchema: request.outputJsonSchema,
+              },
+            }),
+          },
+          this.config.timeoutMs,
+          this.provider,
+        );
+        const body = readObject(await response.json());
+        const candidates = Array.isArray(body?.candidates)
+          ? body.candidates
+          : [];
+        const candidate = readObject(candidates[0]);
+        const content = readObject(candidate?.content);
+        const parts = Array.isArray(content?.parts) ? content.parts : [];
+        const firstPart = readObject(parts[0]);
+        if (typeof firstPart?.text !== 'string') {
+          throw new ExternalProviderException(
+            'Gemini returned no usable content',
+            'GEMINI_INVALID_RESPONSE',
+          );
+        }
+        const output = parseJsonText(firstPart.text, this.provider);
+        lease.succeed();
+        const usage = readObject(body?.usageMetadata);
+        return {
+          output,
+          model: request.model,
+          usage: {
+            ...(typeof usage?.promptTokenCount === 'number'
+              ? { inputTokens: usage.promptTokenCount }
+              : {}),
+            ...(typeof usage?.candidatesTokenCount === 'number'
+              ? { outputTokens: usage.candidatesTokenCount }
+              : {}),
+            ...(typeof usage?.totalTokenCount === 'number'
+              ? { totalTokens: usage.totalTokenCount }
+              : {}),
+          },
+        };
+      } catch (error) {
+        const failure =
+          error instanceof ExternalProviderException
+            ? error
+            : new ExternalProviderException(
+                'Gemini is unavailable',
+                `GEMINI_${ProviderState.UNAVAILABLE}`,
+              );
+        lease.fail(failure.code);
+        lastError = failure;
+        if (!isKeyRecoverableProviderFailure(failure.code)) throw failure;
+      }
+    }
+    throw (
+      lastError ??
+      new ExternalProviderException(
         'No healthy Gemini key is currently available',
         `GEMINI_${ProviderState.RATE_LIMITED}`,
-      );
-    let response: Response;
-    try {
-      response = await providerFetch(
-        `${this.config.baseUrl}/v1beta/models/${encodeURIComponent(request.model)}:generateContent?key=${encodeURIComponent(lease.key)}`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: request.systemPrompt }],
-            },
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  ...(request.media
-                    ? [
-                        {
-                          inlineData: {
-                            mimeType: request.media.mimeType,
-                            data: request.media.base64Data,
-                          },
-                        },
-                      ]
-                    : []),
-                  { text: request.userPrompt },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: request.temperature ?? 0.1,
-              ...(request.maxOutputTokens
-                ? { maxOutputTokens: request.maxOutputTokens }
-                : {}),
-              responseMimeType: 'application/json',
-              responseJsonSchema: request.outputJsonSchema,
-            },
-          }),
-        },
-        this.config.timeoutMs,
-        this.provider,
-      );
-      lease.succeed();
-    } catch (error) {
-      lease.fail(
-        error instanceof ExternalProviderException
-          ? error.code
-          : `GEMINI_${ProviderState.UNAVAILABLE}`,
-      );
-      throw error;
-    }
-    const body = readObject(await response.json());
-    const candidates = Array.isArray(body?.candidates) ? body.candidates : [];
-    const candidate = readObject(candidates[0]);
-    const content = readObject(candidate?.content);
-    const parts = Array.isArray(content?.parts) ? content.parts : [];
-    const firstPart = readObject(parts[0]);
-    if (typeof firstPart?.text !== 'string') {
-      throw new ExternalProviderException(
-        'Gemini returned no usable content',
-        'GEMINI_INVALID_RESPONSE',
-      );
-    }
-    const usage = readObject(body?.usageMetadata);
-    return {
-      output: parseJsonText(firstPart.text, this.provider),
-      model: request.model,
-      usage: {
-        ...(typeof usage?.promptTokenCount === 'number'
-          ? { inputTokens: usage.promptTokenCount }
-          : {}),
-        ...(typeof usage?.candidatesTokenCount === 'number'
-          ? { outputTokens: usage.candidatesTokenCount }
-          : {}),
-        ...(typeof usage?.totalTokenCount === 'number'
-          ? { totalTokens: usage.totalTokenCount }
-          : {}),
-      },
-    };
+      )
+    );
   }
 
   async healthCheck(): Promise<ProviderHealthResult> {

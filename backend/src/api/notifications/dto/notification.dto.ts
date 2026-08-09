@@ -19,7 +19,7 @@ export class NotificationQueryDto {
 
 export class NotificationUnreadCountDto {
   @ApiProperty({
-    description: 'Number of persisted notifications not yet marked as read',
+    description: 'Number of notifications not yet marked as read',
     example: 3,
     minimum: 0,
     type: Number,

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { AuditService } from '../../admin/services/audit.service';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import {
@@ -12,6 +12,7 @@ import {
 import { UserStatus } from '../../users/enums/user-status.enum';
 import { User } from '../../users/schemas/user.schema';
 import type {
+  AchievementBackfillDto,
   BadgeAdminQueryDto,
   BadgeCatalogQueryDto,
   CreateBadgeDto,
@@ -41,16 +42,18 @@ import {
   ACHIEVEMENT_CATALOG_VERSION,
   RANK_THRESHOLDS,
 } from '../constants/rank.constants';
+import { FIXED_BADGE_CATALOG } from '../constants/badge-catalog';
 import { InvestigationMode } from '../../verifications/enums/investigation-mode.enum';
+import type { RewardInput } from '../interfaces/reward-input.interface';
+import { GamificationReconciliationService } from './gamification-reconciliation.service';
 
-export interface RewardInput {
-  type: RewardTransactionType;
-  idempotencyReference: string;
-  xp: number;
-  truthPoints: number;
-  metadata?: Record<string, unknown>;
-  createdBy?: string;
-}
+const ELIGIBLE_DAILY_ACTIVITY_TYPES = [
+  RewardTransactionType.VERIFICATION_COMPLETED,
+  RewardTransactionType.LESSON_COMPLETED,
+  RewardTransactionType.QUIZ_PASSED,
+  RewardTransactionType.CHALLENGE_COMPLETED,
+  RewardTransactionType.MISSION_COMPLETED,
+] as const;
 
 @Injectable()
 export class GamificationService {
@@ -64,6 +67,7 @@ export class GamificationService {
     @InjectModel(AchievementEvent.name)
     private readonly achievementEvents: Model<AchievementEvent>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    private readonly reconciliation: GamificationReconciliationService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
   ) {}
@@ -73,33 +77,63 @@ export class GamificationService {
     const baseline = await this.ensureAchievementBackfill(
       userId,
       initialBaseline,
+      input.idempotencyReference,
     );
     const previousXp = baseline?.xp ?? 0;
-    const created = await this.createTransaction(userId, input);
+    const created = await this.createTransaction(userId, {
+      ...input,
+      metadata: {
+        ...(input.metadata ?? {}),
+        rankBaselineXp: previousXp,
+      },
+    });
+    const sourceTransaction =
+      created ??
+      (await this.transactions
+        .findOne({
+          userId: new Types.ObjectId(userId),
+          idempotencyReference: input.idempotencyReference,
+        })
+        .exec());
+    if (!sourceTransaction)
+      throw new ConflictException(
+        'The reward could not be resolved after an idempotent retry',
+        'REWARD_TRANSACTION_NOT_RESOLVED',
+      );
+    await this.ensureDailyActivityForReward(
+      userId,
+      input.type,
+      sourceTransaction.createdAt ?? input.occurredAt ?? new Date(),
+      sourceTransaction._id.toString(),
+    );
     let profile = await this.recalculate(userId);
-    if (created)
-      await this.evaluateBadges(userId, profile, {
-        celebrate: true,
-        sourceActivityId: created._id.toString(),
-        sourceActivityType: input.type,
-      });
-    if (created) profile = await this.recalculate(userId);
-    const previousRank = calculateRankProgress(previousXp);
+    // Re-evaluating is intentional: it repairs an interrupted badge award
+    // after ownership was written but a later side effect did not complete.
+    await this.evaluateBadges(userId, profile, {
+      celebrate: true,
+      sourceActivityId: sourceTransaction._id.toString(),
+      sourceActivityType: input.type,
+    });
+    profile = await this.recalculate(userId);
+    const storedBaseline = Number(sourceTransaction.metadata?.rankBaselineXp);
+    const previousRank = calculateRankProgress(
+      Number.isFinite(storedBaseline) ? storedBaseline : previousXp,
+    );
     const nextRank = calculateRankProgress(profile?.xp ?? previousXp);
     if (
-      created &&
       profile &&
       previousRank.currentRank !== nextRank.currentRank &&
       nextRank.currentXp > previousRank.currentXp
     ) {
+      const rankReference = `rank-up:${nextRank.currentRank}`;
       await this.createAchievementEvent({
         userId,
         type: AchievementEventType.RANK_UP,
-        idempotencyReference: `rank-up:${created._id.toString()}:${nextRank.currentRank}`,
+        idempotencyReference: rankReference,
         fromRank: previousRank.currentRank,
         toRank: nextRank.currentRank,
         sourceActivityType: input.type,
-        sourceActivityId: created._id.toString(),
+        sourceActivityId: sourceTransaction._id.toString(),
         metadata: {
           currentXp: nextRank.currentXp,
           currentRankLabel: nextRank.currentRankLabel,
@@ -110,9 +144,9 @@ export class GamificationService {
         type: NotificationType.LEVEL_UP,
         title: `You reached ${nextRank.currentRankLabel}`,
         message:
-          'Your persisted Verith activity moved you into a new achievement rank.',
+          'Your Verith activity moved you into a new achievement rank.',
         actionUrl: '/app/achievements',
-        idempotencyReference: `rank-up:${created._id.toString()}:${nextRank.currentRank}`,
+        idempotencyReference: rankReference,
         metadata: {
           fromRank: previousRank.currentRank,
           toRank: nextRank.currentRank,
@@ -138,76 +172,167 @@ export class GamificationService {
   }
 
   async getProfile(userId: string) {
-    const initialProfile = await this.recalculate(userId);
-    await this.ensureAchievementBackfill(userId, initialProfile);
-    const profile = await this.recalculate(userId);
-    if (!profile) return null;
-    const latestOwnership = await this.userBadges
-      .findOne({ userId: new Types.ObjectId(userId) })
-      .sort({ createdAt: -1, _id: -1 })
-      .lean()
-      .exec();
-    const latestBadge = latestOwnership
-      ? await this.badges
-          .findById(latestOwnership.badgeId)
-          .select('name code slug iconKey')
-          .lean()
-          .exec()
-      : null;
-    const totalBadges = await this.badges.countDocuments({ active: true });
+    const objectId = new Types.ObjectId(userId);
+    let profile: GamificationProfile | null = await this.recalculate(userId);
+    if (profile.achievementCatalogVersion < ACHIEVEMENT_CATALOG_VERSION) {
+      profile = await this.ensureAchievementBackfill(userId, profile);
+    } else {
+      const recovery = await this.repairDurableActivityRewards(userId);
+      if (recovery.created > 0) {
+        profile = await this.recalculate(userId);
+        await this.evaluateBadges(userId, profile, {
+          celebrate: true,
+          ...(recovery.latestSourceActivityType
+            ? { sourceActivityType: recovery.latestSourceActivityType }
+            : {}),
+          ...(recovery.latestSourceActivityId
+            ? { sourceActivityId: recovery.latestSourceActivityId }
+            : {}),
+        });
+        profile = await this.recalculate(userId);
+      }
+    }
+    profile ??= await this.recalculate(userId);
+    const [ownerships, activeBadges] = await Promise.all([
+      this.userBadges
+        .find({ userId: objectId })
+        .select('badgeId badgeCode createdAt')
+        .sort({ createdAt: -1, _id: -1 })
+        .lean()
+        .exec(),
+      this.badges
+        .find({ active: true })
+        .select('_id code name slug iconKey')
+        .sort({ sortOrder: 1, _id: 1 })
+        .lean()
+        .exec(),
+    ]);
+    const activeById = new Map(
+      activeBadges.map((badge) => [badge._id.toString(), badge] as const),
+    );
+    const activeByCode = new Map(
+      activeBadges.flatMap((badge) =>
+        badge.code ? [[badge.code, badge] as const] : [],
+      ),
+    );
+    const activeOwnerships = ownerships.flatMap((ownership) => {
+      const badge =
+        activeById.get(ownership.badgeId.toString()) ??
+        (ownership.badgeCode
+          ? activeByCode.get(ownership.badgeCode)
+          : undefined);
+      return badge ? [{ ownership, badge }] : [];
+    });
+    const latest = activeOwnerships.at(0) ?? null;
     return {
       ...this.profileResponse(profile),
       badgeSummary: {
-        earned: profile.badgesCount,
-        total: totalBadges,
-        latest:
-          latestBadge && latestOwnership
-            ? {
-                earnedAt: latestOwnership.createdAt,
-                badge: latestBadge,
-              }
-            : null,
+        earned: activeOwnerships.length,
+        total: activeBadges.length,
+        latest: latest
+          ? {
+              earnedAt: latest.ownership.createdAt,
+              badge: latest.badge,
+            }
+          : null,
       },
     };
   }
 
-  async backfillExistingUsers() {
-    let cursor: Types.ObjectId | undefined;
+  async backfillExistingUsers(
+    actor: AuthUser,
+    dto: AchievementBackfillDto,
+    requestId: string,
+  ) {
+    const cursor = dto.cursor ? new Types.ObjectId(dto.cursor) : undefined;
     let processed = 0;
-    do {
-      const users = await this.users
-        .find({
-          status: UserStatus.ACTIVE,
-          deletedAt: { $exists: false },
-          ...(cursor ? { _id: { $gt: cursor } } : {}),
-        })
-        .select('_id')
-        .sort({ _id: 1 })
-        .limit(50)
-        .lean()
+    let skipped = 0;
+    const records = await this.users
+      .find({
+        status: UserStatus.ACTIVE,
+        deletedAt: { $exists: false },
+        ...(cursor ? { _id: { $gt: cursor } } : {}),
+      })
+      .select('_id')
+      .sort({ _id: 1 })
+      .limit(dto.limit + 1)
+      .lean()
+      .exec();
+    const hasNextPage = records.length > dto.limit;
+    const users = records.slice(0, dto.limit);
+    for (const user of users) {
+      const existing = await this.profiles
+        .findOne({ userId: user._id })
+        .select('achievementCatalogVersion')
         .exec();
-      if (!users.length) break;
-      for (const user of users) {
-        const profile = await this.recalculate(user._id.toString());
-        await this.ensureAchievementBackfill(user._id.toString(), profile);
-        processed += 1;
+      if (
+        existing &&
+        existing.achievementCatalogVersion >= ACHIEVEMENT_CATALOG_VERSION
+      ) {
+        skipped += 1;
+        continue;
       }
-      cursor = users.at(-1)?._id;
-      if (users.length < 50) break;
-    } while (cursor);
-    return { processed };
+      const profile = existing ?? (await this.recalculate(user._id.toString()));
+      await this.ensureAchievementBackfill(user._id.toString(), profile);
+      processed += 1;
+    }
+    const nextCursor = hasNextPage
+      ? (users.at(-1)?._id.toString() ?? null)
+      : null;
+    await this.audit.record({
+      actor,
+      action: 'GAMIFICATION_ACHIEVEMENT_BACKFILL_EXECUTED',
+      resourceType: 'GAMIFICATION',
+      resourceId: `achievement-catalog-v${ACHIEVEMENT_CATALOG_VERSION}`,
+      requestId,
+      reason: dto.reason,
+      safeBefore: { cursor: dto.cursor ?? null, limit: dto.limit },
+      safeAfter: {
+        scanned: users.length,
+        processed,
+        skipped,
+        nextCursor,
+        hasNextPage,
+      },
+    });
+    return {
+      processed,
+      skipped,
+      scanned: users.length,
+      pagination: {
+        nextCursor,
+        previousCursor: null,
+        hasNextPage,
+        limit: dto.limit,
+      },
+    };
   }
 
   async listTransactions(userId: string, query: RewardTransactionQueryDto) {
+    const objectUserId = new Types.ObjectId(userId);
+    const filter: Record<string, unknown> = { userId: objectUserId };
+    if (query.cursor) {
+      const anchor = await this.transactions
+        .findOne({
+          _id: new Types.ObjectId(query.cursor),
+          userId: objectUserId,
+        })
+        .select('_id createdAt')
+        .lean()
+        .exec();
+      if (!anchor)
+        throw new ValidationException(
+          'The reward ledger pagination cursor is no longer valid',
+        );
+      filter.$or = [
+        { createdAt: { $lt: anchor.createdAt } },
+        { createdAt: anchor.createdAt, _id: { $lt: anchor._id } },
+      ];
+    }
     const records = await this.transactions
-      .find({
-        userId: new Types.ObjectId(userId),
-        ...(query.cursor
-          ? { _id: { $lt: new Types.ObjectId(query.cursor) } }
-          : {}),
-      })
+      .find(filter)
       .select('-createdBy')
-      .sort({ _id: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .limit(query.limit + 1)
       .lean()
       .exec();
@@ -225,6 +350,34 @@ export class GamificationService {
   }
 
   async listBadges(query: BadgeCatalogQueryDto, userId?: string) {
+    let authoritativeProfile: GamificationProfile | null = null;
+    if (userId) {
+      authoritativeProfile = await this.recalculate(userId);
+      if (
+        authoritativeProfile.achievementCatalogVersion <
+        ACHIEVEMENT_CATALOG_VERSION
+      ) {
+        authoritativeProfile = await this.ensureAchievementBackfill(
+          userId,
+          authoritativeProfile,
+        );
+      } else {
+        const recovery = await this.repairDurableActivityRewards(userId);
+        if (recovery.created > 0) {
+          authoritativeProfile = await this.recalculate(userId);
+          await this.evaluateBadges(userId, authoritativeProfile, {
+            celebrate: true,
+            ...(recovery.latestSourceActivityType
+              ? { sourceActivityType: recovery.latestSourceActivityType }
+              : {}),
+            ...(recovery.latestSourceActivityId
+              ? { sourceActivityId: recovery.latestSourceActivityId }
+              : {}),
+          });
+          authoritativeProfile = await this.recalculate(userId);
+        }
+      }
+    }
     const earned = userId
       ? await this.userBadges
           .find({ userId: new Types.ObjectId(userId) })
@@ -235,32 +388,47 @@ export class GamificationService {
     const earnedById = new Map(
       earned.map((item) => [item.badgeId.toString(), item] as const),
     );
+    const earnedByCode = new Map(
+      earned.flatMap((item) =>
+        item.badgeCode ? [[item.badgeCode, item] as const] : [],
+      ),
+    );
+    if (earnedByCode.size) {
+      const currentDefinitions = await this.badges
+        .find({ code: { $in: [...earnedByCode.keys()] } })
+        .select('_id code')
+        .lean()
+        .exec();
+      for (const definition of currentDefinitions) {
+        const ownership = definition.code
+          ? earnedByCode.get(definition.code)
+          : undefined;
+        if (ownership) earnedById.set(definition._id.toString(), ownership);
+      }
+    }
     const earnedIds = new Set(earnedById.keys());
     const filter = this.badgeFilter(query, true);
     if (userId && query.earned !== BadgeEarnedFilter.ALL) {
       const ids = [...earnedIds].map((id) => new Types.ObjectId(id));
       filter._id = {
-        ...(query.cursor ? { $lt: new Types.ObjectId(query.cursor) } : {}),
         [query.earned === BadgeEarnedFilter.EARNED ? '$in' : '$nin']: ids,
       };
     }
+    await this.applyBadgeCursor(filter, query.cursor);
     const records = await this.badges
       .find(filter)
-      .sort({ _id: -1 })
+      .sort({ sortOrder: 1, _id: 1 })
       .limit(query.limit + 1)
       .lean()
       .exec();
     const result = this.page(records, query.limit);
-    const [activities, gamificationProfile] = userId
-      ? await Promise.all([
-          this.transactions
-            .find({ userId: new Types.ObjectId(userId) })
-            .select('type metadata')
-            .lean()
-            .exec(),
-          this.profiles.findOne({ userId: new Types.ObjectId(userId) }).lean(),
-        ])
-      : [[], null];
+    const activities = userId
+      ? await this.transactions
+          .find({ userId: new Types.ObjectId(userId) })
+          .select('type metadata')
+          .lean()
+          .exec()
+      : [];
     return {
       ...result,
       items: result.items.map((badge) => {
@@ -275,7 +443,7 @@ export class GamificationService {
                   badge,
                   activities,
                   Boolean(owned),
-                  gamificationProfile?.longestStreak ?? 0,
+                  authoritativeProfile?.longestStreak ?? 0,
                 ),
               }
             : {}),
@@ -285,9 +453,11 @@ export class GamificationService {
   }
 
   async listBadgesAdmin(query: BadgeAdminQueryDto) {
+    const filter = this.badgeFilter(query, false);
+    await this.applyBadgeCursor(filter, query.cursor);
     const records = await this.badges
-      .find(this.badgeFilter(query, false))
-      .sort({ _id: -1 })
+      .find(filter)
+      .sort({ sortOrder: 1, _id: 1 })
       .limit(query.limit + 1)
       .lean()
       .exec();
@@ -305,20 +475,7 @@ export class GamificationService {
   }
 
   async createBadge(actor: AuthUser, dto: CreateBadgeDto, requestId: string) {
-    const threshold = Number(dto.criteria.threshold);
-    const xp = Number(dto.reward.xp ?? 0);
-    const truthPoints = Number(dto.reward.truthPoints ?? 0);
-    if (
-      !Number.isFinite(threshold) ||
-      threshold < 1 ||
-      !Number.isInteger(xp) ||
-      xp < 0 ||
-      !Number.isInteger(truthPoints) ||
-      truthPoints < 0
-    )
-      throw new ValidationException(
-        'Badge thresholds and rewards must be valid non-negative integers',
-      );
+    this.validateBadgeDefinition(dto.criteriaType, dto.criteria, dto.reward);
     try {
       const badge = await this.badges.create({
         ...dto,
@@ -358,8 +515,30 @@ export class GamificationService {
         'BADGE_NOT_FOUND',
       );
     const before = { name: badge.name, active: badge.active };
+    const fixed = FIXED_BADGE_CATALOG.some(
+      (definition) =>
+        definition.code === badge.code || definition.slug === badge.slug,
+    );
+    if (fixed && Object.keys(dto).some((key) => key !== 'active'))
+      throw new ValidationException(
+        'Fixed badge definitions cannot be changed; only their active state may be updated',
+      );
+    this.validateBadgeDefinition(
+      dto.criteriaType ?? badge.criteriaType,
+      dto.criteria ?? badge.criteria,
+      dto.reward ?? badge.reward,
+    );
     badge.set(dto);
-    await badge.save();
+    try {
+      await badge.save();
+    } catch (error) {
+      if (this.isDuplicate(error))
+        throw new ConflictException(
+          'The badge slug already exists',
+          'BADGE_SLUG_CONFLICT',
+        );
+      throw error;
+    }
     await this.audit.record({
       actor,
       action: 'BADGE_UPDATED',
@@ -402,7 +581,10 @@ export class GamificationService {
   async leaderboard(query: LeaderboardQueryDto) {
     const since = this.periodStart(query.period);
     const match: Record<string, unknown> = {};
-    if (since) match.createdAt = { $gte: since };
+    if (since) {
+      match.createdAt = { $gte: since };
+      match['metadata.reconciledFromHistory'] = { $ne: true };
+    }
     const scores = await this.transactions.aggregate<{
       _id: Types.ObjectId;
       xp: number;
@@ -452,13 +634,32 @@ export class GamificationService {
     userId: string,
     reportId: string,
     evidenceId: string,
+    sourceUrl?: string,
   ) {
+    const sourceFingerprint = this.evidenceSourceFingerprint(
+      sourceUrl,
+      reportId,
+      evidenceId,
+    );
+    const objectUserId = new Types.ObjectId(userId);
+    const legacyReference = `evidence-inspected:${reportId}:${evidenceId}`;
+    const sourceReference = `evidence-inspected:${sourceFingerprint}`;
+    const existing = await this.transactions
+      .findOne({
+        userId: objectUserId,
+        idempotencyReference: { $in: [legacyReference, sourceReference] },
+      })
+      .exec();
+    if (existing && typeof existing.metadata.sourceFingerprint !== 'string') {
+      existing.metadata = { ...existing.metadata, sourceFingerprint };
+      await existing.save();
+    }
     return this.award(userId, {
       type: RewardTransactionType.EVIDENCE_INSPECTED,
-      idempotencyReference: `evidence-inspected:${reportId}:${evidenceId}`,
+      idempotencyReference: existing?.idempotencyReference ?? sourceReference,
       xp: 0,
       truthPoints: 0,
-      metadata: { reportId, evidenceId },
+      metadata: { reportId, evidenceId, sourceFingerprint },
     });
   }
 
@@ -519,6 +720,20 @@ export class GamificationService {
   }
 
   private async createTransaction(userId: string, input: RewardInput) {
+    if (
+      !input.idempotencyReference.trim() ||
+      input.idempotencyReference.length > 300 ||
+      !Number.isInteger(input.xp) ||
+      !Number.isInteger(input.truthPoints) ||
+      (![
+        RewardTransactionType.ADMIN_ADJUSTMENT,
+        RewardTransactionType.REVERSAL,
+      ].includes(input.type) &&
+        (input.xp < 0 || input.truthPoints < 0))
+    )
+      throw new ValidationException(
+        'Reward amounts and idempotency references must satisfy the recorded reward policy',
+      );
     try {
       return await this.transactions.create({
         userId: new Types.ObjectId(userId),
@@ -529,6 +744,9 @@ export class GamificationService {
         metadata: input.metadata ?? {},
         ...(input.createdBy
           ? { createdBy: new Types.ObjectId(input.createdBy) }
+          : {}),
+        ...(input.occurredAt
+          ? { createdAt: input.occurredAt, updatedAt: input.occurredAt }
           : {}),
       });
     } catch (error) {
@@ -547,9 +765,6 @@ export class GamificationService {
         : query.active !== undefined
           ? { active: query.active }
           : {}),
-      ...(query.cursor
-        ? { _id: { $lt: new Types.ObjectId(query.cursor) } }
-        : {}),
     };
     if (query.category) filter.category = searchPattern(query.category);
     if (query.rarity) filter.rarity = searchPattern(query.rarity);
@@ -562,6 +777,32 @@ export class GamificationService {
       ];
     }
     return filter;
+  }
+
+  private async applyBadgeCursor(
+    filter: Record<string, unknown>,
+    cursor?: string,
+  ): Promise<void> {
+    if (!cursor) return;
+    const anchor = await this.badges
+      .findById(cursor)
+      .select('_id sortOrder')
+      .lean()
+      .exec();
+    if (!anchor)
+      throw new ValidationException(
+        'The badge pagination cursor is no longer valid',
+      );
+    const sortOrder = Number(anchor.sortOrder ?? 100);
+    filter.$and = [
+      ...((filter.$and as unknown[] | undefined) ?? []),
+      {
+        $or: [
+          { sortOrder: { $gt: sortOrder } },
+          { sortOrder, _id: { $gt: anchor._id } },
+        ],
+      },
+    ];
   }
 
   private page<T extends { _id: Types.ObjectId }>(records: T[], limit: number) {
@@ -583,6 +824,7 @@ export class GamificationService {
     const [totals] = await this.transactions.aggregate<{
       xp: number;
       truthPoints: number;
+      transactionCount: number;
     }>([
       { $match: { userId: objectId } },
       {
@@ -590,6 +832,7 @@ export class GamificationService {
           _id: null,
           xp: { $sum: '$xp' },
           truthPoints: { $sum: '$truthPoints' },
+          transactionCount: { $sum: 1 },
         },
       },
     ]);
@@ -618,23 +861,108 @@ export class GamificationService {
       .lean()
       .exec();
     const xp = Math.max(0, totals?.xp ?? 0);
-    return this.profiles.findOneAndUpdate(
-      { userId: objectId },
+    const transactionCount = totals?.transactionCount ?? 0;
+    const projection = {
+      xp,
+      truthPoints: Math.max(0, totals?.truthPoints ?? 0),
+      level: this.rankLevel(xp),
+      currentStreak: streaks.current,
+      longestStreak: streaks.longest,
+      ...(dates.at(-1)
+        ? { lastEligibleActivityDate: dates.at(-1) as string }
+        : {}),
+      badgesCount,
+      leaderboardEligible: user?.privacyPreferences.leaderboard !== false,
+      projectionTransactionCount: transactionCount,
+      projectionBadgeOwnershipCount: badgesCount,
+    };
+    const updated = await this.profiles.findOneAndUpdate(
       {
-        $set: {
-          xp,
-          truthPoints: Math.max(0, totals?.truthPoints ?? 0),
-          level: this.rankLevel(xp),
-          currentStreak: streaks.current,
-          longestStreak: streaks.longest,
-          lastEligibleActivityDate: dates.at(-1),
-          badgesCount,
-          leaderboardEligible: user?.privacyPreferences.leaderboard !== false,
-        },
-        $setOnInsert: { userId: objectId },
+        userId: objectId,
+        $or: [
+          { projectionTransactionCount: { $exists: false } },
+          { projectionTransactionCount: { $lt: transactionCount } },
+          {
+            projectionTransactionCount: transactionCount,
+            projectionBadgeOwnershipCount: { $lte: badgesCount },
+          },
+        ],
       },
-      { upsert: true, returnDocument: 'after' },
+      {
+        $set: projection,
+      },
+      { returnDocument: 'after' },
     );
+    if (updated) return updated;
+    const existing = await this.profiles.findOne({ userId: objectId }).exec();
+    if (existing) return existing;
+    try {
+      return await this.profiles.create({ userId: objectId, ...projection });
+    } catch (error) {
+      if (!this.isDuplicate(error)) throw error;
+      const winner = await this.profiles.findOne({ userId: objectId }).exec();
+      if (winner) return winner;
+      throw error;
+    }
+  }
+
+  private async ensureDailyActivityForReward(
+    userId: string,
+    type: RewardTransactionType,
+    occurredAt: Date,
+    sourceActivityId: string,
+  ) {
+    if (
+      !ELIGIBLE_DAILY_ACTIVITY_TYPES.includes(
+        type as (typeof ELIGIBLE_DAILY_ACTIVITY_TYPES)[number],
+      )
+    )
+      return null;
+    const activityDate = occurredAt.toISOString().slice(0, 10);
+    return this.createTransaction(userId, {
+      type: RewardTransactionType.DAILY_STREAK,
+      idempotencyReference: `daily-streak:${activityDate}`,
+      xp: 0,
+      truthPoints: 0,
+      occurredAt,
+      metadata: {
+        activityDate,
+        sourceActivityType: type,
+        sourceActivityId,
+      },
+    });
+  }
+
+  /**
+   * Product records are the durable source of truth. This bounded, idempotent
+   * read repair closes the commit-before-reward window without adding a queue:
+   * if a producer committed and its synchronous reward write failed, the next
+   * achievement read reconstructs only the missing ledger facts.
+   */
+  private async repairDurableActivityRewards(userId: string) {
+    const rewards = await this.reconciliation.rewards(userId);
+    let created = 0;
+    let latestSourceActivityType: string | undefined;
+    let latestSourceActivityId: string | undefined;
+    for (const reward of rewards) {
+      const transaction = await this.createTransaction(userId, {
+        ...reward,
+        metadata: {
+          ...(reward.metadata ?? {}),
+          reconciledFromHistory: false,
+          recoveredFromDurableState: true,
+        },
+      });
+      if (!transaction) continue;
+      created += 1;
+      latestSourceActivityType = reward.type;
+      latestSourceActivityId = transaction._id.toString();
+    }
+    return {
+      created,
+      latestSourceActivityType,
+      latestSourceActivityId,
+    };
   }
 
   private calculateStreaks(dates: string[]) {
@@ -680,24 +1008,37 @@ export class GamificationService {
       );
       if (!progress.measurable || progress.current < progress.target) continue;
       const threshold = progress.target;
-      const reference = `badge:${badge._id.toString()}`;
+      const objectUserId = new Types.ObjectId(userId);
+      let ownership: UserBadge | null = null;
       try {
-        await this.userBadges.create({
-          userId: new Types.ObjectId(userId),
+        ownership = await this.userBadges.create({
+          userId: objectUserId,
           badgeId: badge._id,
           ...(badge.code ? { badgeCode: badge.code } : {}),
-          idempotencyReference: reference,
+          idempotencyReference: `badge:${badge._id.toString()}`,
           context: {
             criteriaType: badge.criteriaType,
             threshold,
             sourceActivityType: context.sourceActivityType,
             sourceActivityId: context.sourceActivityId,
+            celebrationEligible: context.celebrate,
           },
         });
       } catch (error) {
-        if (this.isDuplicate(error)) continue;
-        throw error;
+        if (!this.isDuplicate(error)) throw error;
+        ownership = await this.userBadges
+          .findOne({
+            userId: objectUserId,
+            $or: [
+              { badgeId: badge._id },
+              ...(badge.code ? [{ badgeCode: badge.code }] : []),
+            ],
+          })
+          .exec();
       }
+      if (!ownership) continue;
+      const canonicalBadgeId = ownership.badgeId.toString();
+      const reference = `badge:${canonicalBadgeId}`;
       await this.createTransaction(userId, {
         type: RewardTransactionType.BADGE_EARNED,
         idempotencyReference: reference,
@@ -707,29 +1048,38 @@ export class GamificationService {
           badgeId: badge._id.toString(),
           badgeCode: badge.code,
           badgeName: badge.name,
+          reconciledFromHistory:
+            ownership.context?.celebrationEligible !== true,
         },
       });
-      if (!context.celebrate) continue;
+      const ownershipContext = ownership.context ?? {};
+      if (ownershipContext.celebrationEligible !== true) continue;
+      const currentProfile = await this.recalculate(userId);
+      const sourceActivityType =
+        typeof ownershipContext.sourceActivityType === 'string'
+          ? ownershipContext.sourceActivityType
+          : context.sourceActivityType;
+      const sourceActivityId =
+        typeof ownershipContext.sourceActivityId === 'string'
+          ? ownershipContext.sourceActivityId
+          : context.sourceActivityId;
       await this.createAchievementEvent({
         userId,
         type: AchievementEventType.BADGE_EARNED,
-        idempotencyReference: `badge-earned:${badge._id.toString()}`,
-        badgeId: badge._id,
+        idempotencyReference: `badge-earned:${canonicalBadgeId}`,
+        badgeId: ownership.badgeId,
         ...(badge.code ? { badgeCode: badge.code } : {}),
         badgeName: badge.name,
-        ...(context.sourceActivityType
-          ? { sourceActivityType: context.sourceActivityType }
-          : {}),
-        ...(context.sourceActivityId
-          ? { sourceActivityId: context.sourceActivityId }
-          : {}),
+        ...(sourceActivityType ? { sourceActivityType } : {}),
+        ...(sourceActivityId ? { sourceActivityId } : {}),
         metadata: {
           description: badge.description,
           whyItMatters: badge.whyItMatters,
           iconKey: badge.iconKey,
           xp: Number(badge.reward.xp ?? 0),
           truthPoints: Number(badge.reward.truthPoints ?? 0),
-          currentRank: calculateRankProgress(profile.xp).currentRank,
+          currentRank: calculateRankProgress(currentProfile?.xp ?? profile.xp)
+            .currentRank,
         },
       });
       await this.notifications.dispatch({
@@ -738,7 +1088,7 @@ export class GamificationService {
         title: `Badge earned: ${badge.name}`,
         message: badge.description,
         actionUrl: '/app/achievements',
-        idempotencyReference: `badge-earned:${badge._id.toString()}`,
+        idempotencyReference: `badge-earned:${canonicalBadgeId}`,
         metadata: {
           badgeId: badge._id.toString(),
           badgeSlug: badge.slug,
@@ -751,18 +1101,96 @@ export class GamificationService {
   private async ensureAchievementBackfill(
     userId: string,
     profile: (GamificationProfile & { save?: () => Promise<unknown> }) | null,
+    activeRewardReference?: string,
   ) {
     if (
       !profile ||
       profile.achievementCatalogVersion >= ACHIEVEMENT_CATALOG_VERSION
     )
       return profile;
-    await this.evaluateBadges(userId, profile, { celebrate: false });
+    // The activity currently being awarded is not historical data. Including
+    // it here would let the quiet migration path earn its badge before the live
+    // award can create an unseen celebration event.
+    const rewards = await this.reconciliation.rewards(
+      userId,
+      activeRewardReference,
+    );
+    for (const reward of rewards) await this.createTransaction(userId, reward);
+    await this.repairRecentFirstCheckCelebration(userId);
+    const reconciledProfile = await this.recalculate(userId);
+    await this.evaluateBadges(userId, reconciledProfile, { celebrate: false });
     await this.profiles.updateOne(
       { userId: new Types.ObjectId(userId) },
       { $set: { achievementCatalogVersion: ACHIEVEMENT_CATALOG_VERSION } },
     );
     return this.recalculate(userId);
+  }
+
+  /**
+   * Catalog v2 could classify the first live completion as historical. Repair
+   * only ownership written within five minutes of that verification, which
+   * separates the live race from ordinary historical backfills without
+   * replaying launch-day celebrations for established users.
+   */
+  private async repairRecentFirstCheckCelebration(userId: string) {
+    const badge = await this.badges
+      .findOne({ code: 'FIRST_CHECK', active: true })
+      .select('_id')
+      .lean()
+      .exec();
+    if (!badge) return;
+    const objectUserId = new Types.ObjectId(userId);
+    const ownership = await this.userBadges
+      .findOne({
+        userId: objectUserId,
+        $or: [{ badgeId: badge._id }, { badgeCode: 'FIRST_CHECK' }],
+        'context.celebrationEligible': { $exists: false },
+      })
+      .exec();
+    if (!ownership?.createdAt) return;
+    const reward = await this.transactions
+      .findOne({
+        userId: objectUserId,
+        type: RewardTransactionType.VERIFICATION_COMPLETED,
+      })
+      .sort({ createdAt: 1, _id: 1 })
+      .exec();
+    if (!reward) return;
+    const verificationId =
+      typeof reward.metadata.verificationId === 'string'
+        ? reward.metadata.verificationId
+        : undefined;
+    const verification = verificationId
+      ? await this.reconciliation.verificationCompletion(verificationId, userId)
+      : null;
+    const completionTime = verification?.getTime();
+    if (
+      !completionTime ||
+      Math.abs(ownership.createdAt.getTime() - completionTime) > 5 * 60_000
+    )
+      return;
+    await this.userBadges.updateOne(
+      {
+        _id: ownership._id,
+        'context.celebrationEligible': { $exists: false },
+      },
+      {
+        $set: {
+          'context.celebrationEligible': true,
+          'context.sourceActivityType':
+            RewardTransactionType.VERIFICATION_COMPLETED,
+          'context.sourceActivityId': reward._id.toString(),
+          'context.repairedRecentLiveAward': true,
+        },
+      },
+    );
+    ownership.context = {
+      ...ownership.context,
+      celebrationEligible: true,
+      sourceActivityType: RewardTransactionType.VERIFICATION_COMPLETED,
+      sourceActivityId: reward._id.toString(),
+      repairedRecentLiveAward: true,
+    };
   }
 
   private badgeProgress(
@@ -774,7 +1202,8 @@ export class GamificationService {
     earned: boolean,
     longestStreak: number,
   ) {
-    const target = Math.max(1, Number(badge.criteria.threshold) || 1);
+    const rawTarget = Number(badge.criteria.threshold);
+    const target = Number.isInteger(rawTarget) && rawTarget > 0 ? rawTarget : 1;
     if (badge.availability === BadgeAvailability.COMING_SOON)
       return {
         measurable: false,
@@ -782,6 +1211,24 @@ export class GamificationService {
         target,
         percentage: 0,
         label: 'Coming soon',
+      };
+    const supported = new Set<BadgeCriteriaType>([
+      BadgeCriteriaType.VERIFICATION_COUNT,
+      BadgeCriteriaType.LESSON_COUNT,
+      BadgeCriteriaType.CHALLENGE_STREAK,
+      BadgeCriteriaType.DAILY_STREAK,
+      BadgeCriteriaType.EVIDENCE_INSPECTION_COUNT,
+      BadgeCriteriaType.TAGGED_ACTIVITY_COUNT,
+      BadgeCriteriaType.GUIDED_INVESTIGATION_COUNT,
+      BadgeCriteriaType.MISSION_COUNT,
+    ]);
+    if (!supported.has(badge.criteriaType) || rawTarget !== target)
+      return {
+        measurable: false,
+        current: earned ? target : 0,
+        target,
+        percentage: earned ? 100 : 0,
+        label: earned ? 'Earned' : 'Complete the required activity to unlock.',
       };
     let current = 0;
     const transactionType = this.badgeTransactionType(badge.criteriaType);
@@ -792,9 +1239,25 @@ export class GamificationService {
     if (badge.criteriaType === BadgeCriteriaType.DAILY_STREAK)
       current = longestStreak;
     if (badge.criteriaType === BadgeCriteriaType.EVIDENCE_INSPECTION_COUNT)
-      current = activities.filter(
-        (item) => item.type === RewardTransactionType.EVIDENCE_INSPECTED,
-      ).length;
+      current = new Set(
+        activities
+          .filter(
+            (item) => item.type === RewardTransactionType.EVIDENCE_INSPECTED,
+          )
+          .map((item) => {
+            if (typeof item.metadata.sourceFingerprint === 'string')
+              return item.metadata.sourceFingerprint;
+            const reportId =
+              typeof item.metadata.reportId === 'string'
+                ? item.metadata.reportId
+                : '';
+            const evidenceId =
+              typeof item.metadata.evidenceId === 'string'
+                ? item.metadata.evidenceId
+                : '';
+            return `${reportId}:${evidenceId}`;
+          }),
+      ).size;
     if (badge.criteriaType === BadgeCriteriaType.GUIDED_INVESTIGATION_COUNT)
       current = activities.filter(
         (item) =>
@@ -807,26 +1270,48 @@ export class GamificationService {
       ).length;
     if (badge.criteriaType === BadgeCriteriaType.TAGGED_ACTIVITY_COUNT) {
       const tags = Array.isArray(badge.criteria.tags)
-        ? badge.criteria.tags.filter(
-            (tag): tag is string => typeof tag === 'string',
-          )
+        ? badge.criteria.tags
+            .filter((tag): tag is string => typeof tag === 'string')
+            .map((tag) => tag.trim().toLowerCase())
+            .filter(Boolean)
         : [];
+      if (!tags.length)
+        return {
+          measurable: false,
+          current: earned ? target : 0,
+          target,
+          percentage: earned ? 100 : 0,
+          label: earned
+            ? 'Earned'
+            : 'Complete the required activity to unlock.',
+        };
       current = activities.filter((item) => {
         const activityTags = Array.isArray(item.metadata.tags)
-          ? item.metadata.tags.filter(
-              (tag): tag is string => typeof tag === 'string',
-            )
+          ? item.metadata.tags
+              .filter((tag): tag is string => typeof tag === 'string')
+              .map((tag) => tag.trim().toLowerCase())
+              .filter(Boolean)
           : [];
         return tags.some((tag) => activityTags.includes(tag));
       }).length;
     }
     if (earned) current = Math.max(current, target);
+    const progressLabel =
+      badge.criteriaType === BadgeCriteriaType.DAILY_STREAK
+        ? `Best streak: ${Math.min(current, target)} of ${target} consecutive days`
+        : badge.criteriaType === BadgeCriteriaType.GUIDED_INVESTIGATION_COUNT
+          ? `${Math.min(current, target)} of ${target} guided investigations completed`
+          : badge.criteriaType === BadgeCriteriaType.EVIDENCE_INSPECTION_COUNT
+            ? `${Math.min(current, target)} of ${target} evidence sources opened`
+            : badge.criteriaType === BadgeCriteriaType.VERIFICATION_COUNT
+              ? `${Math.min(current, target)} of ${target} investigations completed`
+              : `${Math.min(current, target)} of ${target} qualifying activities`;
     return {
       measurable: true,
       current,
       target,
       percentage: Math.min(100, Math.round((current / target) * 100)),
-      label: earned ? 'Earned' : `${Math.min(current, target)} of ${target}`,
+      label: earned ? 'Earned' : progressLabel,
     };
   }
 
@@ -903,6 +1388,78 @@ export class GamificationService {
         RewardTransactionType.CHALLENGE_COMPLETED,
     };
     return mapping[criteriaType];
+  }
+
+  private evidenceSourceFingerprint(
+    sourceUrl: string | undefined,
+    reportId: string,
+    evidenceId: string,
+  ): string {
+    let identity = `report:${reportId}:evidence:${evidenceId}`;
+    if (sourceUrl) {
+      try {
+        const url = new URL(sourceUrl);
+        url.hash = '';
+        url.hostname = url.hostname.toLowerCase();
+        for (const key of [...url.searchParams.keys()]) {
+          if (/^(utm_|fbclid$|gclid$)/i.test(key)) url.searchParams.delete(key);
+        }
+        url.searchParams.sort();
+        if (url.pathname.length > 1)
+          url.pathname = url.pathname.replace(/\/+$/, '');
+        identity = url.toString();
+      } catch {
+        // Malformed legacy URLs remain safely distinct within their report.
+      }
+    }
+    return createHash('sha256').update(identity).digest('hex');
+  }
+
+  private validateBadgeDefinition(
+    criteriaType: BadgeCriteriaType,
+    criteria: Record<string, unknown>,
+    reward: { xp?: number; truthPoints?: number },
+  ): void {
+    const supported = new Set<BadgeCriteriaType>([
+      BadgeCriteriaType.VERIFICATION_COUNT,
+      BadgeCriteriaType.LESSON_COUNT,
+      BadgeCriteriaType.CHALLENGE_STREAK,
+      BadgeCriteriaType.DAILY_STREAK,
+      BadgeCriteriaType.EVIDENCE_INSPECTION_COUNT,
+      BadgeCriteriaType.TAGGED_ACTIVITY_COUNT,
+      BadgeCriteriaType.GUIDED_INVESTIGATION_COUNT,
+      BadgeCriteriaType.MISSION_COUNT,
+    ]);
+    if (!supported.has(criteriaType))
+      throw new ValidationException(
+        'This badge criterion is not backed by measurable recorded activity',
+      );
+    const threshold = Number(criteria.threshold);
+    const xp = Number(reward.xp ?? 0);
+    const truthPoints = Number(reward.truthPoints ?? 0);
+    if (
+      !Number.isInteger(threshold) ||
+      threshold < 1 ||
+      !Number.isInteger(xp) ||
+      xp < 0 ||
+      !Number.isInteger(truthPoints) ||
+      truthPoints < 0
+    )
+      throw new ValidationException(
+        'Badge thresholds and rewards must be valid non-negative integers',
+      );
+    if (criteriaType === BadgeCriteriaType.TAGGED_ACTIVITY_COUNT) {
+      const tags = Array.isArray(criteria.tags)
+        ? criteria.tags.filter(
+            (tag): tag is string =>
+              typeof tag === 'string' && Boolean(tag.trim()),
+          )
+        : [];
+      if (!tags.length)
+        throw new ValidationException(
+          'Tagged activity badges require at least one measurable tag',
+        );
+    }
   }
 
   private isDuplicate(error: unknown): boolean {

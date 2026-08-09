@@ -9,7 +9,7 @@ unavailable challenge cannot be scored.
 
 Normal challenge responses omit `correctOptionIds` and explanations. Answers are
 validated and scored from the protected database document. Explanations are
-returned only after the attempt is persisted. Attempt numbers have a compound
+returned only after the attempt is recorded. Attempt numbers have a compound
 unique index to reject concurrent duplicates.
 
 ## Reward integrity

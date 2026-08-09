@@ -37,7 +37,7 @@ export class VerificationStreamController {
   @Sse(':id/stream')
   @SkipResponseEnvelope()
   @ApiProduces('text/event-stream')
-  @ApiOperation({ summary: 'Stream persisted and live verification events' })
+  @ApiOperation({ summary: 'Stream and live verification events' })
   async stream(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseObjectIdPipe) id: string,

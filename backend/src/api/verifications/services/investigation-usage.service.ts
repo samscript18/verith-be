@@ -131,7 +131,7 @@ export class InvestigationUsageService {
         item.verificationId.toString() === verificationId.toString() &&
         (item.attempt ?? 0) === attempt,
     );
-    if (!reservation) throw new Error('Usage reservation was not persisted');
+    if (!reservation) throw new Error('Usage reservation was not saved');
     return this.snapshot(usage, reservation, window.resetAt);
   }
 

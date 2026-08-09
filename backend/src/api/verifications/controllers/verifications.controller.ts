@@ -145,7 +145,7 @@ export class VerificationsController {
   }
 
   @Get(':id/guidance')
-  @ApiOperation({ summary: 'Get the persisted guided-investigation exercise' })
+  @ApiOperation({ summary: 'Get the guided-investigation exercise' })
   async guidanceFor(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseObjectIdPipe) id: string,

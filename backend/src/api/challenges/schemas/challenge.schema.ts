@@ -7,6 +7,10 @@ export type ChallengeDocument = HydratedDocument<Challenge>;
 
 @Schema({ timestamps: true, collection: 'challenges', versionKey: false })
 export class Challenge {
+  @Prop({ index: true })
+  dailyDateKey?: string;
+  @Prop()
+  dailyContentVersion?: number;
   @Prop({ required: true })
   title!: string;
   @Prop({ required: true, unique: true, index: true })

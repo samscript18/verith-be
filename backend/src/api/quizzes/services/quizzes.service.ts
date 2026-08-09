@@ -290,9 +290,11 @@ export class QuizzesService {
     }
     let rewardState = attempt.rewardState;
     if (passed) {
-      await this.learning.updateProgress(userId, quiz.lessonId.toString(), {
-        progress: 100,
-      });
+      const lesson = await this.lessonModel
+        .findById(quiz.lessonId)
+        .select('tags')
+        .lean()
+        .exec();
       const xp = Number(quiz.rewardPolicy.xp ?? 0);
       const truthPoints = Number(quiz.rewardPolicy.truthPoints ?? 0);
       const reward = await this.gamification.award(userId, {
@@ -301,7 +303,19 @@ export class QuizzesService {
         xp: Number.isInteger(xp) && xp >= 0 ? xp : 0,
         truthPoints:
           Number.isInteger(truthPoints) && truthPoints >= 0 ? truthPoints : 0,
-        metadata: { quizId: quiz._id.toString(), score },
+        metadata: {
+          quizId: quiz._id.toString(),
+          lessonId: quiz.lessonId.toString(),
+          courseId: quiz.courseId.toString(),
+          score,
+          tags: lesson?.tags ?? [],
+        },
+      });
+      // Award the newly recorded quiz before completing its lesson. Otherwise
+      // a legacy user's lesson backfill can see this attempt as historical and
+      // suppress the quiz's live badge celebration.
+      await this.learning.updateProgress(userId, quiz.lessonId.toString(), {
+        progress: 100,
       });
       rewardState = reward.awarded ? 'AWARDED' : 'ALREADY_AWARDED';
       await this.attemptModel.updateOne(

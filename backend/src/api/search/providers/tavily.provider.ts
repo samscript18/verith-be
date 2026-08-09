@@ -4,7 +4,10 @@ import { performance } from 'node:perf_hooks';
 import { ExternalProviderException } from '../../../core/exceptions';
 import type { SearchConfig } from '../../../shared/config';
 import { ProviderState } from '../../../shared/enums/provider-state.enum';
-import { ProviderKeyPoolService } from '../../../shared/providers/provider-key-pool.service';
+import {
+  isKeyRecoverableProviderFailure,
+  ProviderKeyPoolService,
+} from '../../../shared/providers/provider-key-pool.service';
 import { SearchProviderName } from '../enums/search-provider-name.enum';
 import type {
   SearchProvider,
@@ -54,14 +57,6 @@ export class TavilyProvider implements SearchProvider {
         'SEARCH_PROVIDER_NOT_CONFIGURED',
       );
     }
-    const lease = this.keyPool.acquire();
-    if (!lease) {
-      throw new ExternalProviderException(
-        'Tavily is temporarily rate limited',
-        'SEARCH_PROVIDER_RATE_LIMITED',
-      );
-    }
-
     const body: Record<string, unknown> = {
       query: request.query.trim(),
       search_depth: 'basic',
@@ -81,77 +76,89 @@ export class TavilyProvider implements SearchProvider {
     if (!request.startDate && !request.endDate && request.recency)
       body.time_range = request.recency;
 
-    let response: Response;
-    try {
-      response = await fetch(this.config.tavilyBaseUrl, {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          authorization: `Bearer ${lease.key}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.config.timeoutMs),
-      });
-      if (!response.ok) {
-        const failure = this.httpFailure(response);
-        lease.fail(
-          failure.code,
-          this.retryAfterMs(response.headers.get('retry-after')),
-        );
-        throw failure;
-      }
-      lease.succeed();
-    } catch (error) {
-      if (error instanceof ExternalProviderException) throw error;
-      lease.fail(
-        error instanceof Error && error.name === 'TimeoutError'
-          ? 'SEARCH_PROVIDER_TIMEOUT'
-          : 'SEARCH_PROVIDER_UNAVAILABLE',
-      );
-      throw this.networkFailure(error);
-    }
-
-    let payload: TavilyResponse;
-    try {
-      payload = (await response.json()) as TavilyResponse;
-    } catch {
-      throw this.invalidResponse();
-    }
-    if (!Array.isArray(payload.results)) throw this.invalidResponse();
-
-    const sourceResults = payload.results as TavilyResult[];
-    const results = sourceResults.flatMap((result, index) => {
-      if (typeof result.title !== 'string' || typeof result.url !== 'string')
-        return [];
-      const score =
-        typeof result.score === 'number' && Number.isFinite(result.score)
-          ? Math.min(Math.max(result.score, 0), 1)
-          : this.rankScore(index, sourceResults.length);
-      return [
-        {
-          title: result.title,
-          url: result.url,
-          snippet:
-            typeof result.content === 'string' && result.content.trim()
-              ? result.content.trim()
-              : result.title,
-          ...(typeof result.raw_content === 'string' &&
-          result.raw_content.trim().length >= 100
-            ? { rawContent: result.raw_content.trim() }
+    const keyCount = this.keyPool.status().configuredKeys;
+    let lastError: ExternalProviderException | undefined;
+    for (let keyAttempt = 0; keyAttempt < keyCount; keyAttempt += 1) {
+      const lease = this.keyPool.acquire();
+      if (!lease) break;
+      try {
+        const response = await fetch(this.config.tavilyBaseUrl, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            authorization: `Bearer ${lease.key}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(this.config.timeoutMs),
+        });
+        if (!response.ok) {
+          const failure = this.httpFailure(response);
+          lease.fail(
+            failure.code,
+            this.retryAfterMs(response.headers.get('retry-after')),
+          );
+          throw failure;
+        }
+        let payload: TavilyResponse;
+        try {
+          payload = (await response.json()) as TavilyResponse;
+        } catch {
+          throw this.invalidResponse();
+        }
+        if (!Array.isArray(payload.results)) throw this.invalidResponse();
+        lease.succeed();
+        const sourceResults = payload.results as TavilyResult[];
+        const results = sourceResults.flatMap((result, index) => {
+          if (
+            typeof result.title !== 'string' ||
+            typeof result.url !== 'string'
+          )
+            return [];
+          const score =
+            typeof result.score === 'number' && Number.isFinite(result.score)
+              ? Math.min(Math.max(result.score, 0), 1)
+              : this.rankScore(index, sourceResults.length);
+          return [
+            {
+              title: result.title,
+              url: result.url,
+              snippet:
+                typeof result.content === 'string' && result.content.trim()
+                  ? result.content.trim()
+                  : result.title,
+              ...(typeof result.raw_content === 'string' &&
+              result.raw_content.trim().length >= 100
+                ? { rawContent: result.raw_content.trim() }
+                : {}),
+              providerScore: Number(score.toFixed(4)),
+            },
+          ];
+        });
+        return {
+          provider: this.provider,
+          ...(typeof payload.request_id === 'string'
+            ? { requestId: payload.request_id }
             : {}),
-          providerScore: Number(score.toFixed(4)),
-        },
-      ];
-    });
-
-    return {
-      provider: this.provider,
-      ...(typeof payload.request_id === 'string'
-        ? { requestId: payload.request_id }
-        : {}),
-      results,
-    };
+          results,
+        };
+      } catch (error) {
+        const failure =
+          error instanceof ExternalProviderException
+            ? error
+            : this.networkFailure(error);
+        lease.fail(failure.code);
+        lastError = failure;
+        if (!isKeyRecoverableProviderFailure(failure.code)) throw failure;
+      }
+    }
+    throw (
+      lastError ??
+      new ExternalProviderException(
+        'Tavily is temporarily rate limited',
+        'SEARCH_PROVIDER_RATE_LIMITED',
+      )
+    );
   }
 
   async healthCheck(): Promise<SearchProviderHealth> {
