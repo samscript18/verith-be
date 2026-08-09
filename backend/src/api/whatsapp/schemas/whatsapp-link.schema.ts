@@ -22,10 +22,4 @@ export class WhatsAppLink {
   consented!: boolean;
 }
 export const WhatsAppLinkSchema = SchemaFactory.createForClass(WhatsAppLink);
-WhatsAppLinkSchema.index(
-  { linkCodeExpiresAt: 1 },
-  {
-    expireAfterSeconds: 0,
-    partialFilterExpression: { linkedAt: { $exists: false } },
-  },
-);
+WhatsAppLinkSchema.index({ linkCodeExpiresAt: 1 }, { expireAfterSeconds: 0 });

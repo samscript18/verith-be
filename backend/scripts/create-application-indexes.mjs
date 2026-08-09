@@ -111,10 +111,7 @@ async function discoverIndexDefinitions() {
       for (const [keys, options] of indexes) {
         const signature = `${collection}:${keySignature(keys)}`;
         const existing = definitions.get(signature);
-        if (
-          existing &&
-          !sameCompatibilityOptions(existing.options, options)
-        ) {
+        if (existing && !sameCompatibilityOptions(existing.options, options)) {
           throw new Error(
             `Compiled schemas define incompatible options for ${signature}.`,
           );
@@ -140,7 +137,8 @@ async function existingIndexes(collection) {
   try {
     return await collection.listIndexes().toArray();
   } catch (error) {
-    if (error?.codeName === 'NamespaceNotFound' || error?.code === 26) return [];
+    if (error?.codeName === 'NamespaceNotFound' || error?.code === 26)
+      return [];
     throw error;
   }
 }
@@ -247,9 +245,18 @@ async function createApplicationIndexes() {
       });
       continue;
     }
-    const index = await database
-      .collection(definition.collection)
-      .createIndex(definition.keys, definition.options);
+    let index;
+    try {
+      index = await database
+        .collection(definition.collection)
+        .createIndex(definition.keys, definition.options);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Failed to create MongoDB index for ${definition.collection} ${JSON.stringify(definition.keys)} from ${definition.source}: ${detail}`,
+        { cause: error },
+      );
+    }
     results.push({
       collection: definition.collection,
       index,
