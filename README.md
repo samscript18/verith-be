@@ -32,7 +32,10 @@ npm install
 npm run start:dev
 ```
 
-The API listens on `http://localhost:4000/api/v1`. Swagger is available at `http://localhost:4000/api/docs`.
+The API listens on `http://localhost:4000/api/v1`. Interactive Swagger is
+available at `http://localhost:4000/api/docs`, with machine-readable contracts
+at `/api/docs-json` and `/api/docs-yaml`. See [docs/openapi.md](docs/openapi.md)
+for authentication, response-envelope, export, and validation conventions.
 
 ## Commands
 
@@ -42,6 +45,8 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run openapi:check
+npm run openapi:types
 ```
 
 Normal test runs never call external AI or messaging providers. Live provider verification must remain explicit because it consumes real quotas.

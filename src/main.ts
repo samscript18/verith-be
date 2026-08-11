@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import type { NextFunction, Request, Response } from 'express';
@@ -12,6 +12,11 @@ import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { ResponseInterceptor } from './core/interceptors/response.interceptor';
 import type { AppConfig } from './shared/config';
 import { nestLogLevels } from './shared/utils/nest-log-levels';
+import {
+  buildOpenApiConfig,
+  enhanceOpenApiDocument,
+  SWAGGER_UI_OPTIONS,
+} from './shared/openapi/openapi-document';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -65,23 +70,10 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   if (config.swaggerEnabled) {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('Verith API')
-      .setDescription(
-        'Explainable misinformation verification and media literacy API',
-      )
-      .setVersion('1.0.0')
-      .addBearerAuth()
-      .addCookieAuth(
-        'verith_refresh',
-        { type: 'apiKey', in: 'cookie' },
-        'verith_refresh',
-      )
-      .build();
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api/docs', app, document, {
-      jsonDocumentUrl: 'api/docs-json',
-    });
+    const document = enhanceOpenApiDocument(
+      SwaggerModule.createDocument(app, buildOpenApiConfig()),
+    );
+    SwaggerModule.setup('api/docs', app, document, SWAGGER_UI_OPTIONS);
   }
 
   await app.listen(config.port, config.host);

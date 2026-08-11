@@ -41,6 +41,7 @@ export class DailyChallengeService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    if (process.env.OPENAPI_EXPORT === 'true') return;
     await this.ensureToday();
   }
 

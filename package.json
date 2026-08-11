@@ -24,6 +24,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "openapi:export": "ts-node scripts/export-openapi.ts",
+    "openapi:check": "npm run openapi:export && ts-node scripts/check-openapi.ts",
     "openapi:types": "openapi-typescript openapi.json -o ../frontend/src/generated/api-schema.ts",
     "smoke:auth": "node scripts/auth-smoke.mjs",
     "db:indexes:catalog": "node --env-file-if-exists=.env scripts/create-catalog-indexes.mjs",

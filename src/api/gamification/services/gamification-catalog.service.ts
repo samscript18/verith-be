@@ -17,6 +17,7 @@ export class GamificationCatalogService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    if (process.env.OPENAPI_EXPORT === 'true') return;
     const owner = await this.users
       .findOne({ role: UserRole.SUPER_ADMIN, status: UserStatus.ACTIVE })
       .select('_id')
