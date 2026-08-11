@@ -115,7 +115,6 @@ function dayNumber(dateKey: string): number {
 export function dailyChallengeContent(dateKey: string) {
   const topic =
     DAILY_TOPICS[Math.abs(dayNumber(dateKey)) % DAILY_TOPICS.length]!;
-  const caseLabel = `${topic.name} · ${dateKey}`;
   const question = (
     number: number,
     prompt: string,
@@ -125,7 +124,7 @@ export function dailyChallengeContent(dateKey: string) {
   ) => ({
     id: `${dateKey}-q${String(number).padStart(2, '0')}`,
     type: QuizQuestionType.SINGLE_CHOICE,
-    prompt: `${caseLabel}: ${prompt}`,
+    prompt: `${prompt}`,
     options,
     correctOptionIds: [correctOptionId],
     explanation,
