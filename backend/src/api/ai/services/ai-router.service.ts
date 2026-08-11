@@ -53,11 +53,14 @@ export class AiRouterService {
 
     // At most two paid/provider executions per capability: either one
     // schema-correction attempt or one bounded provider fallback.
-    const maxProviderCalls = 2;
-    const attemptsPerProvider = Math.min(
-      maxProviderCalls,
-      this.config.maxRetries + 1,
+    const maxProviderCalls = Math.min(
+      2,
+      Math.max(1, request.maxProviderCalls ?? 2),
     );
+    const attemptsPerProvider =
+      request.allowSchemaCorrection === false
+        ? 1
+        : Math.min(maxProviderCalls, this.config.maxRetries + 1);
     let providerCalls = 0;
     providerLoop: for (const provider of candidates.slice(0, 2)) {
       const model = provider.modelFor(request.capability);

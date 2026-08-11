@@ -17,6 +17,7 @@ export class GroqProvider extends OpenAiCompatibleProvider {
     AiCapability.MANIPULATION_ANALYSIS,
     AiCapability.BIAS_ANALYSIS,
     AiCapability.TRANSLATION,
+    AiCapability.DAILY_CHALLENGE_GENERATION,
   ]);
 
   constructor(

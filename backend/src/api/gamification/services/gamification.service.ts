@@ -143,8 +143,7 @@ export class GamificationService {
         userId,
         type: NotificationType.LEVEL_UP,
         title: `You reached ${nextRank.currentRankLabel}`,
-        message:
-          'Your Verith activity moved you into a new achievement rank.',
+        message: 'Your Verith activity moved you into a new achievement rank.',
         actionUrl: '/app/achievements',
         idempotencyReference: rankReference,
         metadata: {

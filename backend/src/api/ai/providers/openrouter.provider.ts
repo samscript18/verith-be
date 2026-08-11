@@ -20,6 +20,7 @@ export class OpenRouterProvider extends OpenAiCompatibleProvider {
     AiCapability.IMAGE_UNDERSTANDING,
     AiCapability.OCR_FALLBACK,
     AiCapability.TRANSLATION,
+    AiCapability.DAILY_CHALLENGE_GENERATION,
   ]);
   private readonly siteUrl: string;
   private readonly appName: string;

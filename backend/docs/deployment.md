@@ -1,5 +1,18 @@
 # Production Deployment
 
+## Repository boundary
+
+The applications are maintained and deployed from independent repositories:
+
+| Application | Repository | Typical host |
+| ----------- | ---------- | ------------ |
+| Backend | `samscript18/verith-be` | Render or a container platform |
+| Frontend | `mannycodes-j/Verith` | Vercel or its standalone container |
+
+Run the commands in this document from the backend repository's `backend/`
+directory. Vercel should import the frontend repository directly, rather than
+using a Root Directory inside this repository.
+
 Build reproducibly with `npm ci`, `npm run build`, and `docker build .`. The
 multi-stage image contains production dependencies only and runs as the
 unprivileged `verith` user. It also contains the database bootstrap and seed
@@ -7,6 +20,19 @@ scripts. The image's default `npm run start:prod` command invokes
 `prestart:prod` before starting the API; do not replace that default with
 `node dist/main` unless a controlled release job has already completed the
 bootstrap successfully.
+
+Build the image from the backend directory:
+
+```bash
+docker build --build-arg VCS_REF="$(git rev-parse HEAD)" -t verith-backend .
+```
+
+The image includes compiled runtime code, production dependencies, and the five
+idempotent index/seed scripts used by `prestart:prod`. It runs as an unprivileged
+user, responds to `SIGTERM`, and excludes local environment files. Health checks
+belong to the API deployment only: workers and schedulers do not serve HTTP.
+The Compose API service declares the liveness check, and hosted API services
+should configure `/api/v1/health/live` in their platform settings.
 
 Deploy the same image as three independently scalable processes:
 
@@ -35,6 +61,23 @@ BullMQ workers long-poll an empty queue for five minutes and check stalled jobs
 every ten minutes. New jobs still wake a waiting worker immediately. This keeps
 idle Redis command usage low while accepting a slower recovery window for a
 truly stalled job.
+
+### Render free-tier settings
+
+For a native Node service with `backend` as its Root Directory:
+
+```text
+Build Command:      npm ci && npm run build
+Start Command:      npm run start:prod
+Health Check Path:  /api/v1/health/live
+PROCESS_ROLE:       all
+THROTTLER_STORAGE:  memory
+```
+
+Do not enter `npm run prestart:prod` separately. npm invokes it automatically
+before `start:prod`. `BOOTSTRAP_SUPER_ADMIN_PASSWORD` is required only when the
+configured Super Admin does not exist and should be removed after successful
+bootstrap. Do not horizontally scale this single-service topology.
 
 MongoDB and Redis are mandatory, authenticated, private-network dependencies.
 Use a managed MongoDB replica set for transactions and point-in-time recovery.

@@ -14,12 +14,18 @@ import { DailyChallengeService } from './services/daily-challenge.service';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { runsScheduler } from '../../shared/utils/process-role';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AiModule } from '../ai/ai.module';
+import { AiDailyChallengeGenerator } from './services/ai-daily-challenge.generator';
+import { DailyChallengeDuplicateService } from './services/daily-challenge-duplicate.service';
+import { DailyChallengeValidator } from './services/daily-challenge-validator.service';
+import { TemplateDailyChallengeGenerator } from './services/template-daily-challenge.generator';
 
 @Module({
   imports: [
     AdminModule,
     GamificationModule,
     NotificationsModule,
+    AiModule,
     MongooseModule.forFeature([
       { name: Challenge.name, schema: ChallengeSchema },
       { name: ChallengeAttempt.name, schema: ChallengeAttemptSchema },
@@ -29,6 +35,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
   controllers: [ChallengesController, ChallengesAdminController],
   providers: [
     ChallengesService,
+    AiDailyChallengeGenerator,
+    TemplateDailyChallengeGenerator,
+    DailyChallengeValidator,
+    DailyChallengeDuplicateService,
     ...(runsScheduler() ? [DailyChallengeService] : []),
   ],
 })

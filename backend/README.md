@@ -69,6 +69,21 @@ failure cools down or disables only the affected key and immediately tries the
 next healthy key from the same provider. Keys must be legitimately issued and
 must not be used to evade provider terms or billing limits.
 
+## Hybrid Daily Practice generation
+
+The scheduler checks the date-specific challenge slug before performing any
+provider work. When the challenge is missing, it builds a deterministic Media
+and Information Literacy blueprint and requests all ten questions in one
+structured call through the existing Gemini/Groq/OpenRouter capability router.
+Generated content is validated for structure, answer integrity, educational
+quality, safety, diversity, and recent duplication before publication.
+
+At most two configured providers are attempted. If AI is disabled, unavailable,
+rate-limited, malformed, or rejected by validation, Verith publishes the
+provider-independent deterministic challenge-bank result instead. Rewards,
+attempts, scoring, IDs, dates, and publication policy remain server-controlled.
+See [docs/challenges-and-gamification.md](docs/challenges-and-gamification.md).
+
 ## Docker
 
 ```bash
@@ -85,7 +100,10 @@ manifest; the compose port mappings are for local development only.
 
 ## Deployment
 
-The code supports separate API, worker, and scheduler processes or a single free-tier `PROCESS_ROLE=all` service. See [docs/deployment.md](docs/deployment.md) and the repository-level [deployment and pilot guide](../docs/verith-deployment-and-pilot-guide.md).
+This repository contains the backend only. The frontend is deployed from its
+separate `mannycodes-j/Verith` repository. The backend supports separate API,
+worker, and scheduler processes or a single free-tier `PROCESS_ROLE=all`
+service. See [docs/deployment.md](docs/deployment.md).
 
 The Render start command runs `npm run start:prod`; npm automatically invokes
 its `prestart:prod` lifecycle once before starting the API. This validates and

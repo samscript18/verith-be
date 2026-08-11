@@ -20,6 +20,10 @@ import type {
 } from '../dto/challenge.dto';
 import { searchPattern } from '../../../shared/utils/search-query';
 import { ChallengeStatus } from '../enums/challenge.enum';
+import {
+  ChallengeGenerationMode,
+  ChallengeGenerationValidationStatus,
+} from '../enums/daily-challenge.enum';
 import { ChallengeAttempt } from '../schemas/challenge-attempt.schema';
 import { Challenge, type ChallengeDocument } from '../schemas/challenge.schema';
 
@@ -162,6 +166,16 @@ export class ChallengesService {
             ? ChallengeStatus.SCHEDULED
             : ChallengeStatus.DRAFT,
         createdBy: new Types.ObjectId(userId),
+        language: 'en',
+        generation: {
+          mode: ChallengeGenerationMode.MANUAL,
+          generatedAt: new Date(),
+          generatorVersion: 'admin-authored-v1',
+          validationVersion: 'challenge-validator-v1',
+          validationStatus: ChallengeGenerationValidationStatus.PASSED,
+          topicCoverage: [],
+          competencyCoverage: [],
+        },
       });
     } catch (error) {
       if (this.isDuplicate(error))
@@ -412,7 +426,16 @@ export class ChallengesService {
   }
 
   private adminProjection(challenge: ChallengeDocument) {
-    return { ...this.publicProjection(challenge), status: challenge.status };
+    return {
+      ...this.publicProjection(challenge),
+      status: challenge.status,
+      language: challenge.language ?? 'en',
+      generation: challenge.generation ?? {
+        mode: ChallengeGenerationMode.LEGACY,
+        generatorVersion: 'legacy',
+        validationStatus: ChallengeGenerationValidationStatus.LEGACY,
+      },
+    };
   }
 
   private validate(dto: CreateChallengeDto) {

@@ -14,6 +14,13 @@ keys:
 
 The router filters providers by configuration, capability, configured model, cached live health, and published prompt compatibility. A requested preferred provider is tried first only when it satisfies those constraints.
 
+Daily Practice uses `DAILY_CHALLENGE_GENERATION`. Gemini, Groq, and OpenRouter
+advertise this capability; the existing configured order chooses candidates.
+One request generates all ten questions, and the caller caps the route at two
+provider calls with schema-correction retries disabled. Provider or content
+failure therefore falls to at most one alternate provider and then the
+deterministic bank. Tavily is not a Daily Practice question generator.
+
 ## Structured output
 
 All provider requests use schema-constrained JSON output. Gemini receives `responseMimeType: application/json` and `responseJsonSchema`. Groq and OpenRouter receive strict `response_format: json_schema`; OpenRouter also receives `require_parameters: true`.

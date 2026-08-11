@@ -31,3 +31,7 @@ export {
 } from './whatsapp.config';
 export { default as privacyConfig, type PrivacyConfig } from './privacy.config';
 export { default as usageConfig, type UsageConfig } from './usage.config';
+export {
+  default as dailyChallengeConfig,
+  type DailyChallengeConfig,
+} from './daily-challenge.config';

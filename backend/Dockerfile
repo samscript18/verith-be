@@ -10,8 +10,12 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 FROM node:24-alpine AS production
+ARG VCS_REF=unknown
 ENV NODE_ENV=production
 WORKDIR /app
+LABEL org.opencontainers.image.title="Verith Backend" \
+  org.opencontainers.image.description="Verith NestJS API, worker, and scheduler runtime" \
+  org.opencontainers.image.revision=$VCS_REF
 RUN addgroup -S verith && adduser -S verith -G verith
 COPY --from=build --chown=verith:verith /app/node_modules ./node_modules
 COPY --from=build --chown=verith:verith /app/dist ./dist
@@ -25,6 +29,5 @@ COPY --chown=verith:verith \
 COPY --chown=verith:verith package.json ./
 USER verith
 EXPOSE 4000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:4000/api/v1/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+STOPSIGNAL SIGTERM
 CMD ["npm", "run", "start:prod"]

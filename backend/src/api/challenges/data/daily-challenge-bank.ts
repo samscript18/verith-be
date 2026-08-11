@@ -1,7 +1,11 @@
 import { QuizQuestionType } from '../../quizzes/enums/quiz.enum';
+import {
+  DailyChallengeCompetency,
+  DailyChallengeTopic,
+} from '../enums/daily-challenge.enum';
 
-interface DailyTopic {
-  code: string;
+export interface DailyTopic {
+  code: DailyChallengeTopic;
   name: string;
   scenario: string;
   primarySource: string;
@@ -11,9 +15,9 @@ interface DailyTopic {
   tags: string[];
 }
 
-const DAILY_TOPICS: readonly DailyTopic[] = [
+export const DAILY_TOPICS: readonly DailyTopic[] = [
   {
-    code: 'public-health',
+    code: DailyChallengeTopic.PUBLIC_HEALTH,
     name: 'Public health claims',
     scenario: 'a widely forwarded health advisory',
     primarySource:
@@ -26,7 +30,7 @@ const DAILY_TOPICS: readonly DailyTopic[] = [
     tags: ['public-health', 'source-checking', 'responsible-sharing'],
   },
   {
-    code: 'elections',
+    code: DailyChallengeTopic.ELECTIONS,
     name: 'Election information',
     scenario: 'a post announcing a last-minute voting-rule change',
     primarySource:
@@ -39,7 +43,7 @@ const DAILY_TOPICS: readonly DailyTopic[] = [
     tags: ['elections', 'civic-information', 'source-checking'],
   },
   {
-    code: 'climate-weather',
+    code: DailyChallengeTopic.CLIMATE_WEATHER,
     name: 'Climate and severe weather',
     scenario: 'a dramatic post about an approaching weather emergency',
     primarySource:
@@ -51,7 +55,7 @@ const DAILY_TOPICS: readonly DailyTopic[] = [
     tags: ['climate', 'weather', 'visual-context'],
   },
   {
-    code: 'education',
+    code: DailyChallengeTopic.EDUCATION,
     name: 'Schools and education',
     scenario: 'a message claiming schools will close or fees will change',
     primarySource:
@@ -65,7 +69,7 @@ const DAILY_TOPICS: readonly DailyTopic[] = [
     tags: ['education', 'official-records', 'responsible-sharing'],
   },
   {
-    code: 'money-scams',
+    code: DailyChallengeTopic.MONEY_SCAMS,
     name: 'Money and online scams',
     scenario:
       'a viral offer promising urgent financial help or investment returns',
@@ -79,7 +83,7 @@ const DAILY_TOPICS: readonly DailyTopic[] = [
     tags: ['scams', 'financial-literacy', 'source-checking'],
   },
   {
-    code: 'images-video',
+    code: DailyChallengeTopic.IMAGES_VIDEO,
     name: 'Images and short videos',
     scenario: 'a striking image or clip presented as a breaking local event',
     primarySource:
@@ -93,7 +97,7 @@ const DAILY_TOPICS: readonly DailyTopic[] = [
     tags: ['images', 'video', 'context'],
   },
   {
-    code: 'science-technology',
+    code: DailyChallengeTopic.SCIENCE_TECHNOLOGY,
     name: 'Science and technology',
     scenario:
       'a post claiming a new study or technology proves a dramatic result',
@@ -106,6 +110,170 @@ const DAILY_TOPICS: readonly DailyTopic[] = [
       'read the original findings and compare qualified independent interpretation',
     tags: ['science', 'technology', 'evidence-evaluation'],
   },
+  {
+    code: DailyChallengeTopic.JOBS_RECRUITMENT,
+    name: 'Jobs and recruitment',
+    scenario: 'an urgent recruitment post requesting personal information',
+    primarySource:
+      'the employer’s verified careers page and official contact domain',
+    weakSignal: 'a copied vacancy notice posted by an unnamed account',
+    contextCheck:
+      'the employer, role, deadline, domain, fees, and application method',
+    verificationAction:
+      'locate the vacancy through the employer’s own verified channels',
+    tags: ['jobs', 'recruitment', 'scams'],
+  },
+  {
+    code: DailyChallengeTopic.SCHOLARSHIPS,
+    name: 'Scholarships and grants',
+    scenario:
+      'a scholarship message with a same-day deadline and no official page',
+    primarySource:
+      'the awarding institution’s current scholarship page and eligibility rules',
+    weakSignal: 'a forwarded poster that asks readers to share before applying',
+    contextCheck:
+      'eligibility, deadline, award owner, application domain, and fees',
+    verificationAction:
+      'open the awarding institution’s site independently and compare the details',
+    tags: ['scholarships', 'education', 'source-checking'],
+  },
+  {
+    code: DailyChallengeTopic.BANKING_FINANCE,
+    name: 'Banking and finance alerts',
+    scenario:
+      'a message claiming an account will be blocked unless a link is opened',
+    primarySource:
+      'the bank’s authenticated app, published security page, or verified support line',
+    weakSignal: 'a shortened link and caller demanding immediate credentials',
+    contextCheck:
+      'the sender domain, requested information, destination URL, and urgency tactic',
+    verificationAction:
+      'contact the institution through a separately verified channel before acting',
+    tags: ['banking', 'phishing', 'security'],
+  },
+  {
+    code: DailyChallengeTopic.SECURITY_ALERTS,
+    name: 'Digital security alerts',
+    scenario:
+      'a warning that urges users to install an unknown security update',
+    primarySource:
+      'the software vendor’s signed advisory and official update channel',
+    weakSignal: 'an executable attachment sent from an unrelated address',
+    contextCheck:
+      'the affected product, version, advisory date, sender, and download origin',
+    verificationAction:
+      'check the vendor advisory and update only through the official product',
+    tags: ['security', 'phishing', 'source-checking'],
+  },
+  {
+    code: DailyChallengeTopic.AI_GENERATED_CONTENT,
+    name: 'AI-generated content',
+    scenario: 'a polished synthetic-looking post presented as direct evidence',
+    primarySource:
+      'the attributable original material and independent evidence of the claimed event',
+    weakSignal: 'visual oddities treated as definitive proof of AI generation',
+    contextCheck:
+      'provenance, original publication, edits, corroboration, and uncertainty',
+    verificationAction:
+      'verify the underlying claim without relying on appearance alone',
+    tags: ['ai-content', 'visual-context', 'evidence-evaluation'],
+  },
+  {
+    code: DailyChallengeTopic.GOVERNMENT_NOTICES,
+    name: 'Government notices',
+    scenario: 'a circular claiming a new public rule takes effect immediately',
+    primarySource:
+      'the responsible agency’s dated publication or official gazette',
+    weakSignal:
+      'a logo-bearing document with no reference number or official location',
+    contextCheck:
+      'the issuing authority, reference, jurisdiction, date, and affected people',
+    verificationAction:
+      'locate the notice on the responsible agency’s verified publication channel',
+    tags: ['government', 'official-records', 'date-checking'],
+  },
+  {
+    code: DailyChallengeTopic.SOCIAL_MEDIA_RUMOURS,
+    name: 'Social-media rumours',
+    scenario:
+      'a rapidly repeated claim whose posts all point back to one account',
+    primarySource:
+      'independent attributable reporting or a direct record relevant to the claim',
+    weakSignal: 'many reposts that repeat the same unsupported wording',
+    contextCheck:
+      'the earliest source, independent confirmation, date, and original wording',
+    verificationAction:
+      'trace the claim to its origin and seek genuinely independent confirmation',
+    tags: ['rumours', 'source-independence', 'responsible-sharing'],
+  },
+  {
+    code: DailyChallengeTopic.VOICE_NOTES,
+    name: 'Voice notes',
+    scenario:
+      'an anonymous voice note claiming insider knowledge of an emergency',
+    primarySource:
+      'an attributable recording plus a verifiable notice from the responsible body',
+    weakSignal: 'the speaker’s confident tone and claim of unnamed contacts',
+    contextCheck:
+      'speaker identity, recording date, edits, location, and supporting records',
+    verificationAction:
+      'transcribe the factual claims and verify each through attributable sources',
+    tags: ['audio', 'voice-notes', 'source-checking'],
+  },
+  {
+    code: DailyChallengeTopic.NEWS_HEADLINES,
+    name: 'News headlines',
+    scenario: 'a dramatic headline shared without the article it summarizes',
+    primarySource:
+      'the complete dated article and any primary records it cites',
+    weakSignal:
+      'a cropped headline card detached from its publication and date',
+    contextCheck:
+      'the full article, publication date, headline wording, evidence, and corrections',
+    verificationAction:
+      'read beyond the headline and inspect the sources used by the report',
+    tags: ['news', 'headlines', 'context'],
+  },
+  {
+    code: DailyChallengeTopic.STATISTICS_AND_NUMBERS,
+    name: 'Statistics and numbers',
+    scenario: 'a precise percentage presented without a dataset or definition',
+    primarySource:
+      'the original dataset, methodology, definitions, and publication notes',
+    weakSignal: 'a chart with no axis labels, source, sample, or time period',
+    contextCheck:
+      'the population, sample, baseline, method, date, and margin of uncertainty',
+    verificationAction:
+      'trace the number to its dataset and check how it was calculated',
+    tags: ['statistics', 'data-literacy', 'evidence-evaluation'],
+  },
+  {
+    code: DailyChallengeTopic.CELEBRITY_INFORMATION,
+    name: 'Celebrity information',
+    scenario: 'a sensational personal claim attributed to an unnamed insider',
+    primarySource:
+      'an attributable statement or responsible reporting with independently checked sources',
+    weakSignal:
+      'an engagement account repeating private allegations without evidence',
+    contextCheck:
+      'the original source, date, quotation, corroboration, privacy, and possible satire',
+    verificationAction:
+      'avoid amplifying personal claims that lack attributable, relevant evidence',
+    tags: ['celebrity', 'rumours', 'responsible-sharing'],
+  },
+] as const;
+
+export const DAILY_COMPETENCY_SEQUENCE = [
+  DailyChallengeCompetency.CLAIM_IDENTIFICATION,
+  DailyChallengeCompetency.SOURCE_CREDIBILITY,
+  DailyChallengeCompetency.SOURCE_INDEPENDENCE,
+  DailyChallengeCompetency.DATE_AND_RECENCY,
+  DailyChallengeCompetency.CONTEXT_RECOGNITION,
+  DailyChallengeCompetency.MANIPULATION_RECOGNITION,
+  DailyChallengeCompetency.EVIDENCE_EVALUATION,
+  DailyChallengeCompetency.AUDIO_VIDEO_CAUTION,
+  DailyChallengeCompetency.RESPONSIBLE_SHARING,
+  DailyChallengeCompetency.INSUFFICIENT_EVIDENCE,
 ] as const;
 
 function dayNumber(dateKey: string): number {
@@ -128,6 +296,10 @@ export function dailyChallengeContent(dateKey: string) {
     options,
     correctOptionIds: [correctOptionId],
     explanation,
+    competency: DAILY_COMPETENCY_SEQUENCE[number - 1]!,
+    secondaryCompetencies: [],
+    topic: topic.code,
+    educationalObjective: explanation,
   });
 
   return {
@@ -138,18 +310,21 @@ export function dailyChallengeContent(dateKey: string) {
     questions: [
       question(
         1,
-        'Which record should you inspect first?',
+        `A message describes ${topic.scenario}. What is the central claim to verify?`,
         [
-          { id: 'a', text: topic.primarySource },
-          { id: 'b', text: topic.weakSignal },
-          { id: 'c', text: 'The post with the most reactions' },
+          {
+            id: 'a',
+            text: 'That the event, warning, or offer happened as the message describes',
+          },
+          { id: 'b', text: 'That the post received reactions and comments' },
+          { id: 'c', text: 'That the message uses an eye-catching design' },
         ],
         'a',
-        'The primary, dated record is attributable and can be inspected directly.',
+        'Identify the factual statement that could be checked before judging the design or popularity around it.',
       ),
       question(
         2,
-        'Which item is the weakest evidence on its own?',
+        'Which source is the strongest starting point for checking the claim?',
         [
           { id: 'a', text: topic.primarySource },
           { id: 'b', text: topic.weakSignal },
@@ -158,22 +333,11 @@ export function dailyChallengeContent(dateKey: string) {
             text: 'Two independent reports that identify their sources',
           },
         ],
-        'b',
-        'Confidence or popularity cannot replace an attributable source.',
+        'a',
+        'An attributable primary record can be inspected directly and compared with other independent evidence.',
       ),
       question(
         3,
-        'What context is most important before accepting the claim?',
-        [
-          { id: 'a', text: topic.contextCheck },
-          { id: 'b', text: 'Whether the design uses dramatic colours' },
-          { id: 'c', text: 'Whether a friend already forwarded it' },
-        ],
-        'a',
-        'Place, time, scope, and limitations can materially change what a claim means.',
-      ),
-      question(
-        4,
         'Three pages repeat the same unnamed source. How many independent evidence lines is that?',
         [
           { id: 'a', text: 'Three, because there are three URLs' },
@@ -187,18 +351,29 @@ export function dailyChallengeContent(dateKey: string) {
         'Repeated publication can still trace back to one unverified origin.',
       ),
       question(
-        5,
-        'What does “not enough evidence yet” mean?',
+        4,
+        'Why must you check the original publication date before sharing?',
         [
-          { id: 'a', text: 'The claim is automatically false' },
-          { id: 'b', text: 'The claim is automatically true' },
           {
-            id: 'c',
-            text: 'A firm conclusion is not supported by what is currently available',
+            id: 'a',
+            text: 'Old or expired information can be presented as if it applies today',
           },
+          { id: 'b', text: 'Recent posts are always accurate' },
+          { id: 'c', text: 'The publication date only affects the design' },
         ],
-        'c',
-        'Unresolved is an honest finding and is different from true or false.',
+        'a',
+        'Recency matters because circumstances, guidance, deadlines, and affected audiences can change.',
+      ),
+      question(
+        5,
+        'What context is most important before accepting the claim?',
+        [
+          { id: 'a', text: topic.contextCheck },
+          { id: 'b', text: 'Whether the design uses dramatic colours' },
+          { id: 'c', text: 'Whether a friend already forwarded it' },
+        ],
+        'a',
+        'Place, time, scope, and limitations can materially change what a claim means.',
       ),
       question(
         6,
@@ -216,51 +391,37 @@ export function dailyChallengeContent(dateKey: string) {
       ),
       question(
         7,
-        'Which statement keeps observation separate from interpretation?',
+        'Which evidence is weakest when considered on its own?',
         [
-          { id: 'a', text: 'The content proves the uploader’s motive' },
-          {
-            id: 'b',
-            text: 'The visible or quoted material is observable; the added claim still needs evidence',
-          },
+          { id: 'a', text: topic.primarySource },
+          { id: 'b', text: topic.weakSignal },
           {
             id: 'c',
-            text: 'A confident tone confirms the identity of the speaker',
+            text: 'Independent reporting that identifies its sources',
           },
         ],
         'b',
-        'Direct observations should not be expanded into unsupported conclusions.',
+        'Confidence, appearance, or popularity cannot replace attributable evidence.',
       ),
       question(
         8,
-        'A statistic appears without its method. What is the strongest next step?',
+        'A cropped image, short clip, or voice note is offered as proof. What should you do?',
         [
           {
             id: 'a',
-            text: 'Find its original dataset, definition, population, and date',
+            text: 'Trace the original, check its date and context, and separate what is observable from the added claim',
           },
-          { id: 'b', text: 'Trust it if the number is precise' },
-          { id: 'c', text: 'Average it with numbers from comments' },
+          {
+            id: 'b',
+            text: 'Assume the media proves every detail in its caption',
+          },
+          { id: 'c', text: 'Judge authenticity only by how polished it looks' },
         ],
         'a',
-        'A number is meaningful only with its definition, scope, source, and method.',
+        'Media can be genuine yet presented with a false date, location, speaker, or description.',
       ),
       question(
         9,
-        'What should you do if the strongest page cannot be accessed lawfully?',
-        [
-          { id: 'a', text: 'Invent the missing passage from the headline' },
-          {
-            id: 'b',
-            text: `Record the access limitation and ${topic.verificationAction}`,
-          },
-          { id: 'c', text: 'Treat access failure as proof the claim is false' },
-        ],
-        'b',
-        'An access problem is a limitation, not evidence for or against the claim.',
-      ),
-      question(
-        10,
         'What is the most responsible sharing decision?',
         [
           { id: 'a', text: 'Share immediately while attention is high' },
@@ -272,6 +433,20 @@ export function dailyChallengeContent(dateKey: string) {
         ],
         'b',
         'Verification and visible uncertainty reduce the risk of spreading a misleading claim.',
+      ),
+      question(
+        10,
+        'What does “not enough evidence yet” mean?',
+        [
+          { id: 'a', text: 'The claim is automatically false' },
+          { id: 'b', text: 'The claim is automatically true' },
+          {
+            id: 'c',
+            text: 'A firm conclusion is not supported by what is currently available',
+          },
+        ],
+        'c',
+        'Unresolved is an honest finding and is different from true or false.',
       ),
     ],
   };

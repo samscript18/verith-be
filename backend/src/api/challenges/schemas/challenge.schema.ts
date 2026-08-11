@@ -2,6 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { QuizQuestionType } from '../../quizzes/enums/quiz.enum';
 import { ChallengeDifficulty, ChallengeStatus } from '../enums/challenge.enum';
+import {
+  ChallengeGenerationMode,
+  ChallengeGenerationValidationStatus,
+  DailyChallengeCompetency,
+  DailyChallengeTopic,
+} from '../enums/daily-challenge.enum';
 
 export type ChallengeDocument = HydratedDocument<Challenge>;
 
@@ -32,6 +38,13 @@ export class Challenge {
         options: [{ id: String, text: String, _id: false }],
         correctOptionIds: [String],
         explanation: String,
+        competency: { type: String, enum: DailyChallengeCompetency },
+        secondaryCompetencies: [
+          { type: String, enum: DailyChallengeCompetency },
+        ],
+        topic: { type: String, enum: DailyChallengeTopic },
+        educationalObjective: String,
+        normalizedSignature: String,
         _id: false,
       },
     ],
@@ -44,6 +57,11 @@ export class Challenge {
     options: Array<{ id: string; text: string }>;
     correctOptionIds: string[];
     explanation: string;
+    competency?: DailyChallengeCompetency;
+    secondaryCompetencies?: DailyChallengeCompetency[];
+    topic?: DailyChallengeTopic;
+    educationalObjective?: string;
+    normalizedSignature?: string;
   }>;
   @Prop({ required: true, enum: ChallengeDifficulty })
   difficulty!: ChallengeDifficulty;
@@ -63,6 +81,38 @@ export class Challenge {
   createdBy!: Types.ObjectId;
   @Prop()
   notificationBroadcastAt?: Date;
+  @Prop({ default: 'en' })
+  language?: string;
+  @Prop({
+    type: {
+      mode: { type: String, enum: ChallengeGenerationMode, required: true },
+      provider: String,
+      model: String,
+      generatedAt: Date,
+      generatorVersion: { type: String, required: true },
+      validationVersion: String,
+      validationStatus: {
+        type: String,
+        enum: ChallengeGenerationValidationStatus,
+      },
+      fallbackReason: String,
+      topicCoverage: [{ type: String, enum: DailyChallengeTopic }],
+      competencyCoverage: [{ type: String, enum: DailyChallengeCompetency }],
+      _id: false,
+    },
+  })
+  generation?: {
+    mode: ChallengeGenerationMode;
+    provider?: string;
+    model?: string;
+    generatedAt?: Date;
+    generatorVersion: string;
+    validationVersion?: string;
+    validationStatus?: ChallengeGenerationValidationStatus;
+    fallbackReason?: string;
+    topicCoverage?: DailyChallengeTopic[];
+    competencyCoverage?: DailyChallengeCompetency[];
+  };
 }
 export const ChallengeSchema = SchemaFactory.createForClass(Challenge);
 ChallengeSchema.index({ status: 1, publishAt: 1, expiresAt: 1 });

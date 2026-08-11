@@ -38,6 +38,7 @@ export class GeminiProvider implements AiProvider {
     AiCapability.AUDIO_REASONING,
     AiCapability.VIDEO_UNDERSTANDING,
     AiCapability.TRANSLATION,
+    AiCapability.DAILY_CHALLENGE_GENERATION,
   ]);
 
   constructor(

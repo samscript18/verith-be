@@ -120,6 +120,28 @@ export const envSchema = Joi.object({
     .max(100)
     .default(3),
   VIDEO_INVESTIGATION_COST: Joi.number().integer().min(1).max(10).default(2),
+  DAILY_CHALLENGE_AI_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
+  DAILY_CHALLENGE_AUTO_PUBLISH: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
+  DAILY_CHALLENGE_DUPLICATE_WINDOW_DAYS: Joi.number()
+    .integer()
+    .min(7)
+    .max(365)
+    .default(90),
+  DAILY_CHALLENGE_MAX_AI_ATTEMPTS: Joi.number()
+    .integer()
+    .min(1)
+    .max(2)
+    .default(2),
+  DAILY_CHALLENGE_SIMILARITY_THRESHOLD: Joi.number()
+    .min(0.7)
+    .max(1)
+    .default(0.85),
 
   WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   WHATSAPP_PHONE_NUMBER_ID: Joi.string()

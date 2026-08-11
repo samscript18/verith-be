@@ -43,6 +43,32 @@ export class CorePromptSeedService implements OnModuleInit {
         .exec(),
       this.model
         .updateOne(
+          { key: 'learning.daily-challenge-generation', version: 1 },
+          {
+            $setOnInsert: {
+              key: 'learning.daily-challenge-generation',
+              task: 'DAILY_CHALLENGE_GENERATION',
+              version: 1,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Create a beginner Media and Information Literacy practice challenge from the supplied server blueprint. Return exactly ten scenario-based single-choice questions in schema-valid JSON. Use only the supplied topics and competencies. Scenarios must be fictional or generic and teach verification methods rather than current-news knowledge. Keep elections politically neutral. Do not diagnose or prescribe treatment, provide financial advice, teach fraud or harmful actions, target real people, expose private information, or manufacture breaking news. Give plausible distractors based on common reasoning errors and a clear explanation that teaches why the answer is strongest. Vary scenario types and question openings. Do not choose rewards, scoring, dates, IDs, attempts, or publication policy.',
+              userPromptTemplate:
+                'Generate one complete Daily Practice challenge using this blueprint:\n{{blueprint}}',
+              supportedProviders: providers,
+              supportedModels: [],
+              outputSchemaVersion: 'daily-challenge.v1',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary:
+                'Initial safe structured Daily Practice generation prompt',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
           { key: 'verification.image-analysis', version: 1 },
           {
             $setOnInsert: {
