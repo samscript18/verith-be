@@ -1,0 +1,16 @@
+/dist
+/node_modules
+/coverage
+/reports
+/results
+/test-results
+/test-reports
+/playwright-report
+/.nyc_output
+*.lcov
+junit*.xml
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

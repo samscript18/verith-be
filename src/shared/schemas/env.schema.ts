@@ -1,0 +1,179 @@
+import Joi from 'joi';
+
+const optionalSecret = Joi.string().trim().allow('').optional();
+
+function validateDeploymentTopology(
+  value: Record<string, unknown>,
+  helpers: Joi.CustomHelpers,
+): Record<string, unknown> {
+  if (
+    Number(value.API_REPLICA_COUNT) > 1 &&
+    value.THROTTLER_STORAGE !== 'redis'
+  ) {
+    return helpers.error(
+      'deployment.distributedThrottlerRequired',
+    ) as unknown as Record<string, unknown>;
+  }
+  return value;
+}
+
+export const envSchema = Joi.object({
+  NODE_ENV: Joi.string()
+    .valid('development', 'test', 'production')
+    .default('development'),
+  PORT: Joi.number().port().default(4000),
+  APP_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .default('http://localhost:4000'),
+  FRONTEND_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .default('http://localhost:3000'),
+  ALLOWED_ORIGINS: Joi.string().default('http://localhost:3000'),
+  TRUST_PROXY: Joi.boolean().truthy('true').falsy('false').default(false),
+  LOG_LEVEL: Joi.string()
+    .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
+    .default('debug'),
+  SWAGGER_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.boolean().default(false),
+      otherwise: Joi.boolean().default(true),
+    }),
+  PROCESS_ROLE: Joi.string()
+    .valid('all', 'api', 'worker', 'scheduler')
+    .optional(),
+  API_REPLICA_COUNT: Joi.number().integer().min(1).default(1),
+  THROTTLER_STORAGE: Joi.string().valid('redis', 'memory').default('memory'),
+
+  MONGODB_URI: Joi.string()
+    .uri({ scheme: ['mongodb', 'mongodb+srv'] })
+    .default('mongodb://localhost:27017/verith'),
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .default('redis://localhost:6379'),
+
+  JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+  HASHING_PEPPER: Joi.string().min(32).required(),
+  DATA_EXPORT_ENCRYPTION_KEY: Joi.string().min(32).required(),
+  GOOGLE_CLIENT_ID: optionalSecret,
+  COOKIE_DOMAIN: Joi.string().trim().allow('').optional(),
+  COOKIE_SECURE: Joi.boolean().truthy('true').falsy('false').default(false),
+  COOKIE_SAME_SITE: Joi.string().valid('strict', 'lax', 'none').default('lax'),
+  MASTER_ENCRYPTION_KEY: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', {
+      is: true,
+      then: Joi.string().min(32).required(),
+    }),
+
+  CLOUDINARY_CLOUD_NAME: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
+  CLOUDINARY_API_KEY: Joi.string().trim().allow('').when('WHATSAPP_ENABLED', {
+    is: true,
+    then: Joi.string().required(),
+  }),
+  CLOUDINARY_API_SECRET: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
+  MAX_VIDEO_BYTES: Joi.number()
+    .integer()
+    .min(1048576)
+    .max(104857600)
+    .default(12582912),
+
+  MAIL_HOST: optionalSecret,
+  MAIL_PORT: Joi.number().port().default(587),
+  MAIL_SECURE: Joi.boolean().truthy('true').falsy('false').default(false),
+  MAIL_USER: optionalSecret,
+  MAIL_PASSWORD: optionalSecret,
+  MAIL_FROM_EMAIL: Joi.string().email().allow('').optional(),
+
+  GEMINI_API_KEY: optionalSecret,
+  GEMINI_API_KEYS: optionalSecret,
+  GROQ_API_KEY: optionalSecret,
+  GROQ_API_KEYS: optionalSecret,
+  OPENROUTER_API_KEY: optionalSecret,
+  OPENROUTER_API_KEYS: optionalSecret,
+  OPENROUTER_SITE_URL: Joi.string()
+    .trim()
+    .uri({ scheme: ['https'] })
+    .allow('')
+    .optional(),
+  TAVILY_API_KEY: optionalSecret,
+  TAVILY_API_KEYS: optionalSecret,
+  TAVILY_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .allow('')
+    .optional(),
+  MAX_CLAIMS: Joi.number().integer().min(1).max(20).default(8),
+  MAX_QUERIES_PER_CLAIM: Joi.number().integer().min(1).max(5).default(2),
+  MAX_EVIDENCE_PER_CLAIM: Joi.number().integer().min(1).max(10).default(4),
+  FREE_DAILY_INVESTIGATION_LIMIT: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(3),
+  VIDEO_INVESTIGATION_COST: Joi.number().integer().min(1).max(10).default(2),
+  DAILY_CHALLENGE_AI_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
+  DAILY_CHALLENGE_AUTO_PUBLISH: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
+  DAILY_CHALLENGE_DUPLICATE_WINDOW_DAYS: Joi.number()
+    .integer()
+    .min(7)
+    .max(365)
+    .default(90),
+  DAILY_CHALLENGE_MAX_AI_ATTEMPTS: Joi.number()
+    .integer()
+    .min(1)
+    .max(2)
+    .default(2),
+  DAILY_CHALLENGE_SIMILARITY_THRESHOLD: Joi.number()
+    .min(0.7)
+    .max(1)
+    .default(0.85),
+
+  WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  WHATSAPP_PHONE_NUMBER_ID: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
+  WHATSAPP_BUSINESS_ACCOUNT_ID: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
+  WHATSAPP_ACCESS_TOKEN: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
+  WHATSAPP_APP_SECRET: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
+  WHATSAPP_VERIFY_TOKEN: Joi.string()
+    .trim()
+    .allow('')
+    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
+  WHATSAPP_REPORT_DEEP_LINK_BASE: Joi.string()
+    .trim()
+    .uri({ scheme: ['https'] })
+    .allow('')
+    .optional(),
+})
+  .custom(validateDeploymentTopology)
+  .messages({
+    'deployment.distributedThrottlerRequired':
+      'THROTTLER_STORAGE must be redis when API_REPLICA_COUNT is greater than 1',
+  })
+  .and('CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET')
+  .unknown(true);

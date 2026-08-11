@@ -1,0 +1,669 @@
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { createHash } from 'node:crypto';
+import { Model, Types } from 'mongoose';
+import {
+  DomainEventName,
+  type PublishDomainEventInput,
+} from '../../../core/events/domain-event.contracts';
+import { DomainEventPublisher } from '../../../core/events/domain-event-publisher.service';
+import { ApplicationException } from '../../../core/exceptions';
+import { VerificationAnalysisService } from '../../analysis/services/verification-analysis.service';
+import { MediaProcessingService } from '../../media/services/media-processing.service';
+import { ReportService } from '../../reports/services/report.service';
+import { VerificationEventStatus } from '../enums/verification-event-status.enum';
+import { VerificationSourceType } from '../enums/verification-source-type.enum';
+import { VerificationStage } from '../enums/verification-stage.enum';
+import { VerificationStatus } from '../enums/verification-status.enum';
+import { UrlExtractionState } from '../enums/url-extraction-state.enum';
+import {
+  ExtractedContent,
+  type ExtractedContentDocument,
+} from '../schemas/extracted-content.schema';
+import type { VerificationDocument } from '../schemas/verification.schema';
+import { ArticleExtractionService } from './article-extraction.service';
+import { ClaimExtractionService } from './claim-extraction.service';
+import { VerificationEventService } from './verification-event.service';
+import { LanguageDetectionService } from './language-detection.service';
+import { TextNormalizationService } from './text-normalization.service';
+import { EvidenceSearchService } from './evidence-search.service';
+import { InvestigationUsageService } from './investigation-usage.service';
+import { GuidedInvestigationService } from './guided-investigation.service';
+
+@Injectable()
+export class ContentProcessingService {
+  constructor(
+    @InjectModel(ExtractedContent.name)
+    private readonly contentModel: Model<ExtractedContent>,
+    private readonly articles: ArticleExtractionService,
+    private readonly normalization: TextNormalizationService,
+    private readonly languages: LanguageDetectionService,
+    private readonly claims: ClaimExtractionService,
+    private readonly evidence: EvidenceSearchService,
+    private readonly analysis: VerificationAnalysisService,
+    private readonly media: MediaProcessingService,
+    private readonly reports: ReportService,
+    private readonly domainEvents: DomainEventPublisher,
+    private readonly events: VerificationEventService,
+    private readonly usage: InvestigationUsageService,
+    private readonly guidance: GuidedInvestigationService,
+  ) {}
+
+  async process(
+    verification: VerificationDocument,
+    requestId: string,
+    jobId: string,
+  ): Promise<void> {
+    try {
+      const extracted = await this.extractContent(verification, requestId);
+      verification.currentStage = VerificationStage.CONTENT_EXTRACTION;
+      verification.progress = 20;
+      if (extracted.title && !verification.title) {
+        verification.title = extracted.title;
+      }
+      if (extracted.urlMetadata) {
+        verification.urlMetadata = extracted.urlMetadata;
+      }
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.CONTENT_EXTRACTION,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 20,
+        messageCode: 'CONTENT_EXTRACTION_COMPLETED',
+        safeMessage: 'The submitted content was extracted and normalized',
+        requestId,
+        jobId,
+      });
+      if (
+        [
+          VerificationSourceType.IMAGE,
+          VerificationSourceType.SCREENSHOT,
+          VerificationSourceType.WHATSAPP_IMAGE,
+        ].includes(verification.sourceType)
+      ) {
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.OCR,
+          status: VerificationEventStatus.COMPLETED,
+          progress: 20,
+          messageCode: 'OCR_COMPLETED',
+          safeMessage: 'Visible text and image context were analyzed',
+          requestId,
+          jobId,
+        });
+      } else if (verification.sourceType === VerificationSourceType.VIDEO) {
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.MEDIA_INVESTIGATION,
+          status: VerificationEventStatus.COMPLETED,
+          progress: 20,
+          messageCode: 'VIDEO_UNDERSTANDING_COMPLETED',
+          safeMessage:
+            'The video’s visual and audio context was analyzed with timestamps',
+          requestId,
+          jobId,
+        });
+      } else if (
+        [
+          VerificationSourceType.AUDIO,
+          VerificationSourceType.WHATSAPP_AUDIO,
+        ].includes(verification.sourceType)
+      ) {
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.TRANSCRIPTION,
+          status: VerificationEventStatus.COMPLETED,
+          progress: 20,
+          messageCode: 'TRANSCRIPTION_COMPLETED',
+          safeMessage: 'The audio was transcribed',
+          requestId,
+          jobId,
+        });
+      }
+      if (!extracted.record) {
+        await this.guidance.prepare(verification);
+        await this.usage.consume(verification);
+        verification.currentStage = VerificationStage.REPORT_SYNTHESIS;
+        verification.progress = 60;
+        await verification.save();
+        for (const stage of [
+          VerificationStage.LANGUAGE_DETECTION,
+          VerificationStage.CLAIM_EXTRACTION,
+          VerificationStage.EVIDENCE_SEARCH,
+          VerificationStage.CLAIM_EVALUATION,
+        ]) {
+          await this.events.append({
+            verificationId: verification.id,
+            stage,
+            status: VerificationEventStatus.SKIPPED,
+            progress: 60,
+            messageCode: `${stage}_SKIPPED_NO_TEXT`,
+            safeMessage:
+              'This stage does not apply because no text was detected',
+            requestId,
+            jobId,
+          });
+        }
+        await this.events.append({
+          verificationId: verification.id,
+          stage: VerificationStage.REPORT_SYNTHESIS,
+          status: VerificationEventStatus.PENDING,
+          progress: 60,
+          messageCode: 'REPORT_SYNTHESIS_PENDING',
+          safeMessage: 'The verification is awaiting report synthesis',
+          requestId,
+          jobId,
+        });
+        await this.finalizeReport(verification, requestId, jobId);
+        return;
+      }
+      const language = this.languages.detect(extracted.record.normalizedText);
+      verification.currentStage = VerificationStage.LANGUAGE_DETECTION;
+      verification.progress = 25;
+      verification.detectedLanguage = language.language;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.LANGUAGE_DETECTION,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 25,
+        messageCode: 'LANGUAGE_DETECTED',
+        safeMessage: 'The content language was detected',
+        metrics: { confidence: language.confidence },
+        requestId,
+        jobId,
+      });
+      verification.currentStage = VerificationStage.CLAIM_EXTRACTION;
+      verification.progress = 30;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.CLAIM_EXTRACTION,
+        status: VerificationEventStatus.ACTIVE,
+        progress: 30,
+        messageCode: 'CLAIM_EXTRACTION_STARTED',
+        safeMessage: 'Factual claims are being extracted',
+        requestId,
+        jobId,
+      });
+      const count = await this.claims.extractAndPersist(
+        verification.id,
+        extracted.record.normalizedText,
+        language.language,
+        requestId,
+      );
+      await this.guidance.prepare(verification);
+      await this.usage.consume(verification);
+      verification.claimsCount = count;
+      verification.currentStage = VerificationStage.SEARCH_QUERY_GENERATION;
+      verification.progress = 40;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.SEARCH_QUERY_GENERATION,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 40,
+        messageCode: 'SEARCH_QUERIES_GENERATED',
+        safeMessage: 'Evidence-search queries were generated',
+        metrics: { claimsCount: count },
+        requestId,
+        jobId,
+      });
+
+      verification.currentStage = VerificationStage.EVIDENCE_SEARCH;
+      verification.progress = 45;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.EVIDENCE_SEARCH,
+        status: VerificationEventStatus.PENDING,
+        progress: 45,
+        messageCode: 'EVIDENCE_SEARCH_PENDING',
+        safeMessage: 'The verification is awaiting evidence search',
+        requestId,
+        jobId,
+      });
+      const evidenceCount = await this.evidence.searchAndPersist(
+        verification.id,
+        requestId,
+      );
+      verification.evidenceCount = evidenceCount;
+      verification.currentStage = VerificationStage.EVIDENCE_NORMALIZATION;
+      verification.progress = 60;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.EVIDENCE_SEARCH,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 50,
+        messageCode: 'EVIDENCE_SEARCH_COMPLETED',
+        safeMessage: 'Potential evidence sources were searched',
+        metrics: { evidenceCount },
+        requestId,
+        jobId,
+      });
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.EVIDENCE_RETRIEVAL,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 55,
+        messageCode: 'EVIDENCE_RETRIEVAL_COMPLETED',
+        safeMessage: 'Accessible evidence pages were retrieved',
+        metrics: { evidenceCount },
+        requestId,
+        jobId,
+      });
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.EVIDENCE_NORMALIZATION,
+        status: VerificationEventStatus.COMPLETED,
+        progress: 60,
+        messageCode: 'EVIDENCE_NORMALIZATION_COMPLETED',
+        safeMessage: 'Evidence was normalized and duplicate lineage recorded',
+        metrics: { evidenceCount },
+        requestId,
+        jobId,
+      });
+      verification.currentStage = VerificationStage.CLAIM_EVALUATION;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.CLAIM_EVALUATION,
+        status: VerificationEventStatus.PENDING,
+        progress: 60,
+        messageCode: 'CLAIM_EVALUATION_PENDING',
+        safeMessage: 'The verification is awaiting claim evaluation',
+        requestId,
+        jobId,
+      });
+      await this.analysis.analyze(verification.id, requestId);
+      for (const stage of [
+        VerificationStage.CLAIM_EVALUATION,
+        VerificationStage.MANIPULATION_ANALYSIS,
+        VerificationStage.BIAS_ANALYSIS,
+        VerificationStage.MISSING_CONTEXT_ANALYSIS,
+        VerificationStage.SOURCE_CREDIBILITY_ANALYSIS,
+      ]) {
+        verification.currentStage = stage;
+        verification.progress += 5;
+        await verification.save();
+        await this.events.append({
+          verificationId: verification.id,
+          stage,
+          status: VerificationEventStatus.COMPLETED,
+          progress: verification.progress,
+          messageCode: `${stage}_COMPLETED`,
+          safeMessage: 'The analysis stage was completed',
+          requestId,
+          jobId,
+        });
+      }
+      verification.currentStage = VerificationStage.REPORT_SYNTHESIS;
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: VerificationStage.REPORT_SYNTHESIS,
+        status: VerificationEventStatus.PENDING,
+        progress: verification.progress,
+        messageCode: 'REPORT_SYNTHESIS_PENDING',
+        safeMessage: 'The verification is awaiting report synthesis',
+        requestId,
+        jobId,
+      });
+      await this.finalizeReport(verification, requestId, jobId);
+    } catch (error) {
+      const code =
+        error instanceof ApplicationException
+          ? error.code
+          : 'CONTENT_PROCESSING_FAILED';
+      verification.status = VerificationStatus.FAILED;
+      verification.failedAt = new Date();
+      verification.failureCode = code;
+      verification.failureSummary = this.failureSummary(code);
+      this.applyUrlFailureState(verification, code, requestId);
+      await this.usage.release(verification);
+      await verification.save();
+      await this.events.append({
+        verificationId: verification.id,
+        stage: verification.currentStage,
+        status:
+          code.includes('NOT_CONFIGURED') || code.includes('UNAVAILABLE')
+            ? VerificationEventStatus.UNAVAILABLE
+            : VerificationEventStatus.FAILED,
+        progress: verification.progress,
+        messageCode: code,
+        safeMessage: this.failureSummary(code),
+        requestId,
+        jobId,
+      });
+      await this.publishDomainEvent(
+        {
+          name: DomainEventName.VERIFICATION_FAILED,
+          aggregateType: 'VERIFICATION',
+          aggregateId: verification.id,
+          correlationId: requestId,
+          deduplicationKey: `verification:${verification.id}:failed:v1`,
+          payload: {
+            userId: verification.userId.toString(),
+            verificationId: verification.id,
+            failureCode: code,
+          },
+        },
+        verification,
+        requestId,
+        jobId,
+      );
+    }
+  }
+
+  private async extractContent(
+    verification: VerificationDocument,
+    requestId: string,
+  ): Promise<{
+    record: ExtractedContentDocument | null;
+    title?: string;
+    urlMetadata?: Record<string, unknown>;
+  }> {
+    if (
+      [
+        VerificationSourceType.IMAGE,
+        VerificationSourceType.SCREENSHOT,
+        VerificationSourceType.AUDIO,
+        VerificationSourceType.VIDEO,
+        VerificationSourceType.WHATSAPP_IMAGE,
+        VerificationSourceType.WHATSAPP_AUDIO,
+      ].includes(verification.sourceType)
+    ) {
+      const result = await this.media.process(verification, requestId);
+      if (!result.text.trim()) return { record: null };
+      const record = await this.upsertContent(
+        verification.id,
+        this.normalization.normalize(result.text),
+        {},
+      );
+      return { record };
+    }
+    if (verification.sourceType === VerificationSourceType.TEXT) {
+      const text =
+        typeof verification.input.text === 'string'
+          ? this.normalization.normalize(verification.input.text)
+          : '';
+      if (!text) throw new Error('Stored text input is unavailable');
+      const record = await this.upsertContent(verification.id, text, {});
+      return { record };
+    }
+    const url =
+      typeof verification.input.url === 'string' ? verification.input.url : '';
+    if (!url) throw new Error('Stored URL input is unavailable');
+    const article = await this.articles.extract(url, {
+      requestId,
+      verificationId: verification.id,
+    });
+    if (
+      ![
+        UrlExtractionState.EXTRACTED,
+        UrlExtractionState.PARTIALLY_EXTRACTED,
+      ].includes(article.state)
+    ) {
+      verification.urlMetadata = {
+        extractionState: article.state,
+        canonicalUrl: article.canonicalUrl,
+        sourceKind: article.sourceKind,
+        extractionOutcome: article.outcome,
+        extractionStrategy: article.strategy,
+        ...(article.socialPostId ? { socialPostId: article.socialPostId } : {}),
+        ...(article.state === UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+          ? {
+              retryRecommended: false,
+              alternativeSubmission: 'PASTE_TEXT_OR_UPLOAD_SCREENSHOT',
+            }
+          : {}),
+      };
+      throw new ApplicationException(
+        article.state === UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+          ? 'Verith identified this X post, but X did not provide readable post content'
+          : 'The article content is not accessible',
+        422,
+        article.state === UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+          ? 'SOCIAL_CONTENT_RESTRICTED'
+          : `URL_${article.state}`,
+      );
+    }
+    const record = await this.upsertContent(verification.id, article.text, {
+      sourceUrl: article.sourceUrl,
+      canonicalUrl: article.canonicalUrl,
+      ...(article.title ? { title: article.title } : {}),
+      ...(article.publisher ? { publisher: article.publisher } : {}),
+      ...(article.author ? { author: article.author } : {}),
+      ...(article.publishedAt ? { publishedAt: article.publishedAt } : {}),
+      extractionState: article.state,
+      extractionConfidence: article.confidence,
+    });
+    return {
+      record,
+      ...(article.title ? { title: article.title } : {}),
+      urlMetadata: {
+        extractionState: article.state,
+        canonicalUrl: article.canonicalUrl,
+        sourceKind: article.sourceKind,
+        extractionOutcome: article.outcome,
+        extractionStrategy: article.strategy,
+        ...(article.socialPostId ? { socialPostId: article.socialPostId } : {}),
+        publisher: article.publisher ?? null,
+        author: article.author ?? null,
+        publishedAt: article.publishedAt ?? null,
+        extractionConfidence: article.confidence,
+      },
+    };
+  }
+
+  private async upsertContent(
+    verificationId: string,
+    normalizedText: string,
+    metadata: Partial<ExtractedContent>,
+  ): Promise<ExtractedContentDocument> {
+    const record = await this.contentModel
+      .findOneAndUpdate(
+        { verificationId: new Types.ObjectId(verificationId) },
+        {
+          $set: {
+            normalizedText,
+            normalizedContentHash: createHash('sha256')
+              .update(normalizedText)
+              .digest('hex'),
+            ...metadata,
+          },
+        },
+        { upsert: true, returnDocument: 'after', runValidators: true },
+      )
+      .exec();
+    if (!record) throw new Error('Extracted content could not be saved');
+    return record;
+  }
+
+  private applyUrlFailureState(
+    verification: VerificationDocument,
+    code: string,
+    supportReference: string,
+  ): void {
+    if (verification.sourceType !== VerificationSourceType.URL) return;
+    const state =
+      code === 'URL_NOT_FOUND'
+        ? UrlExtractionState.NOT_FOUND
+        : code === 'URL_FETCH_TIMEOUT'
+          ? UrlExtractionState.TIMEOUT
+          : code === 'URL_PAYWALLED'
+            ? UrlExtractionState.PAYWALLED
+            : code === 'URL_LOGIN_REQUIRED'
+              ? UrlExtractionState.LOGIN_REQUIRED
+              : code.startsWith('VALIDATION')
+                ? UrlExtractionState.UNSAFE_URL
+                : code === 'URL_ACCESS_BLOCKED'
+                  ? UrlExtractionState.BLOCKED
+                  : code === 'SOCIAL_CONTENT_RESTRICTED'
+                    ? UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
+                    : code === 'URL_AUTOMATION_BLOCKED'
+                      ? UrlExtractionState.AUTOMATION_BLOCKED
+                      : code === 'URL_JAVASCRIPT_REQUIRED'
+                        ? UrlExtractionState.JAVASCRIPT_REQUIRED
+                        : code === 'URL_CONTENT_EMPTY'
+                          ? UrlExtractionState.CONTENT_EMPTY
+                          : code === 'URL_CONTENT_UNREADABLE'
+                            ? UrlExtractionState.CONTENT_UNREADABLE
+                            : UrlExtractionState.UNSUPPORTED;
+    verification.urlMetadata = {
+      ...(verification.urlMetadata ?? {}),
+      extractionState: state,
+      failureCode: code,
+      supportReference,
+      ...this.urlFailureGuidance(code),
+    };
+  }
+
+  private failureSummary(code: string): string {
+    const summaries: Record<string, string> = {
+      SOCIAL_CONTENT_RESTRICTED:
+        'X did not provide readable post content. Paste the post text or upload a screenshot to continue.',
+      URL_ACCESS_BLOCKED:
+        'The publisher blocked automated access. Try again later, paste the relevant text, or upload a screenshot.',
+      URL_FETCH_TIMEOUT:
+        'The source took too long to respond. Retry shortly or submit the content directly.',
+      URL_FETCH_UNAVAILABLE:
+        'The source is temporarily unreachable. Retry shortly or submit the content directly.',
+      URL_DNS_LOOKUP_FAILED:
+        'The source address could not be found. Check the link before trying again.',
+      URL_NOT_FOUND:
+        'The linked page was not found. Check the address or submit the content directly.',
+      URL_LOGIN_REQUIRED:
+        'This page requires a login. Paste the relevant text or upload a screenshot instead.',
+      URL_PAYWALLED:
+        'This page is behind a paywall. Paste content you are permitted to share or upload a screenshot.',
+      URL_UNSUPPORTED:
+        'Verith could not find enough readable content on this page. Paste the text or upload a screenshot.',
+      URL_CONTENT_TYPE_UNSUPPORTED:
+        'This link does not point to a readable webpage. Submit the original content using the matching input type.',
+      URL_CONTENT_EMPTY:
+        'The page responded but contained no readable content. Paste the source text or upload a screenshot.',
+      URL_CONTENT_UNREADABLE:
+        'The page opened, but Verith could not identify usable source content. Paste the text or upload a screenshot.',
+      URL_JAVASCRIPT_REQUIRED:
+        'This page requires browser JavaScript that Verith does not run. Paste the text or upload a screenshot.',
+      URL_AUTOMATION_BLOCKED:
+        'The website presented an automated-access check. Paste the text or upload a screenshot.',
+      URL_RATE_LIMITED:
+        'The website is temporarily limiting requests. Try this link again later.',
+      URL_TEMPORARY_NETWORK_FAILURE:
+        'The website is temporarily unavailable. Try this link again later.',
+    };
+    return summaries[code] ?? 'Content processing could not be completed';
+  }
+
+  private urlFailureGuidance(code: string): Record<string, unknown> {
+    const retryRecommended = [
+      'URL_FETCH_TIMEOUT',
+      'URL_FETCH_UNAVAILABLE',
+      'URL_FETCH_FAILED',
+      'URL_RATE_LIMITED',
+      'URL_TEMPORARY_NETWORK_FAILURE',
+    ].includes(code);
+    const alternativeSubmission = [
+      'SOCIAL_CONTENT_RESTRICTED',
+      'URL_ACCESS_BLOCKED',
+      'URL_LOGIN_REQUIRED',
+      'URL_PAYWALLED',
+      'URL_UNSUPPORTED',
+      'URL_CONTENT_EMPTY',
+      'URL_CONTENT_UNREADABLE',
+      'URL_JAVASCRIPT_REQUIRED',
+      'URL_AUTOMATION_BLOCKED',
+    ].includes(code)
+      ? 'PASTE_TEXT_OR_UPLOAD_SCREENSHOT'
+      : undefined;
+    return {
+      retryRecommended,
+      ...(alternativeSubmission ? { alternativeSubmission } : {}),
+    };
+  }
+
+  private async finalizeReport(
+    verification: VerificationDocument,
+    requestId: string,
+    jobId: string,
+  ): Promise<void> {
+    const report = await this.reports.synthesize(verification);
+    await this.events.append({
+      verificationId: verification.id,
+      stage: VerificationStage.REPORT_SYNTHESIS,
+      status: VerificationEventStatus.COMPLETED,
+      progress: 90,
+      messageCode: 'REPORT_SYNTHESIS_COMPLETED',
+      safeMessage: 'The explainable report was synthesized',
+      metrics: { reportVersion: report.version },
+      requestId,
+      jobId,
+    });
+    await this.events.append({
+      verificationId: verification.id,
+      stage: VerificationStage.REPORT_VALIDATION,
+      status: VerificationEventStatus.COMPLETED,
+      progress: 95,
+      messageCode: 'REPORT_VALIDATION_COMPLETED',
+      safeMessage: 'Report references and limitations were validated',
+      requestId,
+      jobId,
+    });
+    await this.events.append({
+      verificationId: verification.id,
+      stage: VerificationStage.COMPLETED,
+      status: VerificationEventStatus.COMPLETED,
+      progress: 100,
+      messageCode: 'VERIFICATION_COMPLETED',
+      safeMessage: 'Verification processing completed',
+      requestId,
+      jobId,
+    });
+    await this.publishDomainEvent(
+      {
+        name: DomainEventName.VERIFICATION_COMPLETED,
+        aggregateType: 'VERIFICATION',
+        aggregateId: verification.id,
+        correlationId: requestId,
+        deduplicationKey: `verification:${verification.id}:completed:v1`,
+        payload: {
+          userId: verification.userId.toString(),
+          verificationId: verification.id,
+          reportId: report.id,
+        },
+      },
+      verification,
+      requestId,
+      jobId,
+    );
+  }
+
+  private async publishDomainEvent<TName extends DomainEventName>(
+    input: PublishDomainEventInput<TName>,
+    verification: VerificationDocument,
+    requestId: string,
+    jobId: string,
+  ): Promise<void> {
+    try {
+      await this.domainEvents.publish(input);
+    } catch {
+      await this.events
+        .append({
+          verificationId: verification.id,
+          stage: verification.currentStage,
+          status: VerificationEventStatus.UNAVAILABLE,
+          progress: verification.progress,
+          messageCode: 'DOMAIN_EVENT_OUTBOX_UNAVAILABLE',
+          safeMessage:
+            'Follow-up notifications could not be scheduled automatically',
+          requestId,
+          jobId,
+        })
+        .catch(() => undefined);
+    }
+  }
+}

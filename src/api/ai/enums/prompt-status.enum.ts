@@ -1,0 +1,7 @@
+export enum PromptStatus {
+  DRAFT = 'DRAFT',
+  TESTING = 'TESTING',
+  PUBLISHED = 'PUBLISHED',
+  DEPRECATED = 'DEPRECATED',
+  DISABLED = 'DISABLED',
+}
