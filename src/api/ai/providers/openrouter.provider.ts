@@ -36,8 +36,14 @@ export class OpenRouterProvider extends OpenAiCompatibleProvider {
   }
 
   modelFor(capability: AiCapability): string | null {
-    const key =
-      capability === AiCapability.REPORT_GENERATION ? 'report' : 'reasoning';
+    const key = [
+      AiCapability.IMAGE_UNDERSTANDING,
+      AiCapability.OCR_FALLBACK,
+    ].includes(capability)
+      ? 'vision'
+      : capability === AiCapability.REPORT_GENERATION
+        ? 'report'
+        : 'reasoning';
     return this.capabilities.has(capability) && this.config.models[key]
       ? this.config.models[key]
       : null;

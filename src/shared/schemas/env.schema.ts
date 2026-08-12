@@ -64,11 +64,6 @@ export const envSchema = Joi.object({
   CLOUDINARY_CLOUD_NAME: optionalSecret,
   CLOUDINARY_API_KEY: optionalSecret,
   CLOUDINARY_API_SECRET: optionalSecret,
-  MAX_VIDEO_BYTES: Joi.number()
-    .integer()
-    .min(1048576)
-    .max(104857600)
-    .default(12582912),
 
   MAIL_HOST: optionalSecret,
   MAIL_PORT: Joi.number().port().default(587),
@@ -94,37 +89,6 @@ export const envSchema = Joi.object({
     .uri({ scheme: ['https'] })
     .allow('')
     .optional(),
-  MAX_CLAIMS: Joi.number().integer().min(1).max(20).default(8),
-  MAX_QUERIES_PER_CLAIM: Joi.number().integer().min(1).max(5).default(2),
-  MAX_EVIDENCE_PER_CLAIM: Joi.number().integer().min(1).max(10).default(4),
-  FREE_DAILY_INVESTIGATION_LIMIT: Joi.number()
-    .integer()
-    .min(1)
-    .max(100)
-    .default(3),
-  VIDEO_INVESTIGATION_COST: Joi.number().integer().min(1).max(10).default(2),
-  DAILY_CHALLENGE_AI_ENABLED: Joi.boolean()
-    .truthy('true')
-    .falsy('false')
-    .default(true),
-  DAILY_CHALLENGE_AUTO_PUBLISH: Joi.boolean()
-    .truthy('true')
-    .falsy('false')
-    .default(true),
-  DAILY_CHALLENGE_DUPLICATE_WINDOW_DAYS: Joi.number()
-    .integer()
-    .min(7)
-    .max(365)
-    .default(90),
-  DAILY_CHALLENGE_MAX_AI_ATTEMPTS: Joi.number()
-    .integer()
-    .min(1)
-    .max(2)
-    .default(2),
-  DAILY_CHALLENGE_SIMILARITY_THRESHOLD: Joi.number()
-    .min(0.7)
-    .max(1)
-    .default(0.85),
 })
   .custom(validateDeploymentTopology)
   .messages({

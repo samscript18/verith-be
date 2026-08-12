@@ -110,8 +110,17 @@ export class LearningService {
         : {}),
       updatedBy: new Types.ObjectId(userId),
     });
-    await course.save();
-    return course;
+    try {
+      await course.save();
+      return course;
+    } catch (error) {
+      if (this.isDuplicate(error))
+        throw new ConflictException(
+          'The course slug already exists',
+          'COURSE_SLUG_CONFLICT',
+        );
+      throw error;
+    }
   }
 
   async updateLesson(userId: string, id: string, dto: UpdateLessonDto) {
@@ -123,14 +132,31 @@ export class LearningService {
       );
     const { courseId: _courseId, contentHtml, ...values } = dto;
     void _courseId;
+    const sanitizedHtml = contentHtml ? this.sanitize(contentHtml) : undefined;
+    if (
+      sanitizedHtml !== undefined &&
+      !sanitizeHtml(sanitizedHtml, { allowedTags: [] }).trim()
+    )
+      throw new ValidationException(
+        'Lesson content is empty after sanitization',
+      );
     lesson.set({
       ...values,
-      ...(contentHtml ? { sanitizedHtml: this.sanitize(contentHtml) } : {}),
+      ...(sanitizedHtml !== undefined ? { sanitizedHtml } : {}),
       ...(dto.tags ? { tags: this.tags(dto.tags) } : {}),
       updatedBy: new Types.ObjectId(userId),
     });
-    await lesson.save();
-    return lesson;
+    try {
+      await lesson.save();
+      return lesson;
+    } catch (error) {
+      if (this.isDuplicate(error))
+        throw new ConflictException(
+          'The lesson slug or sequence already exists in this course',
+          'LESSON_CONFLICT',
+        );
+      throw error;
+    }
   }
 
   async archiveCourse(

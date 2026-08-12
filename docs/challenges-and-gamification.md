@@ -42,18 +42,14 @@ attempts, 30 XP, 12 Truth Points, and 24-hour availability. Question IDs and the
 date slug are assigned by the server. Correct answers and explanations remain
 hidden until an attempt is scored.
 
-```text
-DAILY_CHALLENGE_AI_ENABLED=true
-DAILY_CHALLENGE_AUTO_PUBLISH=true
-DAILY_CHALLENGE_DUPLICATE_WINDOW_DAYS=90
-DAILY_CHALLENGE_MAX_AI_ATTEMPTS=2
-DAILY_CHALLENGE_SIMILARITY_THRESHOLD=0.85
-```
+The hybrid generator's low-cost operating policy is owned in code: AI-assisted
+generation and automatic publication are enabled, duplicate checks cover the
+latest 90 days at a 0.85 similarity threshold, and generation is limited to two
+provider attempts before the deterministic bank takes over.
 
-When auto-publication is disabled, a validated challenge is stored as `DRAFT`
-for administrative review. Admin records show generation mode, provider/model,
-versions, timestamp, validation state, and topic/competency coverage. Existing
-records remain legacy content and are not falsely rewritten as AI output.
+Admin records show generation mode, provider/model, versions, timestamp,
+validation state, and topic/competency coverage. Existing records remain legacy
+content and are not falsely rewritten as AI output.
 
 ## Reward integrity
 

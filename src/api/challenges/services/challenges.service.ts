@@ -26,6 +26,7 @@ import {
 } from '../enums/daily-challenge.enum';
 import { ChallengeAttempt } from '../schemas/challenge-attempt.schema';
 import { Challenge, type ChallengeDocument } from '../schemas/challenge.schema';
+import { questionSignature } from '../utils/question-similarity';
 
 @Injectable()
 export class ChallengesService {
@@ -108,8 +109,29 @@ export class ChallengesService {
     const expiresAt = new Date(next.expiresAt);
     if (expiresAt <= publishAt)
       throw new ValidationException('Challenge expiration must follow publish');
+    const existingQuestions = new Map(
+      challenge.questions.map((question) => [question.id, question]),
+    );
+    const questions = dto.questions?.map((question) => {
+      const existing = existingQuestions.get(question.id);
+      return {
+        ...question,
+        ...(existing?.competency ? { competency: existing.competency } : {}),
+        ...(existing?.secondaryCompetencies?.length
+          ? { secondaryCompetencies: existing.secondaryCompetencies }
+          : {}),
+        ...(existing?.topic ? { topic: existing.topic } : {}),
+        ...(existing?.educationalObjective
+          ? { educationalObjective: existing.educationalObjective }
+          : {}),
+        ...(existing?.normalizedSignature
+          ? { normalizedSignature: questionSignature(question.prompt) }
+          : {}),
+      };
+    });
     challenge.set({
       ...dto,
+      ...(questions ? { questions } : {}),
       ...(dto.tags ? { tags: this.tags(dto.tags) } : {}),
       ...(dto.mediaAssetId
         ? { mediaAssetId: new Types.ObjectId(dto.mediaAssetId) }
@@ -118,8 +140,17 @@ export class ChallengesService {
       expiresAt,
       updatedBy: new Types.ObjectId(userId),
     });
-    await challenge.save();
-    return this.getAdmin(id);
+    try {
+      await challenge.save();
+      return this.getAdmin(id);
+    } catch (error) {
+      if (this.isDuplicate(error))
+        throw new ConflictException(
+          'The challenge slug already exists',
+          'CHALLENGE_SLUG_CONFLICT',
+        );
+      throw error;
+    }
   }
 
   async archive(

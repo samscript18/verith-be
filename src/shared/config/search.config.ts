@@ -28,7 +28,7 @@ export default registerAs('search', (): SearchConfig => {
     providerOrder: ['TAVILY', 'WIKIPEDIA'],
     timeoutMs: 20000,
     maxRetries: 1,
-    maxEvidencePerClaim: Number(process.env.MAX_EVIDENCE_PER_CLAIM ?? 4),
+    maxEvidencePerClaim: 4,
     healthCacheSeconds: 300,
     ...(tavilyApiKey ? { tavilyApiKey } : {}),
     tavilyApiKeys,

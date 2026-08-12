@@ -8,18 +8,19 @@ export async function providerFetch(
   timeoutMs: number,
   codePrefix: string,
 ): Promise<Response> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     const response = await fetch(url, {
       ...init,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: controller.signal,
     });
     if (response.ok) return response;
-    const state =
-      response.status === 401 || response.status === 403
-        ? ProviderState.AUTHENTICATION_FAILED
-        : response.status === 429
-          ? ProviderState.RATE_LIMITED
-          : ProviderState.UNAVAILABLE;
+    const state = failureState(response.status);
     throw new ExternalProviderException(
       'The AI provider request failed',
       `${codePrefix}_${state}`,
@@ -29,7 +30,11 @@ export async function providerFetch(
     );
   } catch (error) {
     if (error instanceof ExternalProviderException) throw error;
-    if (error instanceof Error && error.name === 'TimeoutError') {
+    if (
+      timedOut ||
+      (error instanceof Error &&
+        ['AbortError', 'TimeoutError'].includes(error.name))
+    ) {
       throw new ExternalProviderException(
         'The AI provider request timed out',
         `${codePrefix}_${ProviderState.TIMEOUT}`,
@@ -39,7 +44,20 @@ export async function providerFetch(
       'The AI provider is unavailable',
       `${codePrefix}_${ProviderState.UNAVAILABLE}`,
     );
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+function failureState(status: number): string {
+  if (status === 401 || status === 403)
+    return ProviderState.AUTHENTICATION_FAILED;
+  if (status === 402) return 'BILLING_REQUIRED';
+  if (status === 404) return 'INVALID_MODEL';
+  if (status === 408 || status === 504) return ProviderState.TIMEOUT;
+  if (status === 429) return ProviderState.RATE_LIMITED;
+  if (status === 400 || status === 422) return 'INVALID_REQUEST';
+  return ProviderState.UNAVAILABLE;
 }
 
 export function parseJsonText(value: string, codePrefix: string): unknown {

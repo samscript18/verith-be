@@ -9,8 +9,10 @@ keys:
 - Gemini uses `gemini-3.5-flash` for text, image, OCR, and audio reasoning.
 - Groq uses `openai/gpt-oss-120b` for text and
   `whisper-large-v3-turbo` for transcription.
-- OpenRouter uses the zero-price `openrouter/free` router for reasoning,
-  reporting, and image fallback.
+- OpenRouter uses concrete zero-price models instead of the random free-model
+  router: Nemotron 3 Super for reasoning and reporting, and Gemma 4 for image
+  fallback. Model selection is owned in code so deployments only configure
+  provider credentials.
 
 The router filters providers by configuration, capability, configured model, cached live health, and published prompt compatibility. A requested preferred provider is tried first only when it satisfies those constraints.
 
@@ -34,7 +36,7 @@ application calculations.
 
 Gemini image analysis uses an inline image part plus a schema-constrained text
 instruction. If Gemini is unavailable, OpenRouter receives the image as a data
-URL and its free router selects a compatible multimodal model. Short-video
+URL and uses its configured multimodal model. Short-video
 understanding uses Gemini inline video with a 12 MiB/60-second application
 boundary and has no silent provider fallback. Groq
 transcription is a separate speech-to-text adapter rather than a text-reasoning

@@ -105,13 +105,14 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
         const choices = Array.isArray(body?.choices) ? body.choices : [];
         const choice = readObject(choices[0]);
         const message = readObject(choice?.message);
-        if (typeof message?.content !== 'string') {
+        const content = this.messageText(message?.content);
+        if (!content) {
           throw new ExternalProviderException(
             'The AI provider returned no usable content',
             `${this.provider}_INVALID_RESPONSE`,
           );
         }
-        const output = parseJsonText(message.content, this.provider);
+        const output = parseJsonText(content, this.provider);
         lease.succeed();
         const usage = readObject(body?.usage);
         return {
@@ -226,5 +227,18 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
     if (error.code.endsWith(ProviderState.TIMEOUT))
       return ProviderState.TIMEOUT;
     return ProviderState.UNAVAILABLE;
+  }
+
+  private messageText(content: unknown): string | null {
+    if (typeof content === 'string') return content.trim() || null;
+    if (!Array.isArray(content)) return null;
+    const text = content
+      .flatMap((part) => {
+        const item = readObject(part);
+        return typeof item?.text === 'string' ? [item.text] : [];
+      })
+      .join('')
+      .trim();
+    return text || null;
   }
 }

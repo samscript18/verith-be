@@ -88,6 +88,9 @@ describe('AI provider HTTP contracts', () => {
       ),
     );
     const provider = new OpenRouterProvider(configService());
+    expect(provider.modelFor(AiCapability.IMAGE_UNDERSTANDING)).toBe(
+      'vision-model',
+    );
     await provider.execute({
       ...baseRequest,
       capability: AiCapability.IMAGE_UNDERSTANDING,
@@ -110,6 +113,32 @@ describe('AI provider HTTP contracts', () => {
         ],
       },
     ]);
+  });
+
+  it('accepts text content parts returned by an OpenAI-compatible provider', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: 'configured-model',
+          choices: [
+            {
+              message: {
+                content: [
+                  { type: 'text', text: '{"value":' },
+                  { type: 'text', text: '"ok"}' },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    const provider = new OpenRouterProvider(configService());
+
+    await expect(provider.execute(baseRequest)).resolves.toMatchObject({
+      output: { value: 'ok' },
+    });
   });
 
   it('uses Gemini responseJsonSchema and rejects no substitute output', async () => {
@@ -175,7 +204,11 @@ function configService(): ConfigService {
         apiKey: 'openrouter-key',
         baseUrl: 'https://openrouter.ai/api/v1',
         timeoutMs: 30000,
-        models: { reasoning: 'configured-model', report: 'report-model' },
+        models: {
+          reasoning: 'configured-model',
+          report: 'report-model',
+          vision: 'vision-model',
+        },
         siteUrl: 'https://verith.example',
         appName: 'Verith',
       },

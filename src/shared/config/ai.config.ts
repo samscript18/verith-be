@@ -21,7 +21,8 @@ export const FREE_AI_MODELS = {
   gemini: 'gemini-3.5-flash',
   groq: 'openai/gpt-oss-120b',
   groqTranscription: 'whisper-large-v3-turbo',
-  openRouter: 'openrouter/free',
+  openRouterReasoning: 'nvidia/nemotron-3-super-120b-a12b:free',
+  openRouterVision: 'google/gemma-4-26b-a4b-it:free',
 } as const;
 
 const providerKeys = (
@@ -80,8 +81,9 @@ export default registerAs('ai', (): AiConfig => {
       baseUrl: 'https://openrouter.ai/api/v1',
       timeoutMs: 45000,
       models: {
-        reasoning: FREE_AI_MODELS.openRouter,
-        report: FREE_AI_MODELS.openRouter,
+        reasoning: FREE_AI_MODELS.openRouterReasoning,
+        report: FREE_AI_MODELS.openRouterReasoning,
+        vision: FREE_AI_MODELS.openRouterVision,
       },
       siteUrl: process.env.OPENROUTER_SITE_URL ?? '',
       appName: 'Verith',
