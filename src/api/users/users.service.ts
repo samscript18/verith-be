@@ -12,6 +12,18 @@ import { AuthProvider } from './enums/auth-provider.enum';
 import { UserStatus } from './enums/user-status.enum';
 import { User, type UserDocument } from './schemas/user.schema';
 
+const NOTIFICATION_PREFERENCE_KEYS = [
+  'verificationComplete',
+  'verificationFailed',
+  'learningRecommendations',
+  'dailyChallenges',
+  'streakReminders',
+  'gamification',
+  'marketing',
+  'security',
+  'emailEnabled',
+] as const;
+
 export interface CreateUserInput {
   email: string;
   username: string;
@@ -202,14 +214,23 @@ export class UsersService {
     userId: string,
     dto: UpdatePreferencesDto,
   ): Promise<Record<string, unknown>> {
-    const updates = Object.fromEntries(
-      Object.entries(dto.preferences).map(([key, value]) => [
-        `notificationPreferences.${key}`,
-        value,
-      ]),
-    );
+    const existing = await this.userModel.findById(userId).exec();
+    if (!existing) {
+      throw new NotFoundException(
+        'The user could not be found',
+        'USER_NOT_FOUND',
+      );
+    }
+    const preferences = {
+      ...this.sanitizeNotificationPreferences(existing.notificationPreferences),
+      ...dto.preferences,
+    };
     const user = await this.userModel
-      .findByIdAndUpdate(userId, { $set: updates }, { returnDocument: 'after' })
+      .findByIdAndUpdate(
+        userId,
+        { $set: { notificationPreferences: preferences } },
+        { returnDocument: 'after' },
+      )
       .exec();
     if (!user) {
       throw new NotFoundException(
@@ -320,7 +341,9 @@ export class UsersService {
       preferredLanguage: user.preferredLanguage,
       timezone: user.timezone,
       theme: user.theme,
-      notificationPreferences: user.notificationPreferences,
+      notificationPreferences: this.sanitizeNotificationPreferences(
+        user.notificationPreferences,
+      ),
       privacyPreferences: user.privacyPreferences,
       emailVerifiedAt: user.emailVerifiedAt,
       createdAt: user.createdAt,
@@ -331,6 +354,18 @@ export class UsersService {
 
   private normalize(value: string): string {
     return value.trim().toLowerCase();
+  }
+
+  private sanitizeNotificationPreferences(
+    preferences: Record<string, boolean> | undefined,
+  ): Record<string, boolean> {
+    return Object.fromEntries(
+      NOTIFICATION_PREFERENCE_KEYS.flatMap((key) =>
+        typeof preferences?.[key] === 'boolean'
+          ? [[key, preferences[key]]]
+          : [],
+      ),
+    );
   }
 
   private isDuplicateKey(error: unknown): boolean {

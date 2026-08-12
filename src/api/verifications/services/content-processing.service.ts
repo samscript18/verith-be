@@ -79,7 +79,6 @@ export class ContentProcessingService {
         [
           VerificationSourceType.IMAGE,
           VerificationSourceType.SCREENSHOT,
-          VerificationSourceType.WHATSAPP_IMAGE,
         ].includes(verification.sourceType)
       ) {
         await this.events.append({
@@ -104,12 +103,7 @@ export class ContentProcessingService {
           requestId,
           jobId,
         });
-      } else if (
-        [
-          VerificationSourceType.AUDIO,
-          VerificationSourceType.WHATSAPP_AUDIO,
-        ].includes(verification.sourceType)
-      ) {
+      } else if (verification.sourceType === VerificationSourceType.AUDIO) {
         await this.events.append({
           verificationId: verification.id,
           stage: VerificationStage.TRANSCRIPTION,
@@ -371,8 +365,6 @@ export class ContentProcessingService {
         VerificationSourceType.SCREENSHOT,
         VerificationSourceType.AUDIO,
         VerificationSourceType.VIDEO,
-        VerificationSourceType.WHATSAPP_IMAGE,
-        VerificationSourceType.WHATSAPP_AUDIO,
       ].includes(verification.sourceType)
     ) {
       const result = await this.media.process(verification, requestId);

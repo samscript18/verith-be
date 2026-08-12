@@ -60,7 +60,6 @@ export class NotificationPreferencesDto {
   @IsOptional() @IsBoolean() marketing?: boolean;
   @IsOptional() @IsBoolean() security?: boolean;
   @IsOptional() @IsBoolean() emailEnabled?: boolean;
-  @IsOptional() @IsBoolean() whatsappEnabled?: boolean;
 }
 
 export class UpdatePreferencesDto {

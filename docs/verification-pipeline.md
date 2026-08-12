@@ -107,10 +107,9 @@ Unavailable URL states are preserved as `LOGIN_REQUIRED`, `PAYWALLED`, `BLOCKED`
 
 ## Inputs and ownership
 
-The public authenticated route accepts `TEXT`, `URL`, `IMAGE`, `SCREENSHOT`,
-`AUDIO`, and `VIDEO`. WhatsApp source types are rejected here and accepted only
-through the signed webhook flow. Media requests require a confirmed,
-compatible, owner-controlled asset. Attachment uses an atomic conditional
+The authenticated route accepts `TEXT`, `URL`, `IMAGE`, `SCREENSHOT`, `AUDIO`,
+and `VIDEO`. Media requests require a confirmed, compatible, owner-controlled
+asset. Attachment uses an atomic conditional
 update so an asset cannot be assigned to two verifications.
 
 All reads, mutations, event history, and streams are scoped to the authenticated owner. Missing and foreign records return the same not-found response.
@@ -130,8 +129,8 @@ Clients should reconnect with the last processed sequence in the `after` query. 
 Lifecycle events and cross-domain events are separate concerns. Lifecycle
 events drive owner history and SSE. After a verification completes or fails,
 the worker writes a typed domain event to the durable outbox. The scheduler
-then invokes idempotent notification and WhatsApp consumers without coupling
-those modules to the verification worker.
+then invokes the idempotent notification consumer without coupling it to the
+verification worker.
 
 ## Lifecycle operations
 

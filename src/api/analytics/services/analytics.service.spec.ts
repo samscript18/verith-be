@@ -2,7 +2,6 @@ import type { Model } from 'mongoose';
 import type { ProviderExecution } from '../../ai/schemas/provider-execution.schema';
 import type { User } from '../../users/schemas/user.schema';
 import type { Verification } from '../../verifications/schemas/verification.schema';
-import type { WhatsAppMessage } from '../../whatsapp/schemas/whatsapp-message.schema';
 import type { AnalyticsEvent } from '../schemas/analytics-event.schema';
 import type { Mission } from '../../missions/schemas/mission.schema';
 import type { MissionParticipant } from '../../missions/schemas/mission-participant.schema';
@@ -41,12 +40,10 @@ describe('AnalyticsService', () => {
         },
       ]),
     };
-    const whatsapp = { countDocuments: jest.fn().mockResolvedValue(6) };
     const service = new AnalyticsService(
       users as unknown as Model<User>,
       verifications as unknown as Model<Verification>,
       providers as unknown as Model<ProviderExecution>,
-      whatsapp as unknown as Model<WhatsAppMessage>,
       {} as Model<AnalyticsEvent>,
       {} as Model<Mission>,
       {} as Model<MissionParticipant>,
@@ -64,7 +61,6 @@ describe('AnalyticsService', () => {
         failureRate: 0.2,
       },
       providers: [{ provider: 'GEMINI', successRate: 0.75 }],
-      whatsapp: { messages: 6 },
     });
   });
 });

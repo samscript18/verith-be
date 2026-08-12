@@ -82,12 +82,7 @@ export class MediaProcessingService {
         'MEDIA_ASSET_UNAVAILABLE',
       );
     this.trusted.assertTrustedUrl(asset.secureUrl);
-    if (
-      [
-        VerificationSourceType.AUDIO,
-        VerificationSourceType.WHATSAPP_AUDIO,
-      ].includes(verification.sourceType)
-    )
+    if (verification.sourceType === VerificationSourceType.AUDIO)
       return this.processAudio(verification, asset, asset.secureUrl);
     if (verification.sourceType === VerificationSourceType.VIDEO)
       return this.processVideo(verification, asset, asset.secureUrl, requestId);

@@ -6,8 +6,6 @@ import { NotificationsService } from '../../notifications/services/notifications
 import { PrivacyJobType } from '../../privacy/enums/privacy-job.enum';
 import type { PrivacyQueueJob } from '../../privacy/interfaces/privacy-job.interface';
 import { PrivacyService } from '../../privacy/services/privacy.service';
-import { WhatsAppService } from '../../whatsapp/services/whatsapp.service';
-import { WHATSAPP_INBOUND_JOB } from '../../whatsapp/whatsapp.constants';
 import { MAINTENANCE_QUEUE } from '../maintenance.constants';
 
 @Processor(MAINTENANCE_QUEUE, {
@@ -21,7 +19,6 @@ export class MaintenanceWorker extends WorkerHost {
   constructor(
     private readonly notifications: NotificationsService,
     private readonly privacy: PrivacyService,
-    private readonly whatsapp: WhatsAppService,
   ) {
     super();
   }
@@ -41,10 +38,6 @@ export class MaintenanceWorker extends WorkerHost {
     if (job.name === String(PrivacyJobType.DATA_EXPORT)) {
       const data = job.data as PrivacyQueueJob;
       await this.privacy.processExport(data.privacyJobId, data.userId);
-      return;
-    }
-    if (job.name === WHATSAPP_INBOUND_JOB) {
-      await this.whatsapp.processInbound(job.data as never);
       return;
     }
     this.logger.warn({

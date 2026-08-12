@@ -15,11 +15,14 @@ Substantial persistence uses repositories or domain-owned models. Immediate
 use-case dependencies are imported explicitly; asynchronous cross-domain side
 effects use typed events.
 
-The API process is synchronous only for short HTTP work. BullMQ workers run verification orchestration, notification email delivery, and signed WhatsApp inbound processing. Evidence and media stages remain within the idempotent verification job; export workloads are generated on authenticated demand.
+The API process is synchronous only for short HTTP work. BullMQ workers run
+verification orchestration and notification email delivery. Evidence and media
+stages remain within the idempotent verification job; export workloads are
+generated on authenticated demand.
 
 Verification completion/failure and authentication security alerts use the
 durable domain-event outbox. The scheduler relays these facts at least once to
-idempotent notification and WhatsApp consumers. See
+the idempotent notification consumer. See
 [event-driven-architecture.md](event-driven-architecture.md).
 
 Large or independently queried records are separated from the verification document. Normalized extracted content, claims, evidence, stage events, idempotency records, prompt versions, AI executions, and search executions use dedicated indexed collections. Evidence carries canonical/content lineage so duplicate or syndicated pages are not silently treated as independent sources.

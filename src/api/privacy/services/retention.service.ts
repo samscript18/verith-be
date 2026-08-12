@@ -36,32 +36,23 @@ export class RetentionService {
     try {
       const db = this.db();
       const now = new Date();
-      const whatsappCutoff = new Date(
-        Date.now() - this.config.whatsappRetentionDays * 86400000,
-      );
       const auditCutoff = new Date(
         Date.now() - this.config.auditRetentionDays * 86400000,
       );
-      const [sessions, exports, whatsapp, audits, accounts] = await Promise.all(
-        [
-          db.collection('sessions').deleteMany({ expiresAt: { $lte: now } }),
-          db
-            .collection('report_exports')
-            .deleteMany({ expiresAt: { $lte: now } }),
-          db.collection('whatsapp_messages').deleteMany({
-            createdAt: { $lte: whatsappCutoff },
-          }),
-          db.collection('audit_logs').deleteMany({
-            createdAt: { $lte: auditCutoff },
-          }),
-          this.privacy.processPendingDeletions(),
-        ],
-      );
+      const [sessions, exports, audits, accounts] = await Promise.all([
+        db.collection('sessions').deleteMany({ expiresAt: { $lte: now } }),
+        db
+          .collection('report_exports')
+          .deleteMany({ expiresAt: { $lte: now } }),
+        db.collection('audit_logs').deleteMany({
+          createdAt: { $lte: auditCutoff },
+        }),
+        this.privacy.processPendingDeletions(),
+      ]);
       this.logger.log({
         event: 'privacy_retention_completed',
         expiredSessions: sessions.deletedCount,
         expiredReportExports: exports.deletedCount,
-        expiredWhatsAppMessages: whatsapp.deletedCount,
         expiredAuditLogs: audits.deletedCount,
         erasedAccounts: accounts,
       });

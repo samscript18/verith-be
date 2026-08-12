@@ -19,7 +19,7 @@ Administrative APIs are protected by access JWTs and role checks. `ADMIN` and
   records and uses a deterministic BullMQ job ID.
 - `GET /api/v1/admin/audit-logs` is super-admin only and cursor paginated.
 - `GET /api/v1/admin/analytics/overview` computes 30-day user, verification,
-  provider-execution, and WhatsApp aggregates from MongoDB.
+  and provider-execution aggregates from MongoDB.
 
 ## Suspended and disabled accounts
 

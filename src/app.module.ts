@@ -22,7 +22,6 @@ import {
   redisConfig,
   searchConfig,
   usageConfig,
-  whatsappConfig,
 } from './shared/config';
 import { envSchema } from './shared/schemas/env.schema';
 import { SharedModule } from './shared/shared.module';
@@ -64,7 +63,6 @@ const envFilePath = [
         redisConfig,
         searchConfig,
         usageConfig,
-        whatsappConfig,
       ],
       validationSchema: envSchema,
       validationOptions: { abortEarly: false },

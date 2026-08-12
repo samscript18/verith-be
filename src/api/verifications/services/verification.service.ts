@@ -52,7 +52,6 @@ export class VerificationService {
     dto: CreateVerificationDto,
     idempotencyKey: string,
     requestId: string,
-    trustedWhatsApp = false,
   ): Promise<Record<string, unknown>> {
     if (!idempotencyKey) {
       throw new ValidationException(
@@ -65,7 +64,7 @@ export class VerificationService {
         ],
       );
     }
-    const input = this.buildInput(dto, trustedWhatsApp);
+    const input = this.buildInput(dto);
     if (dto.mediaAssetId) {
       await this.uploads.assertVerificationAsset(
         userId,
@@ -422,27 +421,10 @@ export class VerificationService {
     );
   }
 
-  private buildInput(
-    dto: CreateVerificationDto,
-    trustedWhatsApp: boolean,
-  ): Record<string, unknown> {
-    if (
-      [
-        VerificationSourceType.TEXT,
-        VerificationSourceType.WHATSAPP_TEXT,
-      ].includes(dto.sourceType) &&
-      dto.text &&
-      (dto.sourceType === VerificationSourceType.TEXT || trustedWhatsApp)
-    )
+  private buildInput(dto: CreateVerificationDto): Record<string, unknown> {
+    if (dto.sourceType === VerificationSourceType.TEXT && dto.text)
       return { text: dto.text.trim() };
-    if (
-      [
-        VerificationSourceType.URL,
-        VerificationSourceType.WHATSAPP_URL,
-      ].includes(dto.sourceType) &&
-      dto.url &&
-      (dto.sourceType === VerificationSourceType.URL || trustedWhatsApp)
-    )
+    if (dto.sourceType === VerificationSourceType.URL && dto.url)
       return { url: dto.url };
     if (
       [
@@ -450,18 +432,10 @@ export class VerificationService {
         VerificationSourceType.SCREENSHOT,
         VerificationSourceType.AUDIO,
         VerificationSourceType.VIDEO,
-        VerificationSourceType.WHATSAPP_IMAGE,
-        VerificationSourceType.WHATSAPP_AUDIO,
       ].includes(dto.sourceType) &&
-      dto.mediaAssetId &&
-      (!dto.sourceType.startsWith('WHATSAPP_') || trustedWhatsApp)
+      dto.mediaAssetId
     ) {
       return { mediaAssetId: dto.mediaAssetId };
-    }
-    if (dto.sourceType.startsWith('WHATSAPP_')) {
-      throw new ValidationException(
-        'WhatsApp source types are accepted only by the verified webhook flow',
-      );
     }
     throw new ValidationException(
       'The input does not match the selected source type',
@@ -469,12 +443,7 @@ export class VerificationService {
   }
 
   private allowedAssetTypes(sourceType: VerificationSourceType): AssetType[] {
-    if (
-      [
-        VerificationSourceType.AUDIO,
-        VerificationSourceType.WHATSAPP_AUDIO,
-      ].includes(sourceType)
-    )
+    if (sourceType === VerificationSourceType.AUDIO)
       return [AssetType.VERIFICATION_AUDIO];
     if (sourceType === VerificationSourceType.VIDEO)
       return [AssetType.VERIFICATION_VIDEO];

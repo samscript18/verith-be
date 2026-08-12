@@ -23,4 +23,4 @@ Implemented owner endpoints:
 - `DELETE /api/v1/notifications/:id`
 
 Verification completion and failure events create retry-safe notifications.
-WhatsApp and push are not presented as implemented notification channels.
+Push is not presented as an implemented notification channel.

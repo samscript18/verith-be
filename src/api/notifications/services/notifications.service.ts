@@ -198,6 +198,7 @@ export class NotificationsService {
   async list(userId: string, query: NotificationQueryDto) {
     const filter: Record<string, unknown> = {
       userId: new Types.ObjectId(userId),
+      type: { $in: Object.values(NotificationType) },
       deletedAt: { $exists: false },
     };
     if (query.cursor) filter._id = { $lt: new Types.ObjectId(query.cursor) };
@@ -224,6 +225,7 @@ export class NotificationsService {
   async unreadCount(userId: string) {
     const unreadCount = await this.notifications.countDocuments({
       userId: new Types.ObjectId(userId),
+      type: { $in: Object.values(NotificationType) },
       readAt: { $exists: false },
       deletedAt: { $exists: false },
     });

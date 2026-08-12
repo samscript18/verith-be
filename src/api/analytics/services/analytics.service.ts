@@ -5,7 +5,6 @@ import { ProviderExecution } from '../../ai/schemas/provider-execution.schema';
 import { User } from '../../users/schemas/user.schema';
 import { Verification } from '../../verifications/schemas/verification.schema';
 import { VerificationStatus } from '../../verifications/enums/verification-status.enum';
-import { WhatsAppMessage } from '../../whatsapp/schemas/whatsapp-message.schema';
 import type { RecordAnalyticsEventDto } from '../dto/analytics-event.dto';
 import { AnalyticsEvent } from '../schemas/analytics-event.schema';
 import { Mission } from '../../missions/schemas/mission.schema';
@@ -25,8 +24,6 @@ export class AnalyticsService {
     private readonly verifications: Model<Verification>,
     @InjectModel(ProviderExecution.name)
     private readonly providerExecutions: Model<ProviderExecution>,
-    @InjectModel(WhatsAppMessage.name)
-    private readonly whatsappMessages: Model<WhatsAppMessage>,
     @InjectModel(AnalyticsEvent.name)
     private readonly events: Model<AnalyticsEvent>,
     @InjectModel(Mission.name) private readonly missions: Model<Mission>,
@@ -57,7 +54,7 @@ export class AnalyticsService {
 
   async overview() {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [users, activeUsers, verificationGroups, providerGroups, whatsapp] =
+    const [users, activeUsers, verificationGroups, providerGroups] =
       await Promise.all([
         this.users.countDocuments({ deletedAt: { $exists: false } }),
         this.users.countDocuments({ lastActiveAt: { $gte: since } }),
@@ -115,7 +112,6 @@ export class AnalyticsService {
             },
           },
         ]),
-        this.whatsappMessages.countDocuments({ createdAt: { $gte: since } }),
       ]);
 
     const volume = verificationGroups.reduce(
@@ -157,7 +153,6 @@ export class AnalyticsService {
           reason: 'Provider cost is not stored',
         },
       })),
-      whatsapp: { messages: whatsapp },
     };
   }
 

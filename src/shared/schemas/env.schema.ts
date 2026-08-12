@@ -61,26 +61,9 @@ export const envSchema = Joi.object({
   COOKIE_DOMAIN: Joi.string().trim().allow('').optional(),
   COOKIE_SECURE: Joi.boolean().truthy('true').falsy('false').default(false),
   COOKIE_SAME_SITE: Joi.string().valid('strict', 'lax', 'none').default('lax'),
-  MASTER_ENCRYPTION_KEY: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', {
-      is: true,
-      then: Joi.string().min(32).required(),
-    }),
-
-  CLOUDINARY_CLOUD_NAME: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
-  CLOUDINARY_API_KEY: Joi.string().trim().allow('').when('WHATSAPP_ENABLED', {
-    is: true,
-    then: Joi.string().required(),
-  }),
-  CLOUDINARY_API_SECRET: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', { is: true, then: Joi.string().required() }),
+  CLOUDINARY_CLOUD_NAME: optionalSecret,
+  CLOUDINARY_API_KEY: optionalSecret,
+  CLOUDINARY_API_SECRET: optionalSecret,
   MAX_VIDEO_BYTES: Joi.number()
     .integer()
     .min(1048576)
@@ -142,33 +125,6 @@ export const envSchema = Joi.object({
     .min(0.7)
     .max(1)
     .default(0.85),
-
-  WHATSAPP_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
-  WHATSAPP_PHONE_NUMBER_ID: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
-  WHATSAPP_BUSINESS_ACCOUNT_ID: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
-  WHATSAPP_ACCESS_TOKEN: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
-  WHATSAPP_APP_SECRET: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
-  WHATSAPP_VERIFY_TOKEN: Joi.string()
-    .trim()
-    .allow('')
-    .when('WHATSAPP_ENABLED', { is: true, then: Joi.required() }),
-  WHATSAPP_REPORT_DEEP_LINK_BASE: Joi.string()
-    .trim()
-    .uri({ scheme: ['https'] })
-    .allow('')
-    .optional(),
 })
   .custom(validateDeploymentTopology)
   .messages({

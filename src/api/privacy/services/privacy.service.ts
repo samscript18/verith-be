@@ -284,8 +284,6 @@ export class PrivacyService {
         db.collection('user_badges').deleteMany({ userId }),
         db.collection('achievement_events').deleteMany({ userId }),
         db.collection('notifications').deleteMany({ userId }),
-        db.collection('whatsapp_links').deleteMany({ userId }),
-        db.collection('whatsapp_messages').deleteMany({ linkedUserId: userId }),
         db.collection('report_feedback').deleteMany({ userId }),
         db.collection('report_exports').deleteMany({ userId }),
         db.collection('privacy_jobs').deleteMany({ userId }),
@@ -395,7 +393,6 @@ export class PrivacyService {
       challengeAttempts,
       rewards,
       notifications,
-      whatsappLink,
       domainEvents,
     ] = await Promise.all([
       db.collection('users').findOne(
@@ -427,16 +424,6 @@ export class PrivacyService {
         .find({ userId: ownerId })
         .project({ emailMessageId: 0, emailFailureCode: 0 })
         .toArray(),
-      db.collection('whatsapp_links').findOne(
-        { userId: ownerId },
-        {
-          projection: {
-            phoneNumberEncrypted: 0,
-            phoneNumberHash: 0,
-            linkCodeHash: 0,
-          },
-        },
-      ),
       db
         .collection('domain_event_outbox')
         .find({ 'payload.userId': userId })
@@ -459,7 +446,6 @@ export class PrivacyService {
       challengeAttempts,
       gamificationHistory: rewards,
       notifications,
-      whatsappLink,
       domainEvents,
     };
   }

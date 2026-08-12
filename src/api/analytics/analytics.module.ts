@@ -9,10 +9,6 @@ import {
   Verification,
   VerificationSchema,
 } from '../verifications/schemas/verification.schema';
-import {
-  WhatsAppMessage,
-  WhatsAppMessageSchema,
-} from '../whatsapp/schemas/whatsapp-message.schema';
 import { AnalyticsController } from './controllers/analytics.controller';
 import { ProductAnalyticsController } from './controllers/product-analytics.controller';
 import { AnalyticsService } from './services/analytics.service';
@@ -40,7 +36,6 @@ import {
       { name: User.name, schema: UserSchema },
       { name: Verification.name, schema: VerificationSchema },
       { name: ProviderExecution.name, schema: ProviderExecutionSchema },
-      { name: WhatsAppMessage.name, schema: WhatsAppMessageSchema },
       { name: AnalyticsEvent.name, schema: AnalyticsEventSchema },
       { name: Mission.name, schema: MissionSchema },
       { name: MissionParticipant.name, schema: MissionParticipantSchema },

@@ -15,9 +15,8 @@ owner presenting the token.
 
 Exports include profile/preferences, safe session metadata, verification
 metadata, reports, learning progress, quiz/challenge attempts, reward history,
-notifications, and consent/link-state WhatsApp metadata. They exclude
-passwords, refresh tokens, IP hashes, phone identifiers, internal prompts,
-provider internals, and administrative notes.
+and notifications. They exclude passwords, refresh tokens, IP hashes, internal
+prompts, provider internals, and administrative notes.
 
 ## Account erasure
 
@@ -27,8 +26,7 @@ job then:
 
 1. deletes every owned Cloudinary asset and requires provider acknowledgement;
 2. deletes sessions, auth tokens, verification data, reports, media metadata,
-   learning/quiz/challenge activity, rewards, notifications, and WhatsApp
-   linkage;
+   learning/quiz/challenge activity, rewards, and notifications;
 3. replaces direct account identifiers with unique tombstone values and removes
    credentials/profile fields;
 4. retains append-only audit records under the pseudonymous internal actor ID
@@ -40,9 +38,8 @@ is retried; Verith never reports success while provider media remains.
 ## Scheduled retention
 
 The scheduler runs once daily under a Redis `NX` lock. It removes expired
-sessions and exports, WhatsApp metadata older than
-`WHATSAPP_METADATA_RETENTION_DAYS`, and audit logs older than
-`AUDIT_LOG_RETENTION_DAYS`. MongoDB TTL indexes independently expire auth
+sessions and exports and audit logs older than `AUDIT_LOG_RETENTION_DAYS`.
+MongoDB TTL indexes independently expire auth
 tokens, privacy export payloads, idempotency records, and provider execution
 records. Orphaned Cloudinary uploads are deleted hourly with provider
 acknowledgement.

@@ -18,7 +18,6 @@ import { QuizzesModule } from './quizzes/quizzes.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { AdminModule } from './admin/admin.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PrivacyModule } from './privacy/privacy.module';
@@ -50,7 +49,6 @@ import { EntitlementsModule } from './entitlements/entitlements.module';
     GamificationModule,
     ChallengesModule,
     NotificationsModule,
-    WhatsAppModule,
     AdminModule,
     AnalyticsModule,
     PrivacyModule,

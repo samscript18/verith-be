@@ -25,10 +25,6 @@ export {
   type SearchConfig,
   type SearchProviderKey,
 } from './search.config';
-export {
-  default as whatsappConfig,
-  type WhatsAppConfig,
-} from './whatsapp.config';
 export { default as privacyConfig, type PrivacyConfig } from './privacy.config';
 export { default as usageConfig, type UsageConfig } from './usage.config';
 export {

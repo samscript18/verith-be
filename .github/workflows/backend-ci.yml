@@ -31,8 +31,6 @@ jobs:
       JWT_ACCESS_SECRET: ci-access-secret-with-at-least-32-characters
       HASHING_PEPPER: ci-hashing-pepper-with-at-least-32-characters
       DATA_EXPORT_ENCRYPTION_KEY: ci-export-key-with-at-least-32-characters
-      MASTER_ENCRYPTION_KEY: ci-master-key-with-at-least-32-characters
-      WHATSAPP_ENABLED: "false"
       PROCESS_ROLE: all
     steps:
       - uses: actions/checkout@v4

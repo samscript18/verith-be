@@ -39,7 +39,7 @@ Deploy the same image as three independently scalable processes:
 | Process   | Role                                                      | Command                                      |
 | --------- | --------------------------------------------------------- | -------------------------------------------- |
 | API       | HTTP/SSE only                                             | `PROCESS_ROLE=api node dist/main`            |
-| Worker    | BullMQ verification, notification, WhatsApp, privacy jobs | `PROCESS_ROLE=worker node dist/worker`       |
+| Worker    | BullMQ verification, notification, and privacy jobs       | `PROCESS_ROLE=worker node dist/worker`       |
 | Scheduler | domain-event relay, retention, and orphan cleanup         | `PROCESS_ROLE=scheduler node dist/scheduler` |
 
 Do not use `PROCESS_ROLE=all` in production. It exists for local development
@@ -83,7 +83,7 @@ MongoDB and Redis are mandatory, authenticated, private-network dependencies.
 Use a managed MongoDB replica set for transactions and point-in-time recovery.
 Use durable Redis with an eviction policy compatible with BullMQ. Store all
 secrets in the platform secret manager. Rotate JWT, hashing, encryption,
-Cloudinary, mail, WhatsApp, and model-provider credentials through a rehearsed
+Cloudinary, mail, and model-provider credentials through a rehearsed
 dual-key/cutover process.
 
 Before routing traffic:

@@ -20,14 +20,13 @@ Delivery is at least once:
   not submitted content, passwords, tokens, report bodies, or provider output.
 
 Consumers must be idempotent. Notification creation uses the event ID as its
-idempotency reference. WhatsApp completion checks for an existing successful
-outbound message before sending again.
+idempotency reference.
 
 ## Current domain events
 
 | Event                         | Producer               | Consumers                 |
 | ----------------------------- | ---------------------- | ------------------------- |
-| `verification.completed.v1`   | Verification worker    | Notification and WhatsApp |
+| `verification.completed.v1`   | Verification worker    | Notification              |
 | `verification.failed.v1`      | Verification worker    | Notification              |
 | `security.alert-requested.v1` | Authentication service | Notification              |
 
@@ -40,7 +39,6 @@ BullMQ queues remain command queues:
 
 - a verification job has one verification orchestrator;
 - a privacy job has one privacy worker;
-- an inbound WhatsApp job has one WhatsApp processor;
 - an email-delivery job has one notification worker.
 
 The verification pipeline, report synthesis, authorization decisions, quiz
