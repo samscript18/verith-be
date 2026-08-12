@@ -4,6 +4,7 @@ import { ExternalProviderException } from '../../../core/exceptions';
 import type { AiConfig, AiProviderConfig } from '../../../shared/config';
 import { ProviderState } from '../../../shared/enums/provider-state.enum';
 import {
+  isProviderKeyHealthFailure,
   isKeyRecoverableProviderFailure,
   ProviderKeyPoolService,
 } from '../../../shared/providers/provider-key-pool.service';
@@ -107,7 +108,6 @@ export class GeminiProvider implements AiProvider {
                 },
               ],
               generationConfig: {
-                temperature: request.temperature ?? 0.1,
                 ...(request.maxOutputTokens
                   ? { maxOutputTokens: request.maxOutputTokens }
                   : {}),
@@ -159,7 +159,8 @@ export class GeminiProvider implements AiProvider {
                 'Gemini is unavailable',
                 `GEMINI_${ProviderState.UNAVAILABLE}`,
               );
-        lease.fail(failure.code);
+        if (isProviderKeyHealthFailure(failure.code)) lease.fail(failure.code);
+        else lease.release();
         lastError = failure;
         if (!isKeyRecoverableProviderFailure(failure.code)) throw failure;
       }

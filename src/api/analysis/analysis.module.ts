@@ -4,6 +4,10 @@ import { AiModule } from '../ai/ai.module';
 import { Evidence, EvidenceSchema } from '../evidence/schemas/evidence.schema';
 import { Claim, ClaimSchema } from '../verifications/schemas/claim.schema';
 import {
+  Verification,
+  VerificationSchema,
+} from '../verifications/schemas/verification.schema';
+import {
   ExtractedContent,
   ExtractedContentSchema,
 } from '../verifications/schemas/extracted-content.schema';
@@ -24,6 +28,7 @@ import { PublishersModule } from '../publishers/publishers.module';
     PublishersModule,
     MongooseModule.forFeature([
       { name: Claim.name, schema: ClaimSchema },
+      { name: Verification.name, schema: VerificationSchema },
       { name: Evidence.name, schema: EvidenceSchema },
       { name: ExtractedContent.name, schema: ExtractedContentSchema },
       { name: ClaimEvaluation.name, schema: ClaimEvaluationSchema },

@@ -11,8 +11,8 @@ import { CompetencyService } from '../../mil/services/competency.service';
 import type { SubmitGuidedResponsesDto } from '../dto/guided-investigation.dto';
 import {
   GuidedInvestigationStatus,
+  GuidedQuestionCode,
   GuidedQuestionType,
-  MediaLiteracyCompetency,
 } from '../enums/guided-investigation.enum';
 import { InvestigationMode } from '../enums/investigation-mode.enum';
 import { Claim } from '../schemas/claim.schema';
@@ -22,10 +22,15 @@ import {
   type GuidedQuestion,
 } from '../schemas/guided-investigation.schema';
 import type { VerificationDocument } from '../schemas/verification.schema';
+import { GUIDED_QUESTION_DEFINITIONS } from '../data/guided-investigation-copy';
+import {
+  SupportedLanguage,
+  supportedLanguageOrEnglish,
+} from '../../../shared/language/supported-language';
 
 @Injectable()
 export class GuidedInvestigationService {
-  static readonly QUESTION_SET_VERSION = 1;
+  static readonly QUESTION_SET_VERSION = 2;
 
   constructor(
     @InjectModel(GuidedInvestigation.name)
@@ -42,15 +47,20 @@ export class GuidedInvestigationService {
       .sort({ sequence: 1 })
       .lean()
       .exec();
+    const reportLanguage = supportedLanguageOrEnglish(
+      verification.requestedLanguage,
+    );
     await this.guided.updateOne(
       { verificationId: verification._id },
       {
         $setOnInsert: {
           verificationId: verification._id,
           userId: verification.userId,
+          reportLanguage,
+          sourceLanguage: verification.detectedLanguage ?? 'und',
           questionSetVersion: GuidedInvestigationService.QUESTION_SET_VERSION,
           status: GuidedInvestigationStatus.READY,
-          questions: this.questions(firstClaim?.text),
+          questions: this.questions(reportLanguage, firstClaim?.text),
           responses: [],
           feedback: [],
         },
@@ -169,44 +179,37 @@ export class GuidedInvestigationService {
     );
     session.feedback = session.questions.map((question) => {
       const response = responseByQuestion.get(question.id);
-      if (question.id === 'provisional-verdict') {
+      const code = this.questionCode(question);
+      if (code === GuidedQuestionCode.PROVISIONAL_VERDICT) {
         const provisional = response?.selectedOptionIds[0];
         const aligned = provisional === report.overallVerdict;
         return {
           questionId: question.id,
-          heading: aligned
-            ? 'Your first reading aligned'
-            : 'The evidence changed the picture',
-          message: aligned
-            ? `Your provisional view matched the report’s ${this.label(report.overallVerdict)} finding. The important skill is that you waited for evidence before treating it as settled.`
-            : `You first chose ${this.label(provisional)}, while the completed evidence supports ${this.label(report.overallVerdict)}. Compare the strongest sources and note what changed your view.`,
+          ...this.verdictFeedback(
+            session.reportLanguage,
+            aligned,
+            provisional,
+            report.overallVerdict,
+          ),
           competency: question.competency,
         };
       }
-      if (question.id === 'missing-context') {
+      if (code === GuidedQuestionCode.MISSING_CONTEXT) {
         const count = report.missingContext.length;
         return {
           questionId: question.id,
-          heading: count
-            ? 'Compare the missing context'
-            : 'Your context check still matters',
-          message: count
-            ? `Verith retained ${count} missing-context ${count === 1 ? 'finding' : 'findings'}. Compare them with your note and look for dates, locations, baselines, or original framing you identified.`
-            : 'The report did not retain a specific missing-context finding. Your written observation remains useful reasoning, but it is not scored as right or wrong.',
+          ...this.contextFeedback(session.reportLanguage, count),
           competency: question.competency,
         };
       }
       const correct = response?.score === 1;
       return {
         questionId: question.id,
-        heading: correct
-          ? 'Strong verification habit'
-          : 'A useful habit to practise',
-        message: correct
-          ? 'You chose the evidence-first response. Keep using that pause-and-check habit before sharing.'
-          : question.id === 'source-strength'
-            ? 'Strong evidence needs the original source, its date and context, and independent confirmation. Popularity alone does not establish accuracy.'
-            : 'Pause before sharing, inspect the source, and wait for evidence when a claim could affect someone’s decisions.',
+        ...this.scoredFeedback(
+          session.reportLanguage,
+          correct,
+          code === GuidedQuestionCode.SOURCE_STRENGTH,
+        ),
         competency: question.competency,
       };
     });
@@ -251,78 +254,32 @@ export class GuidedInvestigationService {
     return session;
   }
 
-  private questions(firstClaim?: string): GuidedQuestion[] {
-    const claimReference = firstClaim
-      ? ` Consider this statement: “${firstClaim.slice(0, 280)}”`
-      : '';
-    return [
-      {
-        id: 'responsible-sharing',
-        version: 1,
-        type: GuidedQuestionType.SINGLE_SELECT,
-        prompt: `Before you share or act on this content, what is the safest next step?${claimReference}`,
-        competency: MediaLiteracyCompetency.RESPONSIBLE_SHARING,
-        objectivelyScorable: true,
-        correctOptionIds: ['wait-and-check'],
-        options: [
-          { id: 'share-now', label: 'Share it now because it may be urgent' },
-          {
-            id: 'wait-and-check',
-            label: 'Pause and check the claim against reliable evidence',
-          },
-          {
-            id: 'trust-popularity',
-            label: 'Trust it if many people have reposted it',
-          },
-        ],
-      },
-      {
-        id: 'source-strength',
-        version: 1,
-        type: GuidedQuestionType.MULTIPLE_SELECT,
-        prompt:
-          'Which details would make the evidence stronger? Choose every useful check.',
-        competency: MediaLiteracyCompetency.EVIDENCE_EVALUATION,
-        objectivelyScorable: true,
-        correctOptionIds: ['original', 'date-context', 'independent'],
-        options: [
-          { id: 'original', label: 'The original source, not only a repost' },
-          { id: 'date-context', label: 'The date and full context' },
-          {
-            id: 'independent',
-            label: 'Independent sources confirming the same facts',
-          },
-          { id: 'engagement', label: 'A large number of likes or forwards' },
-        ],
-      },
-      {
-        id: 'missing-context',
-        version: 1,
-        type: GuidedQuestionType.SHORT_TEXT,
-        prompt:
-          'What date, place, source, comparison, or other context might be missing?',
-        competency: MediaLiteracyCompetency.CONTEXT_RECOGNITION,
-        objectivelyScorable: false,
-        correctOptionIds: [],
-        options: [],
-      },
-      {
-        id: 'provisional-verdict',
-        version: 1,
-        type: GuidedQuestionType.PROVISIONAL_VERDICT,
-        prompt:
-          'Before seeing Verith’s evidence, what is your provisional view?',
-        competency: MediaLiteracyCompetency.EVIDENCE_EVALUATION,
-        objectivelyScorable: false,
-        correctOptionIds: [],
-        options: [
-          { id: 'SUPPORTED', label: 'Likely supported' },
-          { id: 'CONTRADICTED', label: 'Likely contradicted' },
-          { id: 'MIXED', label: 'Mixed or missing important context' },
-          { id: 'INSUFFICIENT_EVIDENCE', label: 'Not enough evidence yet' },
-        ],
-      },
-    ];
+  private questions(
+    language: SupportedLanguage,
+    firstClaim?: string,
+  ): GuidedQuestion[] {
+    return GUIDED_QUESTION_DEFINITIONS.map((definition) => {
+      const copy = definition.translations[language];
+      const prompt =
+        definition.code === GuidedQuestionCode.RESPONSIBLE_SHARING && firstClaim
+          ? `${copy.prompt} ${this.originalClaimLabel(language)} “${firstClaim.slice(0, 280)}”`
+          : copy.prompt;
+      return {
+        id: definition.code,
+        code: definition.code,
+        version: GuidedInvestigationService.QUESTION_SET_VERSION,
+        type: definition.type,
+        prompt,
+        helperText: copy.helperText,
+        competency: definition.competency,
+        objectivelyScorable: definition.objectivelyScorable,
+        correctOptionIds: definition.correctOptionIds,
+        options: definition.optionIds.map((id) => ({
+          id,
+          label: copy.options[id]!,
+        })),
+      };
+    });
   }
 
   private sameSet(left: string[], right: string[]): boolean {
@@ -337,6 +294,237 @@ export class GuidedInvestigationService {
       : 'an undecided view';
   }
 
+  private questionCode(question: GuidedQuestion): GuidedQuestionCode {
+    if (question.code) return question.code;
+    const legacy: Record<string, GuidedQuestionCode> = {
+      'responsible-sharing': GuidedQuestionCode.RESPONSIBLE_SHARING,
+      'source-strength': GuidedQuestionCode.SOURCE_STRENGTH,
+      'missing-context': GuidedQuestionCode.MISSING_CONTEXT,
+      'provisional-verdict': GuidedQuestionCode.PROVISIONAL_VERDICT,
+    };
+    return legacy[question.id] ?? GuidedQuestionCode.RESPONSIBLE_SHARING;
+  }
+
+  private originalClaimLabel(language: SupportedLanguage): string {
+    return {
+      en: 'Consider this original statement:',
+      fr: 'Examinez cette affirmation originale :',
+      es: 'Considera esta afirmación original:',
+      yo: 'Gbé gbólóhùn ìpilẹ̀ṣẹ̀ yìí yẹ̀ wò:',
+    }[language];
+  }
+
+  private interfaceCopy(language: SupportedLanguage) {
+    return {
+      en: {
+        titleReady: 'Think first. Then inspect the evidence.',
+        titleComplete: 'See how your reasoning developed.',
+        introReady:
+          'These questions do not contain Verith’s verdict. Record what you notice before opening the completed evidence report.',
+        introComplete:
+          'Your original answers are preserved. Feedback compares your process with the completed report without changing its finding.',
+        submit: 'Save answers and compare',
+        submitting: 'Saving your reasoning…',
+        incomplete: 'Answer every question before comparing your reasoning.',
+      },
+      fr: {
+        titleReady: 'Réfléchissez d’abord. Examinez ensuite les preuves.',
+        titleComplete: 'Voyez comment votre raisonnement a évolué.',
+        introReady:
+          'Ces questions ne contiennent pas le verdict de Verith. Notez vos observations avant d’ouvrir le rapport de preuves.',
+        introComplete:
+          'Vos réponses originales sont conservées. Les commentaires comparent votre démarche au rapport sans modifier sa conclusion.',
+        submit: 'Enregistrer et comparer',
+        submitting: 'Enregistrement de votre raisonnement…',
+        incomplete:
+          'Répondez à chaque question avant de comparer votre raisonnement.',
+      },
+      es: {
+        titleReady: 'Piensa primero. Después, examina las pruebas.',
+        titleComplete: 'Observa cómo evolucionó tu razonamiento.',
+        introReady:
+          'Estas preguntas no contienen el veredicto de Verith. Anota lo que observas antes de abrir el informe de pruebas.',
+        introComplete:
+          'Se conservan tus respuestas originales. Los comentarios comparan tu proceso con el informe sin cambiar su conclusión.',
+        submit: 'Guardar y comparar',
+        submitting: 'Guardando tu razonamiento…',
+        incomplete:
+          'Responde a todas las preguntas antes de comparar tu razonamiento.',
+      },
+      yo: {
+        titleReady: 'Kọ́kọ́ ronú. Lẹ́yìn náà, ṣàyẹ̀wò ẹ̀rí.',
+        titleComplete: 'Wo bí ìrònú rẹ ṣe dàgbà.',
+        introReady:
+          'Àwọn ìbéèrè yìí kò ní ìdájọ́ Verith. Kọ ohun tí o ṣàkíyèsí kí o tó ṣí ìròyìn ẹ̀rí náà.',
+        introComplete:
+          'A pa àwọn ìdáhùn rẹ ìpilẹ̀ṣẹ̀ mọ́. Àlàyé náà fi ọ̀nà ìrònú rẹ wé ìròyìn láì yí ìdájọ́ rẹ̀ padà.',
+        submit: 'Fi ìdáhùn pamọ́, kí o sì fi wé ẹ̀rí',
+        submitting: 'A ń fi ìrònú rẹ pamọ́…',
+        incomplete: 'Dáhùn gbogbo ìbéèrè kí o tó fi ìrònú rẹ wé ẹ̀rí.',
+      },
+    }[language];
+  }
+
+  private verdictFeedback(
+    language: SupportedLanguage,
+    aligned: boolean,
+    provisional: unknown,
+    verdict: unknown,
+  ): { heading: string; message: string } {
+    const first = this.label(provisional);
+    const final = this.label(verdict);
+    const copy: Record<
+      SupportedLanguage,
+      readonly [heading: string, message: string]
+    > = {
+      en: aligned
+        ? [
+            'Your first reading aligned',
+            `Your provisional view matched the report’s ${final} finding. The important skill is that you waited for evidence before treating it as settled.`,
+          ]
+        : [
+            'The evidence changed the picture',
+            `You first chose ${first}, while the completed evidence supports ${final}. Compare the strongest sources and note what changed your view.`,
+          ],
+      fr: aligned
+        ? [
+            'Votre première lecture concordait',
+            `Votre avis provisoire correspondait à la conclusion « ${final} ». L’essentiel est d’avoir attendu les preuves avant de la considérer comme établie.`,
+          ]
+        : [
+            'Les preuves ont changé la situation',
+            `Vous aviez d’abord choisi « ${first} », alors que les preuves aboutissent à « ${final} ». Comparez les sources les plus solides.`,
+          ],
+      es: aligned
+        ? [
+            'Tu primera lectura coincidió',
+            `Tu opinión provisional coincidió con la conclusión « ${final} ». La habilidad importante fue esperar las pruebas antes de darla por definitiva.`,
+          ]
+        : [
+            'Las pruebas cambiaron el panorama',
+            `Primero elegiste « ${first} », mientras que las pruebas respaldan « ${final} ». Compara las fuentes más sólidas.`,
+          ],
+      yo: aligned
+        ? [
+            'Èrò àkọ́kọ́ rẹ bá ẹ̀rí mu',
+            `Èrò àkọ́kọ́ rẹ bá ìdájọ́ “${final}” mu. Ohun pàtàkì ni pé o dúró de ẹ̀rí kí o tó gba ọ̀rọ̀ náà gẹ́gẹ́ bí èyí tó dájú.`,
+          ]
+        : [
+            'Ẹ̀rí yí àwòrán náà padà',
+            `O kọ́kọ́ yan “${first}”, ṣùgbọ́n ẹ̀rí tó parí tọ́ka sí “${final}”. Fi àwọn orísun tó lágbára jù lọ wé ara wọn.`,
+          ],
+    };
+    const selected = copy[language];
+    return { heading: selected[0], message: selected[1] };
+  }
+
+  private contextFeedback(
+    language: SupportedLanguage,
+    count: number,
+  ): { heading: string; message: string } {
+    const copy: Record<
+      SupportedLanguage,
+      readonly [heading: string, message: string]
+    > = {
+      en: count
+        ? [
+            'Compare the missing context',
+            `Verith retained ${count} missing-context finding${count === 1 ? '' : 's'}. Compare them with your note and look for dates, places, baselines, or original framing.`,
+          ]
+        : [
+            'Your context check still matters',
+            'The report did not retain a specific missing-context finding. Your observation remains useful reasoning and is not scored as right or wrong.',
+          ],
+      fr: count
+        ? [
+            'Comparez le contexte manquant',
+            `Verith a retenu ${count} élément${count === 1 ? '' : 's'} de contexte manquant. Comparez-les à votre note.`,
+          ]
+        : [
+            'Votre vérification du contexte reste utile',
+            'Le rapport n’a pas retenu de contexte manquant précis. Votre observation reste utile et n’est pas notée comme vraie ou fausse.',
+          ],
+      es: count
+        ? [
+            'Compara el contexto ausente',
+            `Verith conservó ${count} hallazgo${count === 1 ? '' : 's'} de contexto ausente. Compáralos con tu nota.`,
+          ]
+        : [
+            'Tu revisión del contexto sigue siendo útil',
+            'El informe no conservó un hallazgo concreto de contexto ausente. Tu observación sigue siendo útil y no se califica como correcta o incorrecta.',
+          ],
+      yo: count
+        ? [
+            'Fi àyíká ọ̀rọ̀ tó sọnù wé ara wọn',
+            `Verith pa àbájáde àyíká ọ̀rọ̀ tó sọnù ${count} mọ́. Fi wọ́n wé àkọsílẹ̀ rẹ.`,
+          ]
+        : [
+            'Àyẹ̀wò àyíká ọ̀rọ̀ rẹ ṣì wúlò',
+            'Ìròyìn náà kò rí àyíká ọ̀rọ̀ kan pàtó tó sọnù. Àkíyèsí rẹ ṣì wúlò, a kò sì fi ṣe ìdájọ́ pé ó tọ́ tàbí kò tọ́.',
+          ],
+    };
+    const selected = copy[language];
+    return { heading: selected[0], message: selected[1] };
+  }
+
+  private scoredFeedback(
+    language: SupportedLanguage,
+    correct: boolean,
+    sourceStrength: boolean,
+  ): { heading: string; message: string } {
+    const copy: Record<
+      SupportedLanguage,
+      readonly [heading: string, message: string]
+    > = {
+      en: correct
+        ? [
+            'Strong verification habit',
+            'You chose the evidence-first response. Keep using that pause-and-check habit before sharing.',
+          ]
+        : [
+            'A useful habit to practise',
+            sourceStrength
+              ? 'Strong evidence needs the original source, its date and context, and independent confirmation. Popularity alone does not establish accuracy.'
+              : 'Pause before sharing, inspect the source, and wait for evidence when a claim could affect someone’s decisions.',
+          ],
+      fr: correct
+        ? [
+            'Bonne habitude de vérification',
+            'Vous avez privilégié les preuves. Continuez à faire cette pause avant de partager.',
+          ]
+        : [
+            'Une habitude utile à pratiquer',
+            sourceStrength
+              ? 'Des preuves solides exigent la source originale, sa date, son contexte et une confirmation indépendante. La popularité ne suffit pas.'
+              : 'Avant de partager, examinez la source et attendez des preuves.',
+          ],
+      es: correct
+        ? [
+            'Buen hábito de verificación',
+            'Elegiste una respuesta basada primero en las pruebas. Mantén esa pausa antes de compartir.',
+          ]
+        : [
+            'Un hábito útil para practicar',
+            sourceStrength
+              ? 'Las pruebas sólidas necesitan la fuente original, su fecha, el contexto y una confirmación independiente. La popularidad no demuestra exactitud.'
+              : 'Haz una pausa antes de compartir, examina la fuente y espera las pruebas.',
+          ],
+      yo: correct
+        ? [
+            'Ìwà àyẹ̀wò tó lágbára',
+            'O yan ìdáhùn tó fi ẹ̀rí síwájú. Máa dúró kí o sì yẹ̀ wò kí o tó pín ohun kan.',
+          ]
+        : [
+            'Ìwà tó yẹ kí a máa ṣe',
+            sourceStrength
+              ? 'Ẹ̀rí tó lágbára nílò orísun àkọ́kọ́, ọjọ́, àyíká ọ̀rọ̀ àti ìmúdájú olómìnira. Gbajúmọ̀ nìkan kò fi òtítọ́ hàn.'
+              : 'Dúró kí o tó pín, yẹ orísun wò, kí o sì dúró de ẹ̀rí.',
+          ],
+    };
+    const selected = copy[language];
+    return { heading: selected[0], message: selected[1] };
+  }
+
   private toResponse(
     session: GuidedInvestigationDocument,
   ): Record<string, unknown> {
@@ -344,12 +532,17 @@ export class GuidedInvestigationService {
       id: session.id,
       verificationId: session.verificationId.toString(),
       questionSetVersion: session.questionSetVersion,
+      reportLanguage: session.reportLanguage,
+      sourceLanguage: session.sourceLanguage,
+      copy: this.interfaceCopy(session.reportLanguage),
       status: session.status,
       questions: session.questions.map((question) => ({
         id: question.id,
+        code: question.code ?? this.questionCode(question),
         version: question.version,
         type: question.type,
         prompt: question.prompt,
+        helperText: question.helperText ?? null,
         options: question.options.map((option) => ({
           id: option.id,
           label: option.label,

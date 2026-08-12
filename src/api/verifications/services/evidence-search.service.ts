@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'node:crypto';
@@ -32,6 +32,7 @@ interface EvidenceRetrieval {
 @Injectable()
 export class EvidenceSearchService {
   private readonly config: SearchConfig;
+  private readonly logger = new Logger(EvidenceSearchService.name);
 
   constructor(
     @InjectModel(Claim.name) private readonly claimModel: Model<Claim>,
@@ -68,6 +69,21 @@ export class EvidenceSearchService {
     let total = 0;
     const searchCache = new Map<string, Promise<RoutedSearchResult>>();
     const retrievalCache = new Map<string, Promise<EvidenceRetrieval>>();
+    this.logger.log({
+      event: 'multilingual_evidence_search_started',
+      verificationId,
+      queryLanguages: [
+        ...new Set(
+          claims.flatMap((claim) =>
+            claim.searchQueries.map((query) => query.language),
+          ),
+        ),
+      ],
+      queryCount: claims.reduce(
+        (count, claim) => count + claim.searchQueries.length,
+        0,
+      ),
+    });
     for (const claim of claims) {
       total += await this.forClaim(
         verificationId,
@@ -102,6 +118,8 @@ export class EvidenceSearchService {
       provider: item.provider,
       searchQuery: item.searchQuery,
       queryCategory: item.queryCategory,
+      searchQueryLanguage: item.searchQueryLanguage ?? null,
+      searchQuerySource: item.searchQuerySource ?? null,
       sourceUrl: item.sourceUrl,
       canonicalUrl: item.canonicalUrl,
       domain: item.domain,
@@ -111,6 +129,8 @@ export class EvidenceSearchService {
       publishedAt: item.publishedAt ?? null,
       retrievedAt: item.retrievedAt,
       relevantExcerpt: item.relevantExcerpt ?? null,
+      originalExcerpt: item.originalExcerpt ?? item.relevantExcerpt ?? null,
+      language: item.language ?? null,
       relationship: item.relationship,
       relevanceScore: item.relevanceScore,
       authority: item.authority,
@@ -134,11 +154,13 @@ export class EvidenceSearchService {
     const seenUrls = new Set<string>();
     for (const query of claim.searchQueries) {
       if (count >= this.config.maxEvidencePerClaim) break;
-      const queryKey = this.normalizeQuery(query.query);
+      const queryKey = `${query.language}:${this.normalizeQuery(query.query)}`;
       let pendingSearch = searchCache.get(queryKey);
       if (!pendingSearch) {
         pendingSearch = this.search.search({
           query: query.query,
+          language: query.language,
+          querySource: query.source,
           limit: Math.min(4, this.config.maxEvidencePerClaim - count),
           safeSearch: true,
           requestId,
@@ -157,8 +179,7 @@ export class EvidenceSearchService {
         const document = this.toEvidence(
           verificationId,
           claim,
-          query.query,
-          query.category,
+          query,
           page.provider,
           result,
           retrieval,
@@ -234,8 +255,7 @@ export class EvidenceSearchService {
   private toEvidence(
     verificationId: string,
     claim: ClaimDocument,
-    searchQuery: string,
-    queryCategory: ClaimDocument['searchQueries'][number]['category'],
+    searchQuery: ClaimDocument['searchQueries'][number],
     provider: Evidence['provider'],
     result: {
       title: string;
@@ -254,21 +274,39 @@ export class EvidenceSearchService {
         UrlExtractionState.PARTIALLY_EXTRACTED,
       ].includes(article.state);
     const text = available ? article.text : '';
+    const detectedEvidenceLanguage = text
+      ? this.languages.detect(text).language
+      : undefined;
+    const comparisonClaim =
+      detectedEvidenceLanguage === claim.originalLanguage
+        ? claim.normalizedText
+        : this.normalization.normalizeClaim(claim.canonicalText);
     const canonicalUrl =
       this.normalizeUrl(article?.canonicalUrl ?? result.url) ?? result.url;
     const domain = this.domain(canonicalUrl);
-    const excerpt = text ? this.excerpt(text, claim.normalizedText) : undefined;
+    const excerpt = text ? this.excerpt(text, comparisonClaim) : undefined;
     const directness = excerpt
-      ? this.lexicalOverlap(excerpt, claim.normalizedText)
+      ? this.lexicalOverlap(excerpt, comparisonClaim)
       : 0;
     const authority = this.authority(domain);
     const recency = this.recency(article?.publishedAt);
+    const extractionQuality = !article
+      ? 0
+      : article.state === UrlExtractionState.EXTRACTED
+        ? 1
+        : article.strategy === 'SEARCH_PROVIDER_RAW_CONTENT'
+          ? 0.45
+          : article.sourceKind === UrlSourceKind.SOCIAL_OTHER
+            ? 0.4
+            : 0.65;
     return {
       verificationId: new Types.ObjectId(verificationId),
       claimId: claim._id,
       provider,
-      searchQuery,
-      queryCategory,
+      searchQuery: searchQuery.query,
+      queryCategory: searchQuery.category,
+      searchQueryLanguage: searchQuery.language,
+      searchQuerySource: searchQuery.source,
       sourceUrl: result.url,
       canonicalUrl,
       domain,
@@ -280,8 +318,12 @@ export class EvidenceSearchService {
       contentType: 'text/html',
       ...(text
         ? {
-            language: this.languages.detect(text).language,
-            ...(excerpt ? { relevantExcerpt: excerpt } : {}),
+            ...(detectedEvidenceLanguage
+              ? { language: detectedEvidenceLanguage }
+              : {}),
+            ...(excerpt
+              ? { relevantExcerpt: excerpt, originalExcerpt: excerpt }
+              : {}),
             contentHash: createHash('sha256')
               .update(this.normalization.normalize(text))
               .digest('hex'),
@@ -289,14 +331,15 @@ export class EvidenceSearchService {
         : {}),
       relationship: EvidenceRelationship.INCONCLUSIVE,
       relevanceScore: this.clamp(
-        result.providerScore * 0.45 +
+        (result.providerScore * 0.45 +
           directness * 0.35 +
           this.authorityScore(authority) * 0.15 +
-          recency * 0.05,
+          recency * 0.05) *
+          extractionQuality,
       ),
       authority,
       recencyScore: recency,
-      directnessScore: directness,
+      directnessScore: this.clamp(directness * extractionQuality),
       credibilityScore: this.authorityScore(authority),
       accessStatus: available
         ? article.state === UrlExtractionState.EXTRACTED
@@ -307,7 +350,10 @@ export class EvidenceSearchService {
       metadata: {
         searchSnippet: result.snippet,
         searchSnippetIsEvidence: false,
+        originalLanguage: detectedEvidenceLanguage ?? null,
         providerScore: result.providerScore,
+        extractionQuality,
+        extractionState: article?.state ?? null,
         ...(retrieval.failureCode
           ? { retrievalFailureCode: retrieval.failureCode }
           : {}),

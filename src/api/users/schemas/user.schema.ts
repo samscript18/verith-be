@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 import { AuthProvider } from '../enums/auth-provider.enum';
 import { UserRole } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
@@ -48,8 +49,8 @@ export class User {
   @Prop()
   avatar?: string;
 
-  @Prop({ default: 'en' })
-  preferredLanguage!: string;
+  @Prop({ enum: SupportedLanguage, default: SupportedLanguage.ENGLISH })
+  preferredLanguage!: SupportedLanguage;
 
   @Prop({ default: 'UTC' })
   timezone!: string;

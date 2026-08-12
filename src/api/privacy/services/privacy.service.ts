@@ -324,6 +324,9 @@ export class PrivacyService {
         db
           .collection('searchexecutions')
           .deleteMany({ verificationId: { $in: verificationIds } }),
+        db
+          .collection('report_localizations')
+          .deleteMany({ reportId: { $in: reportIds } }),
         db.collection('reports').deleteMany({ _id: { $in: reportIds } }),
         db
           .collection('verification_extracted_contents')
@@ -434,6 +437,15 @@ export class PrivacyService {
         })
         .toArray(),
     ]);
+    const reportLocalizations = await db
+      .collection('report_localizations')
+      .find({
+        reportId: {
+          $in: reports.map((report) => new Types.ObjectId(String(report._id))),
+        },
+      })
+      .project({ provider: 0, model: 0 })
+      .toArray();
     return {
       schemaVersion: 1,
       generatedAt: new Date(),
@@ -441,6 +453,7 @@ export class PrivacyService {
       sessions,
       verifications,
       reports,
+      reportLocalizations,
       learningProgress,
       quizAttempts,
       challengeAttempts,

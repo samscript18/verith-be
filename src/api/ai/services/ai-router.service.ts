@@ -50,6 +50,7 @@ export class AiRouterService {
     }
     const primaryProvider = candidates[0]!.provider;
     let lastCode = 'AI_PROVIDER_UNAVAILABLE';
+    let lastOperatorDetails: unknown = null;
 
     // At most two paid/provider executions per capability: either one
     // schema-correction attempt or one bounded provider fallback.
@@ -105,6 +106,9 @@ export class AiRouterService {
             ...(request.maxOutputTokens !== undefined
               ? { maxOutputTokens: request.maxOutputTokens }
               : {}),
+            ...(request.reasoningEffort
+              ? { reasoningEffort: request.reasoningEffort }
+              : {}),
             ...(request.media ? { media: request.media } : {}),
           });
           const validation = request.outputValidator.validate(result.output, {
@@ -157,6 +161,9 @@ export class AiRouterService {
             error instanceof ExternalProviderException
               ? error.code
               : 'AI_PROVIDER_EXECUTION_FAILED';
+          if (error instanceof ExternalProviderException) {
+            lastOperatorDetails = error.operatorDetails;
+          }
           await this.record(request, {
             provider: provider.provider,
             primaryProvider,
@@ -175,6 +182,9 @@ export class AiRouterService {
     throw new ExternalProviderException(
       'No AI provider produced a valid result',
       lastCode,
+      undefined,
+      null,
+      lastOperatorDetails,
     );
   }
 

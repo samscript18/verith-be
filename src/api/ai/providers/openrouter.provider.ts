@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AiConfig } from '../../../shared/config';
+import type { AiExecutionRequest } from '../interfaces/ai-provider.interface';
 import { AiCapability } from '../enums/ai-capability.enum';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
 import { OpenAiCompatibleProvider } from './openai-compatible.provider';
@@ -58,5 +59,18 @@ export class OpenRouterProvider extends OpenAiCompatibleProvider {
 
   protected override providerPreferences(): Record<string, unknown> {
     return { require_parameters: true };
+  }
+
+  protected override requestPreferences(
+    request: AiExecutionRequest,
+  ): Record<string, unknown> | undefined {
+    return request.reasoningEffort
+      ? {
+          reasoning: {
+            effort: request.reasoningEffort,
+            exclude: true,
+          },
+        }
+      : undefined;
   }
 }

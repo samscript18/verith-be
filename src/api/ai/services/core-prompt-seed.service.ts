@@ -18,6 +18,32 @@ export class CorePromptSeedService implements OnModuleInit {
     await Promise.all([
       this.model
         .updateOne(
+          { key: 'report.localization', version: 1 },
+          {
+            $setOnInsert: {
+              key: 'report.localization',
+              task: 'TRANSLATION',
+              version: 1,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Translate verification-report presentation text faithfully. Preserve every supplied JSON path exactly and return one translated value for every input path. Translate into the requested language only. Do not translate URLs, IDs, provider names, verdict codes, risk codes, measurements, or quoted evidence. Do not add facts, strengthen conclusions, remove uncertainty, or change meaning. Yoruba must use natural standard Yorùbá orthography where appropriate. Return only schema-valid JSON.',
+              userPromptTemplate:
+                'Target language: {{targetLanguage}}\n{{repairInstruction}}\n\nTranslate the text values in this path-preserving payload:\n{{content}}',
+              supportedProviders: providers,
+              supportedModels: [],
+              outputSchemaVersion: 'report-localization.v1',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary:
+                'Initial validated multilingual report-localization prompt',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
           { key: 'verification.claim-extraction', version: 1 },
           {
             $setOnInsert: {
@@ -36,6 +62,32 @@ export class CorePromptSeedService implements OnModuleInit {
               publishedBy: 'SYSTEM',
               publishedAt: new Date(),
               changeSummary: 'Initial production claim extraction prompt',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
+          { key: 'verification.claim-extraction', version: 2 },
+          {
+            $setOnInsert: {
+              key: 'verification.claim-extraction',
+              task: 'CLAIM_EXTRACTION',
+              version: 2,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Extract factual claims directly from the original source without deciding whether they are true. Keep text in the source language and provide a faithful canonicalText in English for cross-language retrieval and comparison. Preserve exact source spans against the untouched original content. Classify opinions and predictions honestly. The source language and requested report language are separate; do not rewrite quotations into the report language. Return only schema-valid JSON.',
+              userPromptTemplate:
+                'Source language: {{sourceLanguage}}\nRequested report language: {{requestedLanguage}}\n\nOriginal content:\n{{content}}',
+              supportedProviders: providers,
+              supportedModels: [],
+              outputSchemaVersion: 'claim-extraction.v2',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary:
+                'Preserve source-language claims and add canonical English representations',
             },
           },
           { upsert: true },
@@ -62,6 +114,32 @@ export class CorePromptSeedService implements OnModuleInit {
               publishedAt: new Date(),
               changeSummary:
                 'Initial safe structured Daily Practice generation prompt',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
+          { key: 'verification.search-query-generation', version: 2 },
+          {
+            $setOnInsert: {
+              key: 'verification.search-query-generation',
+              task: 'SEARCH_QUERY_GENERATION',
+              version: 2,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Generate at most two focused evidence-search queries per claim. For a supported non-English source, return one query in the original source language with source ORIGINAL_CLAIM and one English query based on canonicalText with source CANONICAL_CLAIM. For English, do not create a redundant translation variant. Label every query with its actual language. Include official, supporting, contradicting, contextual, recency, original, or quote-source intent as appropriate. Do not invent evidence. Return only schema-valid JSON.',
+              userPromptTemplate:
+                'Source language: {{sourceLanguage}}\nRequested report language: {{requestedLanguage}}\n\nClaims with original and canonical text:\n{{claims}}',
+              supportedProviders: providers,
+              supportedModels: [],
+              outputSchemaVersion: 'search-query-generation.v2',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary:
+                'Add bounded original-language and canonical-English query provenance',
             },
           },
           { upsert: true },
@@ -140,6 +218,32 @@ export class CorePromptSeedService implements OnModuleInit {
               publishedBy: 'SYSTEM',
               publishedAt: new Date(),
               changeSummary: 'Initial evidence-grounded verification analysis',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
+          { key: 'verification.analysis', version: 2 },
+          {
+            $setOnInsert: {
+              key: 'verification.analysis',
+              task: 'EVIDENCE_SYNTHESIS',
+              version: 2,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Compare only the supplied original claims, canonical English claim representations, retrieved original evidence excerpts, and submitted content. Cross-language evidence may support or contradict a claim; language equality is never a requirement. Produce canonical explanatory fields in English so deterministic report semantics remain stable, while preserving original quotations exactly. Classify evidence relationships and identify bounded manipulation, item-level bias, and materially missing context. Never invent evidence IDs or source facts. Do not output verdicts, risk, or confidence; deterministic application code calculates them. Preserve exact text offsets and return only schema-valid JSON.',
+              userPromptTemplate:
+                'Source language: {{sourceLanguage}}\nRequested report language: {{requestedLanguage}}\n\nSubmitted original content:\n{{content}}\n\nClaims:\n{{claims}}\n\nEvidence:\n{{evidence}}',
+              supportedProviders: providers,
+              supportedModels: [],
+              outputSchemaVersion: 'verification-analysis.v2',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary:
+                'Add explicit cross-language claim and evidence comparison context',
             },
           },
           { upsert: true },

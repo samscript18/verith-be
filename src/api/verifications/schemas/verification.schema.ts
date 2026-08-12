@@ -6,6 +6,7 @@ import { VerificationStatus } from '../enums/verification-status.enum';
 import { VerificationVisibility } from '../enums/verification-visibility.enum';
 import { UsageReservationStatus } from '../enums/usage-reservation-status.enum';
 import { InvestigationMode } from '../enums/investigation-mode.enum';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 
 @Schema({ _id: false })
 export class VerificationUsageReservation {
@@ -77,11 +78,23 @@ export class Verification {
   @Prop({ maxlength: 1000 })
   question?: string;
 
-  @Prop({ maxlength: 20 })
-  requestedLanguage?: string;
+  @Prop({ enum: SupportedLanguage, default: SupportedLanguage.ENGLISH })
+  requestedLanguage!: SupportedLanguage;
 
   @Prop({ maxlength: 50 })
   detectedLanguage?: string;
+
+  @Prop({ min: 0, max: 1 })
+  languageDetectionConfidence?: number;
+
+  @Prop({ enum: SupportedLanguage })
+  confirmedSourceLanguage?: SupportedLanguage;
+
+  @Prop()
+  languageConfirmedAt?: Date;
+
+  @Prop({ default: false })
+  sourceLanguageExperimental!: boolean;
 
   @Prop({ type: Object })
   urlMetadata?: Record<string, unknown>;

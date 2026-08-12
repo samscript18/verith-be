@@ -14,11 +14,13 @@ import {
   ClaimVerifiability,
   SearchQueryCategory,
 } from '../enums/claim.enum';
-import { Claim } from '../schemas/claim.schema';
+import { Claim, ClaimQuerySource } from '../schemas/claim.schema';
 import { TextNormalizationService } from './text-normalization.service';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 
 interface ExtractedClaim {
   text: string;
+  canonicalText: string;
   claimType: ClaimType;
   importance: ClaimImportance;
   verifiability: ClaimVerifiability;
@@ -39,7 +41,12 @@ interface ClaimExtractionOutput {
 interface QueryGenerationOutput {
   claims: Array<{
     sequence: number;
-    queries: Array<{ query: string; category: SearchQueryCategory }>;
+    queries: Array<{
+      query: string;
+      category: SearchQueryCategory;
+      language: string;
+      source: ClaimQuerySource;
+    }>;
   }>;
 }
 
@@ -59,15 +66,16 @@ export class ClaimExtractionService {
   async extractAndPersist(
     verificationId: string,
     content: string,
-    language: string,
+    sourceLanguage: string,
+    requestedLanguage: SupportedLanguage,
     requestId: string,
   ): Promise<number> {
     const extraction = await this.ai.execute({
       capability: AiCapability.CLAIM_EXTRACTION,
       promptKey: 'verification.claim-extraction',
-      variables: { content, language },
+      variables: { content, sourceLanguage, requestedLanguage },
       outputSchemaName: 'claim_extraction',
-      outputSchemaVersion: 'claim-extraction.v1',
+      outputSchemaVersion: 'claim-extraction.v2',
       outputJsonSchema: this.claimJsonSchema(),
       outputValidator: this.claimJoiSchema(),
       requestId,
@@ -95,6 +103,7 @@ export class ClaimExtractionService {
       .map(({ claim, sequence }) => ({
         sequence,
         text: claim.text,
+        canonicalText: claim.canonicalText,
         entities: claim.entities,
         dates: claim.dates,
         searchHints: claim.searchHints,
@@ -111,11 +120,12 @@ export class ClaimExtractionService {
         capability: AiCapability.STRUCTURED_EXTRACTION,
         promptKey: 'verification.search-query-generation',
         variables: {
-          language,
+          sourceLanguage,
+          requestedLanguage,
           claims: JSON.stringify(queryInput),
         },
         outputSchemaName: 'search_query_generation',
-        outputSchemaVersion: 'search-query-generation.v1',
+        outputSchemaVersion: 'search-query-generation.v2',
         outputJsonSchema: this.queryJsonSchema(expectedSequences),
         outputValidator: this.queryJoiSchema(expectedSequences),
         requestId,
@@ -127,7 +137,11 @@ export class ClaimExtractionService {
       for (const item of queryResult.output.claims) {
         queriesBySequence.set(
           item.sequence,
-          this.deduplicateQueries(item.queries),
+          this.multilingualQueries(
+            claims[item.sequence - 1]!,
+            sourceLanguage,
+            item.queries,
+          ),
         );
       }
     }
@@ -139,6 +153,9 @@ export class ClaimExtractionService {
         verificationId: new Types.ObjectId(verificationId),
         sequence: index + 1,
         text: claim.text,
+        originalLanguage: sourceLanguage,
+        canonicalText: claim.canonicalText,
+        canonicalLanguage: SupportedLanguage.ENGLISH,
         normalizedText: this.normalization.normalizeClaim(claim.text),
         claimType: claim.claimType,
         importance: claim.importance,
@@ -168,6 +185,9 @@ export class ClaimExtractionService {
       id: claim.id,
       sequence: claim.sequence,
       text: claim.text,
+      originalLanguage: claim.originalLanguage,
+      canonicalText: claim.canonicalText,
+      canonicalLanguage: claim.canonicalLanguage,
       normalizedText: claim.normalizedText,
       claimType: claim.claimType,
       importance: claim.importance,
@@ -228,7 +248,7 @@ export class ClaimExtractionService {
 
   private deduplicateQueries(
     queries: QueryGenerationOutput['claims'][number]['queries'],
-  ) {
+  ): QueryGenerationOutput['claims'][number]['queries'] {
     const seen = new Set<string>();
     return queries.filter((item) => {
       const key = item.query.trim().toLowerCase();
@@ -238,12 +258,57 @@ export class ClaimExtractionService {
     });
   }
 
+  private multilingualQueries(
+    claim: ExtractedClaim,
+    sourceLanguage: string,
+    generated: QueryGenerationOutput['claims'][number]['queries'],
+  ): QueryGenerationOutput['claims'][number]['queries'] {
+    const normalized = this.deduplicateQueries(generated).filter((item) =>
+      [sourceLanguage, SupportedLanguage.ENGLISH].includes(item.language),
+    );
+    if (sourceLanguage === String(SupportedLanguage.ENGLISH)) {
+      return normalized
+        .map((item) => ({
+          ...item,
+          language: SupportedLanguage.ENGLISH,
+          source: ClaimQuerySource.ORIGINAL_CLAIM,
+        }))
+        .slice(0, this.config.maxQueriesPerClaim);
+    }
+
+    const original = normalized.find(
+      (item) =>
+        item.language === sourceLanguage &&
+        item.source === ClaimQuerySource.ORIGINAL_CLAIM,
+    ) ?? {
+      query: claim.text.slice(0, 300),
+      category: SearchQueryCategory.ORIGINAL_SOURCE,
+      language: sourceLanguage,
+      source: ClaimQuerySource.ORIGINAL_CLAIM,
+    };
+    const canonical = normalized.find(
+      (item) =>
+        item.language === String(SupportedLanguage.ENGLISH) &&
+        item.source === ClaimQuerySource.CANONICAL_CLAIM,
+    ) ?? {
+      query: claim.canonicalText.slice(0, 300),
+      category: SearchQueryCategory.CONTEXTUAL,
+      language: SupportedLanguage.ENGLISH,
+      source: ClaimQuerySource.CANONICAL_CLAIM,
+    };
+    return this.deduplicateQueries([original, canonical]).slice(
+      0,
+      this.config.maxQueriesPerClaim,
+    );
+  }
+
   private claimJoiSchema(): Joi.ObjectSchema<ClaimExtractionOutput> {
     return Joi.object<ClaimExtractionOutput>({
       claims: Joi.array()
         .items(
           Joi.object({
             text: Joi.string().trim().min(3).max(1000).required(),
+            canonicalText: Joi.string().trim().min(3).max(1000).required(),
             claimType: Joi.string()
               .valid(...Object.values(ClaimType))
               .required(),
@@ -304,6 +369,10 @@ export class ClaimExtractionService {
                   category: Joi.string()
                     .valid(...Object.values(SearchQueryCategory))
                     .required(),
+                  language: Joi.string().trim().min(2).max(20).required(),
+                  source: Joi.string()
+                    .valid(...Object.values(ClaimQuerySource))
+                    .required(),
                 }),
               )
               .min(1)
@@ -332,6 +401,7 @@ export class ClaimExtractionService {
             additionalProperties: false,
             required: [
               'text',
+              'canonicalText',
               'claimType',
               'importance',
               'verifiability',
@@ -346,6 +416,7 @@ export class ClaimExtractionService {
             ],
             properties: {
               text: { type: 'string' },
+              canonicalText: { type: 'string' },
               claimType: { type: 'string', enum: Object.values(ClaimType) },
               importance: {
                 type: 'string',
@@ -404,12 +475,17 @@ export class ClaimExtractionService {
                 items: {
                   type: 'object',
                   additionalProperties: false,
-                  required: ['query', 'category'],
+                  required: ['query', 'category', 'language', 'source'],
                   properties: {
                     query: { type: 'string' },
                     category: {
                       type: 'string',
                       enum: Object.values(SearchQueryCategory),
+                    },
+                    language: { type: 'string' },
+                    source: {
+                      type: 'string',
+                      enum: Object.values(ClaimQuerySource),
                     },
                   },
                 },

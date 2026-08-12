@@ -8,6 +8,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsEnum } from 'class-validator';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional()
@@ -34,10 +36,10 @@ export class UpdateProfileDto {
   @MaxLength(500)
   bio?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: SupportedLanguage })
   @IsOptional()
-  @IsString()
-  preferredLanguage?: string;
+  @IsEnum(SupportedLanguage)
+  preferredLanguage?: SupportedLanguage;
 
   @ApiPropertyOptional()
   @IsOptional()

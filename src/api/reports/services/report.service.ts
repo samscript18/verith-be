@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash, randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
 import PDFDocument from 'pdfkit';
 import { Model, Types } from 'mongoose';
 import { AuditService } from '../../admin/services/audit.service';
@@ -38,6 +39,15 @@ import { ReportExport } from '../schemas/report-export.schema';
 import { ReportFeedback } from '../schemas/report-feedback.schema';
 import { Report, type ReportDocument } from '../schemas/report.schema';
 import { GamificationService } from '../../gamification/services/gamification.service';
+import { ReportLocalizationService } from './report-localization.service';
+import {
+  SupportedLanguage,
+  supportedLanguageOrEnglish,
+} from '../../../shared/language/supported-language';
+
+const notoSansFont = createRequire(__filename).resolve(
+  '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff',
+);
 
 @Injectable()
 export class ReportService {
@@ -63,6 +73,7 @@ export class ReportService {
     private readonly transcriptModel: Model<Transcript>,
     private readonly audit: AuditService,
     private readonly gamification: GamificationService,
+    private readonly localization: ReportLocalizationService,
   ) {}
 
   async listFeedback(query: ReportFeedbackAdminQueryDto) {
@@ -184,6 +195,10 @@ export class ReportService {
       return {
         claimId: claim._id.toString(),
         text: claim.text,
+        originalText: claim.text,
+        originalLanguage: claim.originalLanguage,
+        canonicalText: claim.canonicalText,
+        canonicalLanguage: claim.canonicalLanguage,
         importance: claim.importance,
         verifiability: claim.verifiability,
         verdict: evaluation?.verdict ?? 'UNVERIFIABLE',
@@ -207,6 +222,8 @@ export class ReportService {
       publisher: item.publisher ?? null,
       publishedAt: item.publishedAt ?? null,
       relevantExcerpt: item.relevantExcerpt ?? null,
+      originalExcerpt: item.originalExcerpt ?? item.relevantExcerpt ?? null,
+      language: item.language ?? null,
       relationship: item.relationship,
       accessStatus: item.accessStatus,
       lineageType: item.lineageType,
@@ -230,6 +247,11 @@ export class ReportService {
         analysis?.overallVerdict ?? OverallVerdict.INSUFFICIENT_EVIDENCE,
       riskLevel: analysis?.riskLevel ?? RiskLevel.UNKNOWN,
       confidence: analysis?.confidence ?? 0,
+      sourceLanguage:
+        verification.detectedLanguage ?? SupportedLanguage.ENGLISH,
+      requestedLanguage: supportedLanguageOrEnglish(
+        verification.requestedLanguage,
+      ),
       confidenceFactors: analysis?.confidenceFactors ?? {
         insufficientEvidence: true,
       },
@@ -319,10 +341,22 @@ export class ReportService {
     verification.currentStage = VerificationStage.COMPLETED;
     verification.progress = 100;
     await verification.save();
+    await this.localization
+      .generate(
+        report.toObject(),
+        this.privateProjection(report.toObject()),
+        report.requestedLanguage,
+        `report:${report.id}:v${report.version}`,
+      )
+      .catch(() => undefined);
     return report;
   }
 
-  async latestOwned(userId: string, verificationId: string) {
+  async latestOwned(
+    userId: string,
+    verificationId: string,
+    language?: SupportedLanguage,
+  ) {
     await this.assertOwnedVerification(userId, verificationId);
     const report = await this.reportModel
       .findOne({
@@ -333,7 +367,11 @@ export class ReportService {
       .lean()
       .exec();
     if (!report) throw this.notFound();
-    return this.privateProjection(report);
+    return this.localizedProjection(
+      report,
+      language ?? supportedLanguageOrEnglish(report.requestedLanguage),
+      true,
+    );
   }
 
   async versionsOwned(userId: string, verificationId: string) {
@@ -363,11 +401,37 @@ export class ReportService {
     }));
   }
 
-  async getOwned(userId: string, reportId: string) {
+  async getOwned(
+    userId: string,
+    reportId: string,
+    language?: SupportedLanguage,
+  ) {
     const report = await this.findOwned(userId, reportId);
     if ([ReportStatus.DELETED, ReportStatus.INVALID].includes(report.status))
       throw this.notFound();
-    return this.privateProjection(report.toObject());
+    return this.localizedProjection(
+      report.toObject(),
+      language ?? report.requestedLanguage,
+      true,
+    );
+  }
+
+  async retryLocalizationOwned(
+    userId: string,
+    reportId: string,
+    language: SupportedLanguage,
+    requestId: string,
+  ) {
+    const report = await this.findOwned(userId, reportId);
+    if ([ReportStatus.DELETED, ReportStatus.INVALID].includes(report.status))
+      throw this.notFound();
+    return this.localization.generate(
+      report.toObject(),
+      this.privateProjection(report.toObject()),
+      language,
+      requestId,
+      true,
+    );
   }
 
   async inspectEvidence(userId: string, reportId: string, evidenceId: string) {
@@ -416,7 +480,7 @@ export class ReportService {
     return this.privateProjection(report.toObject());
   }
 
-  async publicBySlug(slug: string) {
+  async publicBySlug(slug: string, language?: SupportedLanguage) {
     const report = await this.reportModel
       .findOne({
         publicSlug: slug,
@@ -429,7 +493,11 @@ export class ReportService {
       .lean()
       .exec();
     if (!report) throw this.notFound();
-    return this.publicProjection(report);
+    return this.localizedProjection(
+      report,
+      language ?? supportedLanguageOrEnglish(report.requestedLanguage),
+      false,
+    );
   }
 
   async feedback(userId: string, reportId: string, dto: ReportFeedbackDto) {
@@ -485,9 +553,14 @@ export class ReportService {
     userId: string,
     reportId: string,
     format: ReportExportFormat,
+    language?: SupportedLanguage,
   ): Promise<{ bytes: Buffer; contentType: string; filename: string }> {
     const report = await this.findOwned(userId, reportId);
-    const projection = this.publicProjection(report.toObject());
+    const projection = await this.localizedProjection(
+      report.toObject(),
+      language ?? report.requestedLanguage,
+      false,
+    );
     const record = await this.exportModel.create({
       userId: new Types.ObjectId(userId),
       reportId: report._id,
@@ -578,6 +651,21 @@ export class ReportService {
     return { ...report, _id: undefined, id: String(report._id) };
   }
 
+  private localizedProjection(
+    report: Record<string, any>,
+    language: SupportedLanguage,
+    includePrivate: boolean,
+  ): Promise<Record<string, unknown>> {
+    const canonical = includePrivate
+      ? this.privateProjection(report)
+      : this.publicProjection(report);
+    return this.localization.present(
+      report as Report & { _id: Types.ObjectId },
+      canonical,
+      language,
+    );
+  }
+
   private publicProjection(
     report: Record<string, any>,
   ): Record<string, unknown> {
@@ -589,6 +677,8 @@ export class ReportService {
       riskLevel: report.riskLevel,
       confidence: report.confidence,
       confidenceFactors: report.confidenceFactors,
+      sourceLanguage: report.sourceLanguage ?? SupportedLanguage.ENGLISH,
+      requestedLanguage: report.requestedLanguage ?? SupportedLanguage.ENGLISH,
       summary: report.summary,
       claims: report.claims,
       evidence: report.evidence,
@@ -705,79 +795,197 @@ export class ReportService {
   }
 
   private async renderPdf(report: Record<string, any>): Promise<Buffer> {
+    const language = supportedLanguageOrEnglish(report.presentationLanguage);
+    const labels = {
+      en: {
+        subtitle: 'Explainable verification report',
+        date: 'Report date',
+        version: 'Version',
+        verdict: 'Verdict',
+        risk: 'Risk',
+        confidence: 'Confidence',
+        summary: 'Summary',
+        card: 'Verith Check Card summary',
+        claim: 'Claim',
+        finding: 'Finding',
+        next: 'Check next',
+        limitation: 'Important limitation',
+        claims: 'Claims',
+        evidence: 'Evidence',
+        relationship: 'Relationship',
+        access: 'access',
+        missing: 'Missing context',
+        manipulation: 'Manipulation findings',
+        actions: 'Recommended actions',
+        limitations: 'Limitations',
+        none: 'None recorded.',
+        noClaim: 'No individual checkable claim was retained.',
+        inspect: 'Inspect the evidence and limitations before sharing.',
+        open: 'Open the complete report for context.',
+      },
+      fr: {
+        subtitle: 'Rapport de vérification explicable',
+        date: 'Date du rapport',
+        version: 'Version',
+        verdict: 'Conclusion',
+        risk: 'Risque',
+        confidence: 'Confiance',
+        summary: 'Résumé',
+        card: 'Résumé de la carte de vérification Verith',
+        claim: 'Affirmation',
+        finding: 'Conclusion',
+        next: 'À vérifier ensuite',
+        limitation: 'Limite importante',
+        claims: 'Affirmations',
+        evidence: 'Éléments de preuve',
+        relationship: 'Relation',
+        access: 'accès',
+        missing: 'Contexte manquant',
+        manipulation: 'Indices de manipulation',
+        actions: 'Actions recommandées',
+        limitations: 'Limites',
+        none: 'Aucun élément enregistré.',
+        noClaim: 'Aucune affirmation vérifiable n’a été conservée.',
+        inspect: 'Examinez les preuves et les limites avant de partager.',
+        open: 'Ouvrez le rapport complet pour le contexte.',
+      },
+      es: {
+        subtitle: 'Informe de verificación explicable',
+        date: 'Fecha del informe',
+        version: 'Versión',
+        verdict: 'Conclusión',
+        risk: 'Riesgo',
+        confidence: 'Confianza',
+        summary: 'Resumen',
+        card: 'Resumen de la tarjeta de verificación Verith',
+        claim: 'Afirmación',
+        finding: 'Conclusión',
+        next: 'Qué comprobar después',
+        limitation: 'Limitación importante',
+        claims: 'Afirmaciones',
+        evidence: 'Pruebas',
+        relationship: 'Relación',
+        access: 'acceso',
+        missing: 'Contexto ausente',
+        manipulation: 'Señales de manipulación',
+        actions: 'Acciones recomendadas',
+        limitations: 'Limitaciones',
+        none: 'No se registró ninguno.',
+        noClaim: 'No se conservó ninguna afirmación verificable.',
+        inspect: 'Revisa las pruebas y limitaciones antes de compartir.',
+        open: 'Abre el informe completo para ver el contexto.',
+      },
+      yo: {
+        subtitle: 'Ìròyìn àyẹ̀wò tí a lè ṣàlàyé',
+        date: 'Ọjọ́ ìròyìn',
+        version: 'Ẹ̀dà',
+        verdict: 'Ìdájọ́',
+        risk: 'Ewu',
+        confidence: 'Ìgbẹ́kẹ̀lé',
+        summary: 'Àkótán',
+        card: 'Àkótán káàdì àyẹ̀wò Verith',
+        claim: 'Ọ̀rọ̀ tí a sọ',
+        finding: 'Àbájáde',
+        next: 'Ohun tí a ó yẹ̀ wò lẹ́yìn',
+        limitation: 'Ààlà pàtàkì',
+        claims: 'Àwọn ọ̀rọ̀ tí a sọ',
+        evidence: 'Ẹ̀rí',
+        relationship: 'Ìbáṣepọ̀',
+        access: 'ìráàyèsí',
+        missing: 'Àyíká ọ̀rọ̀ tó sọnù',
+        manipulation: 'Àwọn àmì ìdarí èrò',
+        actions: 'Àwọn ìgbésẹ̀ tí a dámọ̀ràn',
+        limitations: 'Àwọn ààlà',
+        none: 'Kò sí ohun tí a kọ sílẹ̀.',
+        noClaim: 'Kò sí ọ̀rọ̀ tí a lè yẹ̀ wò tí a pa mọ́.',
+        inspect: 'Yẹ ẹ̀rí àti àwọn ààlà wò kí o tó pín in.',
+        open: 'Ṣí gbogbo ìròyìn náà fún àyíká ọ̀rọ̀.',
+      },
+    }[language];
     return new Promise((resolve, reject) => {
       const document = new PDFDocument({ margin: 48, size: 'A4' });
+      document.registerFont('VerithUnicode', notoSansFont);
+      document.font('VerithUnicode');
       const chunks: Buffer[] = [];
       document.on('data', (chunk: Buffer) => chunks.push(chunk));
       document.on('end', () => resolve(Buffer.concat(chunks)));
       document.on('error', reject);
       document.fontSize(22).text('VERITH', { align: 'center' });
-      document
-        .fontSize(10)
-        .text('Explainable verification report', { align: 'center' });
+      document.fontSize(10).text(labels.subtitle, { align: 'center' });
       document.moveDown();
       document
         .fontSize(12)
-        .text(`Report date: ${new Date(report.generatedAt).toISOString()}`);
-      document.text(`Version: ${report.version}`);
-      document.text(`Verdict: ${report.overallVerdict}`);
-      document.text(`Risk: ${report.riskLevel}`);
+        .text(`${labels.date}: ${new Date(report.generatedAt).toISOString()}`);
+      document.text(`${labels.version}: ${report.version}`);
+      document.text(`${labels.verdict}: ${report.overallVerdict}`);
+      document.text(`${labels.risk}: ${report.riskLevel}`);
       document.text(
-        `Confidence: ${Math.round(Number(report.confidence) * 100)}%`,
+        `${labels.confidence}: ${Math.round(Number(report.confidence) * 100)}%`,
       );
-      document.moveDown().fontSize(16).text('Summary');
+      document.moveDown().fontSize(16).text(labels.summary);
       document.fontSize(10).text(String(report.summary));
-      document.moveDown().fontSize(16).text('Verith Check Card summary');
+      document.moveDown().fontSize(16).text(labels.card);
       document
         .fontSize(10)
         .text(
-          `Claim: ${String(report.claims?.[0]?.text ?? 'No individual checkable claim was retained.')}`,
+          `${labels.claim}: ${String(report.claims?.[0]?.displayText ?? report.claims?.[0]?.text ?? labels.noClaim)}`,
           { paragraphGap: 5 },
         );
-      document.text(`Finding: ${String(report.overallVerdict)}`, {
+      document.text(`${labels.finding}: ${String(report.overallVerdict)}`, {
         paragraphGap: 5,
       });
       document.text(
-        `Check next: ${String(report.recommendedActions?.[0] ?? 'Inspect the evidence and limitations before sharing.')}`,
+        `${labels.next}: ${String(report.recommendedActions?.[0] ?? labels.inspect)}`,
         { paragraphGap: 5 },
       );
       document.text(
-        `Important limitation: ${String(report.limitations?.[0] ?? 'Open the complete report for context.')}`,
+        `${labels.limitation}: ${String(report.limitations?.[0] ?? labels.open)}`,
       );
       this.pdfList(
         document,
-        'Claims',
+        labels.claims,
         report.claims,
         (item) =>
-          `${item.text}\nVerdict: ${item.verdict}; confidence: ${Math.round(Number(item.confidence) * 100)}%\n${item.explanation}`,
+          `${item.displayText ?? item.text}\n${labels.verdict}: ${item.verdict}; ${labels.confidence.toLowerCase()}: ${Math.round(Number(item.confidence) * 100)}%\n${item.explanation}`,
+        labels.none,
       );
       this.pdfList(
         document,
-        'Evidence',
+        labels.evidence,
         report.evidence,
         (item) =>
-          `${item.title}\n${item.sourceUrl}\nRelationship: ${item.relationship}; access: ${item.accessStatus}`,
+          `${item.title}\n${item.sourceUrl}\n${labels.relationship}: ${item.relationship}; ${labels.access}: ${item.accessStatus}`,
+        labels.none,
       );
       this.pdfList(
         document,
-        'Missing context',
+        labels.missing,
         report.missingContext,
         (item) =>
           `${item.type}: ${item.whyItMatters}\n${item.correctedContext}`,
+        labels.none,
       );
       this.pdfList(
         document,
-        'Manipulation findings',
+        labels.manipulation,
         report.manipulationAnalysis,
         (item) => `${item.category} (${item.severity}): ${item.explanation}`,
+        labels.none,
       );
       this.pdfList(
         document,
-        'Recommended actions',
+        labels.actions,
         report.recommendedActions,
         String,
+        labels.none,
       );
-      this.pdfList(document, 'Limitations', report.limitations, String);
+      this.pdfList(
+        document,
+        labels.limitations,
+        report.limitations,
+        String,
+        labels.none,
+      );
       document.end();
     });
   }
@@ -787,10 +995,11 @@ export class ReportService {
     heading: string,
     items: any[],
     render: (item: any) => string,
+    emptyLabel = 'None recorded.',
   ) {
     document.moveDown().fontSize(16).text(heading);
     if (!items?.length) {
-      document.fontSize(10).text('None recorded.');
+      document.fontSize(10).text(emptyLabel);
       return;
     }
     for (const item of items) {

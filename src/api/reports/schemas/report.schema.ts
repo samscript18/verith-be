@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { OverallVerdict, RiskLevel } from '../../analysis/enums/analysis.enum';
 import { ReportStatus, ReportVisibility } from '../enums/report.enum';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 
 export type ReportDocument = HydratedDocument<Report>;
 
@@ -19,6 +20,14 @@ export class Report {
   riskLevel!: RiskLevel;
   @Prop({ required: true, min: 0, max: 1 })
   confidence!: number;
+  @Prop({ required: true, default: SupportedLanguage.ENGLISH, maxlength: 20 })
+  sourceLanguage!: string;
+  @Prop({
+    required: true,
+    enum: SupportedLanguage,
+    default: SupportedLanguage.ENGLISH,
+  })
+  requestedLanguage!: SupportedLanguage;
   @Prop({ type: Object, required: true })
   confidenceFactors!: Record<string, number | boolean>;
   @Prop({ required: true })

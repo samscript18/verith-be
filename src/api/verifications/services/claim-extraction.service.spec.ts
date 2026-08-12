@@ -1,4 +1,6 @@
 import { ClaimExtractionService } from './claim-extraction.service';
+import { ClaimQuerySource } from '../schemas/claim.schema';
+import { SearchQueryCategory } from '../enums/claim.enum';
 
 describe('ClaimExtractionService screenshot source spans', () => {
   const service = new ClaimExtractionService(
@@ -7,7 +9,7 @@ describe('ClaimExtractionService screenshot source spans', () => {
       normalizeClaim: (value: string) => value.trim().toLowerCase(),
     } as never,
     {} as never,
-    { getOrThrow: () => ({}) } as never,
+    { getOrThrow: () => ({ maxQueriesPerClaim: 2 }) } as never,
   );
   const resolver = service as unknown as {
     resolveSourceSpan(
@@ -38,5 +40,54 @@ describe('ClaimExtractionService screenshot source spans', () => {
         sourceSpan: { start: 0, end: 12 },
       }),
     ).toBeNull();
+  });
+
+  it('creates one original-language and one canonical-English query without duplicates', () => {
+    const multilingual = service as unknown as {
+      multilingualQueries(
+        claim: { text: string; canonicalText: string },
+        sourceLanguage: string,
+        generated: Array<{
+          query: string;
+          category: SearchQueryCategory;
+          language: string;
+          source: ClaimQuerySource;
+        }>,
+      ): Array<{ query: string; language: string; source: ClaimQuerySource }>;
+    };
+    const queries = multilingual.multilingualQueries(
+      {
+        text: 'Ìkéde náà sọ pé ilé-ẹ̀kọ́ yóò ti ilẹ̀kùn.',
+        canonicalText: 'The announcement says the school will close.',
+      },
+      'yo',
+      [
+        {
+          query: 'Ìkéde ilé-ẹ̀kọ́ yóò ti ilẹ̀kùn',
+          category: SearchQueryCategory.ORIGINAL_SOURCE,
+          language: 'yo',
+          source: ClaimQuerySource.ORIGINAL_CLAIM,
+        },
+        {
+          query: 'school closure official announcement',
+          category: SearchQueryCategory.OFFICIAL,
+          language: 'en',
+          source: ClaimQuerySource.CANONICAL_CLAIM,
+        },
+        {
+          query: 'school closure official announcement',
+          category: SearchQueryCategory.OFFICIAL,
+          language: 'en',
+          source: ClaimQuerySource.CANONICAL_CLAIM,
+        },
+      ],
+    );
+
+    expect(queries).toHaveLength(2);
+    expect(queries.map((query) => query.language)).toEqual(['yo', 'en']);
+    expect(queries.map((query) => query.source)).toEqual([
+      ClaimQuerySource.ORIGINAL_CLAIM,
+      ClaimQuerySource.CANONICAL_CLAIM,
+    ]);
   });
 });

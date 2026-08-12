@@ -2,9 +2,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import {
   GuidedInvestigationStatus,
+  GuidedQuestionCode,
   GuidedQuestionType,
   MediaLiteracyCompetency,
 } from '../enums/guided-investigation.enum';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 
 @Schema({ _id: false })
 export class GuidedQuestionOption {
@@ -23,6 +25,9 @@ export class GuidedQuestion {
   @Prop({ required: true })
   id!: string;
 
+  @Prop({ enum: GuidedQuestionCode })
+  code?: GuidedQuestionCode;
+
   @Prop({ required: true, min: 1 })
   version!: number;
 
@@ -31,6 +36,9 @@ export class GuidedQuestion {
 
   @Prop({ required: true })
   prompt!: string;
+
+  @Prop()
+  helperText?: string;
 
   @Prop({ type: [GuidedQuestionOptionSchema], default: [] })
   options!: GuidedQuestionOption[];
@@ -101,6 +109,12 @@ export class GuidedInvestigation {
 
   @Prop({ type: Types.ObjectId, required: true })
   userId!: Types.ObjectId;
+
+  @Prop({ enum: SupportedLanguage, default: SupportedLanguage.ENGLISH })
+  reportLanguage!: SupportedLanguage;
+
+  @Prop({ default: 'und' })
+  sourceLanguage!: string;
 
   @Prop({ required: true, min: 1 })
   questionSetVersion!: number;

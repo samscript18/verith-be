@@ -11,6 +11,14 @@ import {
   ReportProblemCategory,
   ReportVisibility,
 } from '../enums/report.enum';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
+
+export class ReportLanguageQueryDto {
+  @ApiPropertyOptional({ enum: SupportedLanguage })
+  @IsOptional()
+  @IsEnum(SupportedLanguage)
+  language?: SupportedLanguage;
+}
 
 export class UpdateReportVisibilityDto {
   @ApiProperty({ enum: ReportVisibility })

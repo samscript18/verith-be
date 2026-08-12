@@ -200,6 +200,31 @@ describe('ArticleExtractionService', () => {
     });
   });
 
+  it('does not treat a Facebook sign-in shell as readable evidence', async () => {
+    const service = new ArticleExtractionService(
+      {
+        fetchHtml: jest.fn().mockResolvedValue({
+          requestedUrl: 'https://www.facebook.com/example/posts/123',
+          finalUrl: 'https://www.facebook.com/example/posts/123',
+          status: 200,
+          contentType: 'text/html',
+          redirects: 0,
+          body: '<main>Log in to Facebook to continue. Create new account.</main>',
+        }),
+      } as unknown as SafeFetchService,
+      new TextNormalizationService(),
+      new UrlClassificationService(),
+    );
+
+    await expect(
+      service.extract('https://www.facebook.com/example/posts/123'),
+    ).resolves.toMatchObject({
+      outcome: 'RESTRICTED',
+      state: UrlExtractionState.LOGIN_REQUIRED,
+      alternativeInputTypes: ['TEXT', 'SCREENSHOT'],
+    });
+  });
+
   it('uses matching provider raw content after a permitted direct-fetch failure', async () => {
     const safeFetch = {
       fetchHtml: jest

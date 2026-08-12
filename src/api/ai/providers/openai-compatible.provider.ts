@@ -11,6 +11,7 @@ import type {
 } from '../interfaces/ai-provider.interface';
 import { parseJsonText, providerFetch, readObject } from './provider-http';
 import {
+  isProviderKeyHealthFailure,
   isKeyRecoverableProviderFailure,
   ProviderKeyPoolService,
 } from '../../../shared/providers/provider-key-pool.service';
@@ -21,6 +22,12 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
   abstract modelFor(capability: AiCapability): string | null;
   protected abstract extraHeaders(): Record<string, string>;
   protected providerPreferences(): Record<string, unknown> | undefined {
+    return undefined;
+  }
+  protected requestPreferences(
+    _request: AiExecutionRequest,
+  ): Record<string, unknown> | undefined {
+    void _request;
     return undefined;
   }
 
@@ -96,6 +103,7 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
               ...(this.providerPreferences()
                 ? { provider: this.providerPreferences() }
                 : {}),
+              ...(this.requestPreferences(request) ?? {}),
             }),
           },
           this.config.timeoutMs,
@@ -107,9 +115,32 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
         const message = readObject(choice?.message);
         const content = this.messageText(message?.content);
         if (!content) {
+          const usage = readObject(body?.usage);
           throw new ExternalProviderException(
             'The AI provider returned no usable content',
             `${this.provider}_INVALID_RESPONSE`,
+            undefined,
+            null,
+            {
+              providerRequestId:
+                typeof body?.id === 'string' ? body.id.slice(0, 160) : null,
+              finishReason:
+                typeof choice?.finish_reason === 'string'
+                  ? choice.finish_reason.slice(0, 80)
+                  : null,
+              nativeFinishReason:
+                typeof choice?.native_finish_reason === 'string'
+                  ? choice.native_finish_reason.slice(0, 80)
+                  : null,
+              reasoningCharacters:
+                typeof message?.reasoning === 'string'
+                  ? message.reasoning.length
+                  : 0,
+              completionTokens:
+                typeof usage?.completion_tokens === 'number'
+                  ? usage.completion_tokens
+                  : null,
+            },
           );
         }
         const output = parseJsonText(content, this.provider);
@@ -141,7 +172,8 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
                 'The AI provider is unavailable',
                 `${this.provider}_${ProviderState.UNAVAILABLE}`,
               );
-        lease.fail(failure.code);
+        if (isProviderKeyHealthFailure(failure.code)) lease.fail(failure.code);
+        else lease.release();
         lastError = failure;
         if (!isKeyRecoverableProviderFailure(failure.code)) throw failure;
       }

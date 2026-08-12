@@ -43,4 +43,17 @@ describe('ProviderKeyPoolService', () => {
       disabledKeys: 1,
     });
   });
+
+  it('releases neutral request failures without poisoning the key', () => {
+    const pool = new ProviderKeyPoolService().forProvider('TEST', ['first']);
+    pool.acquire()?.release();
+
+    expect(pool.status()).toMatchObject({
+      configuredKeys: 1,
+      healthyKeys: 1,
+      cooldownKeys: 0,
+      disabledKeys: 0,
+    });
+    expect(pool.acquire()).not.toBeNull();
+  });
 });

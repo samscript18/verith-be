@@ -11,6 +11,7 @@ export interface AiExecutionRequest {
   outputJsonSchema: Record<string, unknown>;
   temperature?: number;
   maxOutputTokens?: number;
+  reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
   media?: { mimeType: string; base64Data: string };
 }
 

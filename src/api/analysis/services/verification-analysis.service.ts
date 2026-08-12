@@ -23,6 +23,7 @@ import {
   type ClaimDocument,
 } from '../../verifications/schemas/claim.schema';
 import { ExtractedContent } from '../../verifications/schemas/extracted-content.schema';
+import { Verification } from '../../verifications/schemas/verification.schema';
 import { PublishersService } from '../../publishers/services/publishers.service';
 import {
   AnalysisSeverity,
@@ -86,6 +87,8 @@ export class VerificationAnalysisService {
     @InjectModel(Evidence.name) private readonly evidenceModel: Model<Evidence>,
     @InjectModel(ExtractedContent.name)
     private readonly contentModel: Model<ExtractedContent>,
+    @InjectModel(Verification.name)
+    private readonly verificationModel: Model<Verification>,
     @InjectModel(ClaimEvaluation.name)
     private readonly evaluationModel: Model<ClaimEvaluation>,
     @InjectModel(VerificationAnalysis.name)
@@ -98,9 +101,10 @@ export class VerificationAnalysisService {
     requestId: string,
   ): Promise<VerificationAnalysis> {
     const id = new Types.ObjectId(verificationId);
-    const [claims, content] = await Promise.all([
+    const [claims, content, verification] = await Promise.all([
       this.claimModel.find({ verificationId: id }).sort({ sequence: 1 }).exec(),
       this.contentModel.findOne({ verificationId: id }).lean().exec(),
+      this.verificationModel.findById(id).lean().exec(),
     ]);
     const evidence = await this.evidenceModel
       .find({
@@ -112,11 +116,16 @@ export class VerificationAnalysisService {
       capability: AiCapability.EVIDENCE_SYNTHESIS,
       promptKey: 'verification.analysis',
       variables: {
+        sourceLanguage: verification?.detectedLanguage ?? 'und',
+        requestedLanguage: verification?.requestedLanguage ?? 'en',
         content: content?.normalizedText ?? '',
         claims: JSON.stringify(
           claims.map((claim) => ({
             id: claim.id,
-            text: claim.text,
+            originalText: claim.text,
+            originalLanguage: claim.originalLanguage,
+            canonicalText: claim.canonicalText,
+            canonicalLanguage: claim.canonicalLanguage,
             importance: claim.importance,
             verifiability: claim.verifiability,
             timeSensitivity: claim.timeSensitivity,
@@ -130,6 +139,9 @@ export class VerificationAnalysisService {
             domain: item.domain,
             publishedAt: item.publishedAt ?? null,
             excerpt: item.relevantExcerpt ?? null,
+            originalExcerpt:
+              item.originalExcerpt ?? item.relevantExcerpt ?? null,
+            language: item.language ?? null,
             accessStatus: item.accessStatus,
             authority: item.authority,
             relevanceScore: item.relevanceScore,
@@ -139,7 +151,7 @@ export class VerificationAnalysisService {
         ),
       },
       outputSchemaName: 'verification_analysis',
-      outputSchemaVersion: 'verification-analysis.v1',
+      outputSchemaVersion: 'verification-analysis.v2',
       outputJsonSchema: this.jsonSchema(),
       outputValidator: this.joiSchema(),
       requestId,
@@ -329,37 +341,52 @@ export class VerificationAnalysisService {
     supporting: EvidenceDocument[],
     contradicting: EvidenceDocument[],
   ): Record<string, number | boolean> {
-    const independent = available.length;
+    const quality = (item: EvidenceDocument) =>
+      item.accessStatus === EvidenceAccessStatus.AVAILABLE ? 1 : 0.5;
+    const independent = available.reduce((sum, item) => sum + quality(item), 0);
     const authority =
       independent === 0
         ? 0
         : available.reduce(
             (sum, item) =>
               sum +
-              (item.authority === EvidenceAuthority.HIGH
-                ? 1
-                : item.authority === EvidenceAuthority.MODERATE
-                  ? 0.7
-                  : item.authority === EvidenceAuthority.UNKNOWN
-                    ? 0.5
-                    : 0),
+              quality(item) *
+                (item.authority === EvidenceAuthority.HIGH
+                  ? 1
+                  : item.authority === EvidenceAuthority.MODERATE
+                    ? 0.7
+                    : item.authority === EvidenceAuthority.UNKNOWN
+                      ? 0.5
+                      : 0),
             0,
           ) / independent;
     const directness =
       independent === 0
         ? 0
-        : available.reduce((sum, item) => sum + item.directnessScore, 0) /
-          independent;
+        : available.reduce(
+            (sum, item) => sum + item.directnessScore * quality(item),
+            0,
+          ) / independent;
     const recency =
       independent === 0
         ? 0
-        : available.reduce((sum, item) => sum + item.recencyScore, 0) /
-          independent;
-    const related = supporting.length + contradicting.length;
+        : available.reduce(
+            (sum, item) => sum + item.recencyScore * quality(item),
+            0,
+          ) / independent;
+    const supportingWeight = supporting.reduce(
+      (sum, item) => sum + quality(item),
+      0,
+    );
+    const contradictingWeight = contradicting.reduce(
+      (sum, item) => sum + quality(item),
+      0,
+    );
+    const related = supportingWeight + contradictingWeight;
     const agreement =
       related === 0
         ? 0
-        : Math.max(supporting.length, contradicting.length) / related;
+        : Math.max(supportingWeight, contradictingWeight) / related;
     return {
       independentSourceCount: Math.min(independent, 5) / 5,
       authority,
@@ -367,7 +394,9 @@ export class VerificationAnalysisService {
       recency,
       sourceAgreement: agreement,
       primarySourceAvailable: available.some(
-        (item) => item.authority === EvidenceAuthority.HIGH,
+        (item) =>
+          item.accessStatus === EvidenceAccessStatus.AVAILABLE &&
+          item.authority === EvidenceAuthority.HIGH,
       ),
       contradictoryEvidencePresent: contradicting.length > 0,
       structuredOutputValid: true,
@@ -672,6 +701,15 @@ export class VerificationAnalysisService {
     )
       limitations.push(
         'One or more discovered sources could not be retrieved.',
+      );
+    if (
+      evidence.some(
+        (item) =>
+          item.accessStatus === EvidenceAccessStatus.PARTIALLY_AVAILABLE,
+      )
+    )
+      limitations.push(
+        'Partially extracted sources contributed less confidence than fully retrieved sources.',
       );
     return limitations;
   }

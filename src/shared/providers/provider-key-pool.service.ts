@@ -26,7 +26,19 @@ export interface ProviderKeyLease {
   readonly key: string;
   readonly fingerprint: string;
   succeed(): void;
+  release(): void;
   fail(code: string, retryAfterMs?: number): void;
+}
+
+export function isProviderKeyHealthFailure(code: string): boolean {
+  return (
+    code.endsWith('AUTHENTICATION_FAILED') ||
+    code.endsWith('RATE_LIMITED') ||
+    code.includes('BILLING') ||
+    code.includes('INVALID_MODEL') ||
+    code.endsWith('UNAVAILABLE') ||
+    code.endsWith('TIMEOUT')
+  );
 }
 
 export function isKeyRecoverableProviderFailure(code: string): boolean {
@@ -84,6 +96,9 @@ class ProviderKeyPool {
         record.consecutiveFailures = 0;
         record.lastSuccessAt = Date.now();
         delete record.lastFailureCode;
+      },
+      release: () => {
+        release();
       },
       fail: (code, retryAfterMs) => {
         if (!release()) return;

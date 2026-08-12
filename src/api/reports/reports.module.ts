@@ -46,16 +46,25 @@ import {
   ChallengeSchema,
 } from '../challenges/schemas/challenge.schema';
 import { GamificationModule } from '../gamification/gamification.module';
+import { AiModule } from '../ai/ai.module';
+import {
+  ReportLocalization,
+  ReportLocalizationSchema,
+} from './schemas/report-localization.schema';
+import { ReportLocalizationService } from './services/report-localization.service';
+import { LanguageDetectionService } from '../verifications/services/language-detection.service';
 
 @Module({
   imports: [
     AdminModule,
     AnalyticsModule,
     GamificationModule,
+    AiModule,
     MongooseModule.forFeature([
       { name: Report.name, schema: ReportSchema },
       { name: ReportFeedback.name, schema: ReportFeedbackSchema },
       { name: ReportExport.name, schema: ReportExportSchema },
+      { name: ReportLocalization.name, schema: ReportLocalizationSchema },
       { name: Verification.name, schema: VerificationSchema },
       { name: Claim.name, schema: ClaimSchema },
       { name: ClaimEvaluation.name, schema: ClaimEvaluationSchema },
@@ -73,7 +82,13 @@ import { GamificationModule } from '../gamification/gamification.module';
     PublicReportsController,
     ReportFeedbackAdminController,
   ],
-  providers: [ReportService, MilCoachService, CheckCardService],
+  providers: [
+    ReportService,
+    ReportLocalizationService,
+    LanguageDetectionService,
+    MilCoachService,
+    CheckCardService,
+  ],
   exports: [ReportService, MilCoachService, CheckCardService, MongooseModule],
 })
 export class ReportsModule {}

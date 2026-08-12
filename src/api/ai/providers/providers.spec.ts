@@ -95,9 +95,11 @@ describe('AI provider HTTP contracts', () => {
       ...baseRequest,
       capability: AiCapability.IMAGE_UNDERSTANDING,
       media: { mimeType: 'image/png', base64Data: 'aW1hZ2U=' },
+      reasoningEffort: 'none',
     });
     const body = parseBody(fetchMock.mock.calls[0]?.[1]);
     expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.reasoning).toEqual({ effort: 'none', exclude: true });
     expect(body.messages).toEqual([
       { role: 'system', content: 'System' },
       {
@@ -141,6 +143,38 @@ describe('AI provider HTTP contracts', () => {
     });
   });
 
+  it('diagnoses an OpenRouter reasoning-only response without exposing content', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 'openrouter-request',
+          choices: [
+            {
+              finish_reason: 'length',
+              native_finish_reason: 'MAX_TOKENS',
+              message: { content: '', reasoning: 'internal reasoning' },
+            },
+          ],
+          usage: { completion_tokens: 8000 },
+        }),
+        { status: 200 },
+      ),
+    );
+    const provider = new OpenRouterProvider(configService());
+
+    await expect(provider.execute(baseRequest)).rejects.toMatchObject({
+      code: 'OPENROUTER_INVALID_RESPONSE',
+      details: null,
+      operatorDetails: {
+        providerRequestId: 'openrouter-request',
+        finishReason: 'length',
+        nativeFinishReason: 'MAX_TOKENS',
+        reasoningCharacters: 18,
+        completionTokens: 8000,
+      },
+    });
+  });
+
   it('uses Gemini responseJsonSchema and rejects no substitute output', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
       new Response(
@@ -165,6 +199,7 @@ describe('AI provider HTTP contracts', () => {
       responseMimeType: 'application/json',
       responseJsonSchema: baseRequest.outputJsonSchema,
     });
+    expect(body.generationConfig).not.toHaveProperty('temperature');
     expect(body.contents).toEqual([
       {
         role: 'user',

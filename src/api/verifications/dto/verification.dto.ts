@@ -16,6 +16,7 @@ import { VerificationSourceType } from '../enums/verification-source-type.enum';
 import { VerificationStatus } from '../enums/verification-status.enum';
 import { VerificationVisibility } from '../enums/verification-visibility.enum';
 import { InvestigationMode } from '../enums/investigation-mode.enum';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 
 export class CreateVerificationDto {
   @ApiPropertyOptional({
@@ -59,11 +60,13 @@ export class CreateVerificationDto {
   @MaxLength(1000)
   question?: string;
 
-  @ApiPropertyOptional({ default: 'en' })
+  @ApiPropertyOptional({
+    default: SupportedLanguage.ENGLISH,
+    enum: SupportedLanguage,
+  })
   @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  requestedLanguage?: string;
+  @IsEnum(SupportedLanguage)
+  requestedLanguage?: SupportedLanguage;
 
   @ApiPropertyOptional({
     enum: VerificationVisibility,
@@ -107,6 +110,12 @@ export class UpdateVerificationVisibilityDto {
   @ApiProperty({ enum: VerificationVisibility })
   @IsEnum(VerificationVisibility)
   visibility!: VerificationVisibility;
+}
+
+export class ConfirmVerificationLanguageDto {
+  @ApiProperty({ enum: SupportedLanguage })
+  @IsEnum(SupportedLanguage)
+  sourceLanguage!: SupportedLanguage;
 }
 
 export const normalizeIdempotencyKey = (value: string | undefined): string => {

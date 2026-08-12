@@ -106,6 +106,8 @@ export class SearchRouterService {
       queryFingerprint: createHash('sha256')
         .update(request.query)
         .digest('hex'),
+      ...(request.language ? { queryLanguage: request.language } : {}),
+      ...(request.querySource ? { querySource: request.querySource } : {}),
       startedAt,
       endedAt,
       latencyMs: endedAt.getTime() - startedAt.getTime(),

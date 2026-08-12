@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'node:crypto';
 import { Model, Types } from 'mongoose';
@@ -32,6 +32,7 @@ import { GuidedInvestigationService } from './guided-investigation.service';
 
 @Injectable()
 export class ContentProcessingService {
+  private readonly logger = new Logger(ContentProcessingService.name);
   constructor(
     @InjectModel(ExtractedContent.name)
     private readonly contentModel: Model<ExtractedContent>,
@@ -152,11 +153,28 @@ export class ContentProcessingService {
         await this.finalizeReport(verification, requestId, jobId);
         return;
       }
-      const language = this.languages.detect(extracted.record.normalizedText);
+      const detected = this.languages.detect(extracted.record.normalizedText);
+      const language = verification.confirmedSourceLanguage
+        ? {
+            language: verification.confirmedSourceLanguage,
+            confidence: 1,
+            supported: true,
+          }
+        : detected;
       verification.currentStage = VerificationStage.LANGUAGE_DETECTION;
       verification.progress = 25;
       verification.detectedLanguage = language.language;
+      verification.languageDetectionConfidence = language.confidence;
+      verification.sourceLanguageExperimental = !language.supported;
       await verification.save();
+      this.logger.log({
+        event: 'verification_language_resolved',
+        verificationId: verification.id,
+        sourceLanguage: language.language,
+        requestedLanguage: verification.requestedLanguage,
+        languageConfidence: Number(language.confidence.toFixed(3)),
+        supportedSourceLanguage: language.supported,
+      });
       await this.events.append({
         verificationId: verification.id,
         stage: VerificationStage.LANGUAGE_DETECTION,
@@ -164,7 +182,10 @@ export class ContentProcessingService {
         progress: 25,
         messageCode: 'LANGUAGE_DETECTED',
         safeMessage: 'The content language was detected',
-        metrics: { confidence: language.confidence },
+        metrics: {
+          confidence: language.confidence,
+          supportedLanguage: language.supported ? 1 : 0,
+        },
         requestId,
         jobId,
       });
@@ -185,6 +206,7 @@ export class ContentProcessingService {
         verification.id,
         extracted.record.normalizedText,
         language.language,
+        verification.requestedLanguage,
         requestId,
       );
       await this.guidance.prepare(verification);

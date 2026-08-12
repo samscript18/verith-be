@@ -40,4 +40,34 @@ describe('providerFetch', () => {
       providerFetch('https://provider.example', {}, 1, 'TEST'),
     ).rejects.toMatchObject({ code: 'TEST_TIMEOUT' });
   });
+
+  it('retains safe provider diagnostics while redacting credentials', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            status: 'INVALID_ARGUMENT',
+            message: 'Invalid key=super-secret and Bearer private-token',
+          },
+        }),
+        {
+          status: 400,
+          headers: { 'x-goog-request-id': 'provider-request-1' },
+        },
+      ),
+    );
+
+    await expect(
+      providerFetch('https://provider.example', {}, 100, 'TEST'),
+    ).rejects.toMatchObject({
+      code: 'TEST_INVALID_REQUEST',
+      details: null,
+      operatorDetails: {
+        httpStatus: 400,
+        providerStatus: 'INVALID_ARGUMENT',
+        providerRequestId: 'provider-request-1',
+        providerMessage: 'Invalid key=[REDACTED] and Bearer [REDACTED]',
+      },
+    });
+  });
 });

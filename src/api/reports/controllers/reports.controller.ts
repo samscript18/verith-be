@@ -6,14 +6,23 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseEnumPipe,
   Patch,
   Post,
+  Query,
+  Req,
   Res,
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
+import type { RequestWithId } from '../../../core/types/request-with-id.type';
 import { JwtAuthGuard } from '../../../core/guards/jwt-auth.guard';
 import { ParseObjectIdPipe } from '../../../core/pipes/parse-object-id.pipe';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
@@ -21,12 +30,14 @@ import { SkipResponseEnvelope } from '../../../shared/decorators/skip-response-e
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import {
   ReportFeedbackDto,
+  ReportLanguageQueryDto,
   UpdateReportVisibilityDto,
 } from '../dto/report.dto';
 import { ReportExportFormat } from '../enums/report.enum';
 import { ReportService } from '../services/report.service';
 import { MilCoachService } from '../services/mil-coach.service';
 import { CheckCardService } from '../services/check-card.service';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
@@ -43,8 +54,13 @@ export class ReportsController {
   latest(
     @CurrentUser() user: AuthUser,
     @Param('verificationId', ParseObjectIdPipe) verificationId: string,
+    @Query() query: ReportLanguageQueryDto,
   ) {
-    return this.reports.latestOwned(user.userId, verificationId);
+    return this.reports.latestOwned(
+      user.userId,
+      verificationId,
+      query.language,
+    );
   }
 
   @Get(':id/check-card')
@@ -87,8 +103,56 @@ export class ReportsController {
   get(
     @CurrentUser() user: AuthUser,
     @Param('id', ParseObjectIdPipe) id: string,
+    @Query() query: ReportLanguageQueryDto,
   ) {
-    return this.reports.getOwned(user.userId, id);
+    return this.reports.getOwned(user.userId, id, query.language);
+  }
+
+  @Get(':id/localizations/:language')
+  @ApiOperation({ summary: 'Get a validated localized report presentation' })
+  @ApiParam({
+    name: 'language',
+    description: 'Validated report presentation language',
+    schema: {
+      type: 'string',
+      enum: Object.values(SupportedLanguage),
+      example: 'fr',
+    },
+  })
+  localization(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('language', new ParseEnumPipe(SupportedLanguage))
+    language: SupportedLanguage,
+  ) {
+    return this.reports.getOwned(user.userId, id, language);
+  }
+
+  @Post(':id/localizations/:language/retry')
+  @ApiOperation({
+    summary: 'Explicitly retry a failed or unavailable report localization',
+  })
+  @ApiParam({
+    name: 'language',
+    schema: {
+      type: 'string',
+      enum: Object.values(SupportedLanguage),
+      example: 'fr',
+    },
+  })
+  retryLocalization(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('language', new ParseEnumPipe(SupportedLanguage))
+    language: SupportedLanguage,
+    @Req() request: RequestWithId,
+  ) {
+    return this.reports.retryLocalizationOwned(
+      user.userId,
+      id,
+      language,
+      request.requestId,
+    );
   }
 
   @Get(':id/coach')
@@ -154,8 +218,15 @@ export class ReportsController {
     @CurrentUser() user: AuthUser,
     @Param('id', ParseObjectIdPipe) id: string,
     @Res({ passthrough: true }) response: Response,
+    @Query() query: ReportLanguageQueryDto,
   ) {
-    return this.download(user.userId, id, ReportExportFormat.JSON, response);
+    return this.download(
+      user.userId,
+      id,
+      ReportExportFormat.JSON,
+      response,
+      query.language,
+    );
   }
 
   @Get(':id/export/pdf')
@@ -165,8 +236,15 @@ export class ReportsController {
     @CurrentUser() user: AuthUser,
     @Param('id', ParseObjectIdPipe) id: string,
     @Res({ passthrough: true }) response: Response,
+    @Query() query: ReportLanguageQueryDto,
   ) {
-    return this.download(user.userId, id, ReportExportFormat.PDF, response);
+    return this.download(
+      user.userId,
+      id,
+      ReportExportFormat.PDF,
+      response,
+      query.language,
+    );
   }
 
   private async download(
@@ -174,8 +252,14 @@ export class ReportsController {
     reportId: string,
     format: ReportExportFormat,
     response: Response,
+    language?: ReportLanguageQueryDto['language'],
   ) {
-    const result = await this.reports.export(userId, reportId, format);
+    const result = await this.reports.export(
+      userId,
+      reportId,
+      format,
+      language,
+    );
     response.setHeader('Content-Type', result.contentType);
     response.setHeader(
       'Content-Disposition',

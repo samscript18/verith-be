@@ -25,6 +25,7 @@ import type { RequestWithId } from '../../../core/types/request-with-id.type';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import {
+  ConfirmVerificationLanguageDto,
   CreateVerificationDto,
   normalizeIdempotencyKey,
   UpdateVerificationVisibilityDto,
@@ -203,6 +204,25 @@ export class VerificationsController {
     @Body() dto: UpdateVerificationVisibilityDto,
   ) {
     return this.verifications.updateVisibility(user.userId, id, dto.visibility);
+  }
+
+  @Patch(':id/source-language')
+  @ApiOperation({
+    summary:
+      'Confirm or correct the detected source language before reprocessing',
+  })
+  sourceLanguage(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() dto: ConfirmVerificationLanguageDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.verifications.confirmSourceLanguage(
+      user.userId,
+      id,
+      dto.sourceLanguage,
+      request.requestId,
+    );
   }
 
   @Delete(':id')

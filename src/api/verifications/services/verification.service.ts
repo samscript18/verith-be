@@ -33,6 +33,11 @@ import {
 import { VerificationEventService } from './verification-event.service';
 import { InvestigationUsageService } from './investigation-usage.service';
 import { InvestigationMode } from '../enums/investigation-mode.enum';
+import { User } from '../../users/schemas/user.schema';
+import {
+  SupportedLanguage,
+  supportedLanguageOrEnglish,
+} from '../../../shared/language/supported-language';
 
 @Injectable()
 export class VerificationService {
@@ -43,6 +48,7 @@ export class VerificationService {
     private readonly usage: InvestigationUsageService,
     @InjectModel(IdempotencyRecord.name)
     private readonly idempotencyModel: Model<IdempotencyRecord>,
+    @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectQueue(VERIFICATION_QUEUE)
     private readonly queue: Queue<VerificationJobData>,
   ) {}
@@ -65,6 +71,7 @@ export class VerificationService {
       );
     }
     const input = this.buildInput(dto);
+    const requestedLanguage = await this.resolveRequestedLanguage(userId, dto);
     if (dto.mediaAssetId) {
       await this.uploads.assertVerificationAsset(
         userId,
@@ -73,7 +80,7 @@ export class VerificationService {
       );
     }
     const fingerprint = createHash('sha256')
-      .update(JSON.stringify({ ...dto, input }))
+      .update(JSON.stringify({ ...dto, requestedLanguage, input }))
       .digest('hex');
     const resourceId = new Types.ObjectId();
     try {
@@ -137,9 +144,7 @@ export class VerificationService {
         input,
         ...(dto.title ? { title: dto.title } : {}),
         ...(dto.question ? { question: dto.question } : {}),
-        ...(dto.requestedLanguage
-          ? { requestedLanguage: dto.requestedLanguage }
-          : {}),
+        requestedLanguage,
         visibility: dto.visibility ?? VerificationVisibility.PRIVATE,
         mediaAssetIds: dto.mediaAssetId
           ? [new Types.ObjectId(dto.mediaAssetId)]
@@ -208,6 +213,19 @@ export class VerificationService {
     return this.toResponse(verification);
   }
 
+  private async resolveRequestedLanguage(
+    userId: string,
+    dto: CreateVerificationDto,
+  ): Promise<SupportedLanguage> {
+    if (dto.requestedLanguage) return dto.requestedLanguage;
+    const user = await this.userModel
+      .findById(userId)
+      .select('preferredLanguage')
+      .lean()
+      .exec();
+    return supportedLanguageOrEnglish(user?.preferredLanguage);
+  }
+
   async get(userId: string, id: string): Promise<Record<string, unknown>> {
     return this.toResponse(await this.findOwned(userId, id));
   }
@@ -244,6 +262,44 @@ export class VerificationService {
     const verification = await this.findOwned(userId, id);
     verification.visibility = visibility;
     await verification.save();
+    return this.toResponse(verification);
+  }
+
+  async confirmSourceLanguage(
+    userId: string,
+    id: string,
+    sourceLanguage: SupportedLanguage,
+    requestId: string,
+  ) {
+    const verification = await this.findOwned(userId, id);
+    if (
+      [
+        VerificationStatus.QUEUED,
+        VerificationStatus.PROCESSING,
+        VerificationStatus.CANCEL_REQUESTED,
+      ].includes(verification.status)
+    ) {
+      throw new ConflictException(
+        'Wait for the current investigation pass to finish before confirming its source language',
+        'VERIFICATION_LANGUAGE_CONFIRMATION_CONFLICT',
+      );
+    }
+    verification.confirmedSourceLanguage = sourceLanguage;
+    verification.detectedLanguage = sourceLanguage;
+    verification.languageDetectionConfidence = 1;
+    verification.languageConfirmedAt = new Date();
+    verification.sourceLanguageExperimental = false;
+    await verification.save();
+    await this.events.append({
+      verificationId: id,
+      stage: VerificationStage.LANGUAGE_DETECTION,
+      status: VerificationEventStatus.COMPLETED,
+      progress: verification.progress,
+      messageCode: 'SOURCE_LANGUAGE_CONFIRMED',
+      safeMessage:
+        'The source language was confirmed for the next investigation pass',
+      requestId,
+    });
     return this.toResponse(verification);
   }
 
@@ -465,6 +521,14 @@ export class VerificationService {
       question: record.question,
       requestedLanguage: record.requestedLanguage,
       detectedLanguage: record.detectedLanguage,
+      languageDetectionConfidence: record.languageDetectionConfidence,
+      confirmedSourceLanguage: record.confirmedSourceLanguage,
+      languageConfirmedAt: record.languageConfirmedAt,
+      sourceLanguageNeedsConfirmation:
+        !record.confirmedSourceLanguage &&
+        typeof record.languageDetectionConfidence === 'number' &&
+        record.languageDetectionConfidence < 0.6,
+      sourceLanguageExperimental: record.sourceLanguageExperimental,
       urlMetadata: record.urlMetadata,
       mediaAssetIds: record.mediaAssetIds.map(String),
       claimsCount: record.claimsCount,

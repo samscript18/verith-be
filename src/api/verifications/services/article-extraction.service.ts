@@ -178,14 +178,20 @@ export class ArticleExtractionService {
       /(enable javascript|javascript is required|requires javascript|please turn on javascript)/i.test(
         pageText,
       );
+    const socialLoginShell =
+      classified.kind === UrlSourceKind.SOCIAL_OTHER &&
+      /(log in to facebook|log into facebook|join facebook|facebook helps you connect|sign up for facebook|see posts, photos and more)/i.test(
+        pageText,
+      );
     const meaningfulShortContent =
       text.length >= 20 &&
       (paragraphs.length > 0 ||
         Boolean(structured.body) ||
         Boolean(title && metadataDescription));
     const confidence = this.confidence(text, paragraphs.length, Boolean(title));
-    const state =
-      classified.kind === UrlSourceKind.SOCIAL_X && loginRequired
+    const state = socialLoginShell
+      ? UrlExtractionState.LOGIN_REQUIRED
+      : classified.kind === UrlSourceKind.SOCIAL_X && loginRequired
         ? UrlExtractionState.SOCIAL_CONTENT_RESTRICTED
         : automationBlocked
           ? UrlExtractionState.AUTOMATION_BLOCKED

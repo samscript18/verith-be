@@ -7,7 +7,7 @@ import {
   type ExceptionFilter,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { ApplicationException } from '../exceptions';
+import { ApplicationException, ExternalProviderException } from '../exceptions';
 import type { RequestWithId } from '../types/request-with-id.type';
 
 @Catch()
@@ -47,6 +47,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             : 'UnknownError',
         message:
           exception instanceof Error ? exception.message : 'Unknown error',
+        ...(exception instanceof ExternalProviderException &&
+        exception.operatorDetails
+          ? { providerDetails: exception.operatorDetails }
+          : {}),
         stack: exception instanceof Error ? exception.stack : undefined,
       });
     }

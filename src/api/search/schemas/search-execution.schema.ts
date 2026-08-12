@@ -28,6 +28,12 @@ export class SearchExecution {
   queryFingerprint!: string;
 
   @Prop()
+  queryLanguage?: string;
+
+  @Prop()
+  querySource?: string;
+
+  @Prop()
   providerRequestId?: string;
 
   @Prop({ required: true })

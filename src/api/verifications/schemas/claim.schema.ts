@@ -7,6 +7,12 @@ import {
   ClaimVerifiability,
   SearchQueryCategory,
 } from '../enums/claim.enum';
+import { SupportedLanguage } from '../../../shared/language/supported-language';
+
+export enum ClaimQuerySource {
+  ORIGINAL_CLAIM = 'ORIGINAL_CLAIM',
+  CANONICAL_CLAIM = 'CANONICAL_CLAIM',
+}
 
 @Schema({ _id: false })
 export class ClaimSourceSpan {
@@ -26,6 +32,12 @@ export class ClaimSearchQuery {
 
   @Prop({ enum: SearchQueryCategory, required: true })
   category!: SearchQueryCategory;
+
+  @Prop({ required: true })
+  language!: string;
+
+  @Prop({ enum: ClaimQuerySource, required: true })
+  source!: ClaimQuerySource;
 }
 
 const ClaimSearchQuerySchema = SchemaFactory.createForClass(ClaimSearchQuery);
@@ -44,6 +56,15 @@ export class Claim {
 
   @Prop({ required: true })
   text!: string;
+
+  @Prop({ required: true })
+  originalLanguage!: string;
+
+  @Prop({ required: true })
+  canonicalText!: string;
+
+  @Prop({ enum: SupportedLanguage, default: SupportedLanguage.ENGLISH })
+  canonicalLanguage!: SupportedLanguage;
 
   @Prop({ required: true })
   normalizedText!: string;

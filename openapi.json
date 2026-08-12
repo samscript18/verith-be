@@ -36,7 +36,9 @@
           }
         },
         "summary": "Get API service information",
-        "tags": ["Application"],
+        "tags": [
+          "Application"
+        ],
         "description": "Get API service information. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -79,7 +81,9 @@
                               },
                               "additionalProperties": {
                                 "type": "object",
-                                "required": ["status"],
+                                "required": [
+                                  "status"
+                                ],
                                 "properties": {
                                   "status": {
                                     "type": "string"
@@ -94,7 +98,9 @@
                               "example": {},
                               "additionalProperties": {
                                 "type": "object",
-                                "required": ["status"],
+                                "required": [
+                                  "status"
+                                ],
                                 "properties": {
                                   "status": {
                                     "type": "string"
@@ -113,7 +119,9 @@
                               },
                               "additionalProperties": {
                                 "type": "object",
-                                "required": ["status"],
+                                "required": [
+                                  "status"
+                                ],
                                 "properties": {
                                   "status": {
                                     "type": "string"
@@ -162,7 +170,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -182,7 +192,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -205,7 +217,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -229,7 +243,9 @@
           }
         },
         "summary": "Check application readiness",
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "description": "Check application readiness. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -270,7 +286,9 @@
           }
         },
         "summary": "Check process liveness",
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "description": "Check process liveness. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -313,7 +331,9 @@
                               },
                               "additionalProperties": {
                                 "type": "object",
-                                "required": ["status"],
+                                "required": [
+                                  "status"
+                                ],
                                 "properties": {
                                   "status": {
                                     "type": "string"
@@ -328,7 +348,9 @@
                               "example": {},
                               "additionalProperties": {
                                 "type": "object",
-                                "required": ["status"],
+                                "required": [
+                                  "status"
+                                ],
                                 "properties": {
                                   "status": {
                                     "type": "string"
@@ -347,7 +369,9 @@
                               },
                               "additionalProperties": {
                                 "type": "object",
-                                "required": ["status"],
+                                "required": [
+                                  "status"
+                                ],
                                 "properties": {
                                   "status": {
                                     "type": "string"
@@ -396,7 +420,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -416,7 +442,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -439,7 +467,9 @@
                       },
                       "additionalProperties": {
                         "type": "object",
-                        "required": ["status"],
+                        "required": [
+                          "status"
+                        ],
                         "properties": {
                           "status": {
                             "type": "string"
@@ -463,7 +493,9 @@
           }
         },
         "summary": "Check MongoDB and Redis readiness",
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "description": "Check MongoDB and Redis readiness. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -516,7 +548,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Get public profile",
         "description": "Get public profile. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -565,7 +599,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Get profile",
         "description": "Get profile. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -629,7 +665,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Update profile",
         "description": "Update profile. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -695,7 +733,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Update notifications",
         "description": "Update notifications. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -761,7 +801,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Update privacy",
         "description": "Update privacy. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -813,7 +855,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Request deletion",
         "description": "Request deletion. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -856,7 +900,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Cancel deletion",
         "description": "Cancel deletion. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -915,7 +961,9 @@
           }
         },
         "summary": "Register a user and request email verification",
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "description": "Register a user and request email verification. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -968,7 +1016,9 @@
           }
         },
         "summary": "Get the public Google authentication client",
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "description": "Get the public Google authentication client. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -1036,7 +1086,9 @@
           }
         },
         "summary": "Register or log in with a Google ID token",
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "description": "Register or log in with a Google ID token. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -1086,7 +1138,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Verify email",
         "description": "Verify email. This operation is publicly accessible. A successful request returns no response body.",
         "x-verith-access": "public",
@@ -1144,7 +1198,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Resend verification email",
         "description": "Resend verification email. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -1212,7 +1268,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Log in",
         "description": "Log in. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -1297,7 +1355,9 @@
             "verith_refresh": []
           }
         ],
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Refresh authentication tokens",
         "description": "Refresh authentication tokens. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -1355,7 +1415,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Request password reset",
         "description": "Request password reset. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -1406,7 +1468,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Reset password",
         "description": "Reset password. This operation is publicly accessible. A successful request returns no response body.",
         "x-verith-access": "public",
@@ -1465,7 +1529,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Change password",
         "description": "Change password. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -1510,7 +1576,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Log out",
         "description": "Log out. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -1555,7 +1623,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Log out all sessions",
         "description": "Log out all sessions. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -1604,7 +1674,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Get current authenticated user",
         "description": "Get current authenticated user. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -1653,7 +1725,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Get sessions",
         "description": "Get sessions. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -1711,7 +1785,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Revoke session",
         "description": "Revoke session. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -1781,7 +1857,9 @@
           }
         ],
         "summary": "Create an owner-bound signed upload request",
-        "tags": ["Uploads"],
+        "tags": [
+          "Uploads"
+        ],
         "description": "Create an owner-bound signed upload request. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -1850,7 +1928,9 @@
           }
         ],
         "summary": "Verify and persist a Cloudinary upload",
-        "tags": ["Uploads"],
+        "tags": [
+          "Uploads"
+        ],
         "description": "Verify and persist a Cloudinary upload. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -1914,7 +1994,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Uploads"],
+        "tags": [
+          "Uploads"
+        ],
         "summary": "Get upload",
         "description": "Get upload. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -1973,7 +2055,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Uploads"],
+        "tags": [
+          "Uploads"
+        ],
         "summary": "Delete upload",
         "description": "Delete upload. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -2026,7 +2110,9 @@
           }
         ],
         "summary": "Create a signed avatar upload request",
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "description": "Create a signed avatar upload request. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2092,7 +2178,9 @@
           }
         ],
         "summary": "Confirm and attach an uploaded avatar",
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "description": "Confirm and attach an uploaded avatar. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2170,7 +2258,9 @@
           }
         ],
         "summary": "Create and enqueue a verification",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Create and enqueue a verification. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2265,7 +2355,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "summary": "List verification",
         "description": "List verification. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -2331,7 +2423,9 @@
           }
         ],
         "summary": "Retrieve image analysis or audio transcript",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Retrieve image analysis or audio transcript. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2396,7 +2490,9 @@
           }
         ],
         "summary": "Retrieve evidence-derived analysis and confidence factors",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Retrieve evidence-derived analysis and confidence factors. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2461,7 +2557,9 @@
           }
         ],
         "summary": "List retrieved evidence and source access states",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "List retrieved evidence and source access states. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2513,7 +2611,9 @@
           }
         ],
         "summary": "Get today’s investigation allowance",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Get today’s investigation allowance. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2577,7 +2677,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "summary": "Get verification",
         "description": "Get verification. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -2636,7 +2738,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "summary": "Delete verification",
         "description": "Delete verification. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -2716,7 +2820,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "summary": "List events",
         "description": "List events. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -2782,7 +2888,9 @@
           }
         ],
         "summary": "List extracted claims and search queries",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "List extracted claims and search queries. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2847,7 +2955,9 @@
           }
         ],
         "summary": "Get the guided-investigation exercise",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Get the guided-investigation exercise. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2929,7 +3039,9 @@
           }
         ],
         "summary": "Submit guided-investigation reasoning",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Submit guided-investigation reasoning. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -2996,7 +3108,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "summary": "Cancel cancel",
         "description": "Cancel cancel. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -3064,7 +3178,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "summary": "Retry retry",
         "description": "Retry retry. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -3133,7 +3249,9 @@
           }
         ],
         "summary": "Create a new report version by rerunning a completed verification",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Create a new report version by rerunning a completed verification. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -3214,9 +3332,95 @@
             "bearer": []
           }
         ],
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "summary": "Update visibility",
         "description": "Update visibility. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
+        "x-verith-access": "authenticated",
+        "x-verith-response-envelope": true
+      }
+    },
+    "/api/v1/verifications/{id}/source-language": {
+      "patch": {
+        "operationId": "VerificationsController_sourceLanguage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "example": "64b7f4d8c7a4a12f9c123456"
+            },
+            "description": "MongoDB ObjectId of the target resource."
+          },
+          {
+            "$ref": "#/components/parameters/RequestIdHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmVerificationLanguageDto"
+              }
+            }
+          },
+          "description": "JSON payload validated as ConfirmVerificationLanguageDto."
+        },
+        "responses": {
+          "200": {
+            "description": "Request completed successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Effective request correlation identifier.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm or correct the detected source language before reprocessing",
+        "tags": [
+          "Verifications"
+        ],
+        "description": "Confirm or correct the detected source language before reprocessing. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
       }
@@ -3296,7 +3500,9 @@
           }
         ],
         "summary": "Stream and live verification events",
-        "tags": ["Verifications"],
+        "tags": [
+          "Verifications"
+        ],
         "description": "Stream and live verification events. Requires a valid Verith access token. The successful response is returned as the documented raw media type.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": false
@@ -3345,7 +3551,9 @@
           }
         ],
         "summary": "Check configured AI provider connectivity",
-        "tags": ["AI Integrations"],
+        "tags": [
+          "AI Integrations"
+        ],
         "description": "Check configured AI provider connectivity. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -3396,7 +3604,9 @@
             "bearer": []
           }
         ],
-        "tags": ["AI Prompt Admin"],
+        "tags": [
+          "AI Prompt Admin"
+        ],
         "summary": "List prompt",
         "description": "List prompt. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -3463,7 +3673,9 @@
             "bearer": []
           }
         ],
-        "tags": ["AI Prompt Admin"],
+        "tags": [
+          "AI Prompt Admin"
+        ],
         "summary": "Create prompt",
         "description": "Create prompt. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -3528,7 +3740,9 @@
             "bearer": []
           }
         ],
-        "tags": ["AI Prompt Admin"],
+        "tags": [
+          "AI Prompt Admin"
+        ],
         "summary": "Get prompt",
         "description": "Get prompt. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -3610,7 +3824,9 @@
             "bearer": []
           }
         ],
-        "tags": ["AI Prompt Admin"],
+        "tags": [
+          "AI Prompt Admin"
+        ],
         "summary": "Publish publish",
         "description": "Publish publish. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -3692,7 +3908,9 @@
             "bearer": []
           }
         ],
-        "tags": ["AI Prompt Admin"],
+        "tags": [
+          "AI Prompt Admin"
+        ],
         "summary": "Update rollback",
         "description": "Update rollback. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -3744,7 +3962,9 @@
             "bearer": []
           }
         ],
-        "tags": ["AI Provider Admin"],
+        "tags": [
+          "AI Provider Admin"
+        ],
         "summary": "Get provider",
         "description": "Get provider. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -3811,7 +4031,9 @@
             "bearer": []
           }
         ],
-        "tags": ["AI Provider Admin"],
+        "tags": [
+          "AI Provider Admin"
+        ],
         "summary": "Update provider",
         "description": "Update provider. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -3864,7 +4086,9 @@
           }
         ],
         "summary": "Search users without exposing credentials",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "Search users without exposing credentials. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -3929,7 +4153,9 @@
           }
         ],
         "summary": "Get safe administrative user details",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "Get safe administrative user details. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -4011,7 +4237,9 @@
           }
         ],
         "summary": "Change account status and revoke sessions when required",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "Change account status and revoke sessions when required. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -4093,7 +4321,9 @@
           }
         ],
         "summary": "Change a user role as a super administrator",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "Change a user role as a super administrator. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -4148,7 +4378,9 @@
           }
         ],
         "summary": "Inspect verification lifecycle metadata",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "Inspect verification lifecycle metadata. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -4216,7 +4448,9 @@
           }
         ],
         "summary": "Inspect safe verification lifecycle metadata without input",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "Inspect safe verification lifecycle metadata without input. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -4301,7 +4535,9 @@
           }
         ],
         "summary": "Idempotently enqueue a failed verification retry",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "Idempotently enqueue a failed verification retry. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -4353,7 +4589,9 @@
           }
         ],
         "summary": "List append-only administrative audit records",
-        "tags": ["Admin"],
+        "tags": [
+          "Admin"
+        ],
         "description": "List append-only administrative audit records. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -4402,7 +4640,9 @@
           }
         ],
         "summary": "Check credential-free search provider connectivity",
-        "tags": ["Search Integrations"],
+        "tags": [
+          "Search Integrations"
+        ],
         "description": "Check credential-free search provider connectivity. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -4453,7 +4693,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Publishers Admin"],
+        "tags": [
+          "Publishers Admin"
+        ],
         "summary": "List publisher",
         "description": "List publisher. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -4518,7 +4760,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Publishers Admin"],
+        "tags": [
+          "Publishers Admin"
+        ],
         "summary": "Get publisher",
         "description": "Get publisher. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -4600,7 +4844,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Publishers Admin"],
+        "tags": [
+          "Publishers Admin"
+        ],
         "summary": "Update override",
         "description": "Update override. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -4620,6 +4866,21 @@
               "example": "64b7f4d8c7a4a12f9c123456"
             },
             "description": "MongoDB ObjectId of the verification."
+          },
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "fr",
+                "es",
+                "yo"
+              ]
+            },
+            "description": "Value of the language query parameter."
           },
           {
             "$ref": "#/components/parameters/RequestIdHeader"
@@ -4644,6 +4905,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
@@ -4662,7 +4926,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "summary": "Get latest",
         "description": "Get latest. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -4725,7 +4991,9 @@
           }
         ],
         "summary": "Get a public-safe check card from report data",
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "description": "Get a public-safe check card from report data. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -4794,7 +5062,9 @@
           }
         ],
         "summary": "Download a public-safe Verith Check Card",
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "description": "Download a public-safe Verith Check Card. Requires a valid Verith access token. The successful response is returned as the documented raw media type.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": false
@@ -4855,7 +5125,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "summary": "Get versions",
         "description": "Get versions. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -4875,6 +5147,21 @@
               "example": "64b7f4d8c7a4a12f9c123456"
             },
             "description": "MongoDB ObjectId of the target resource."
+          },
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "fr",
+                "es",
+                "yo"
+              ]
+            },
+            "description": "Value of the language query parameter."
           },
           {
             "$ref": "#/components/parameters/RequestIdHeader"
@@ -4899,6 +5186,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
@@ -4917,7 +5207,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "summary": "Get report",
         "description": "Get report. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -4973,11 +5265,176 @@
             "bearer": []
           }
         ],
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "summary": "Delete report",
         "description": "Delete report. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": false
+      }
+    },
+    "/api/v1/reports/{id}/localizations/{language}": {
+      "get": {
+        "operationId": "ReportsController_localization",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "example": "64b7f4d8c7a4a12f9c123456"
+            },
+            "description": "MongoDB ObjectId of the target resource."
+          },
+          {
+            "name": "language",
+            "required": true,
+            "in": "path",
+            "description": "Validated report presentation language",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "fr",
+                "es",
+                "yo"
+              ],
+              "example": "fr"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/RequestIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request completed successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Effective request correlation identifier.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a validated localized report presentation",
+        "tags": [
+          "Reports"
+        ],
+        "description": "Get a validated localized report presentation. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
+        "x-verith-access": "authenticated",
+        "x-verith-response-envelope": true
+      }
+    },
+    "/api/v1/reports/{id}/localizations/{language}/retry": {
+      "post": {
+        "operationId": "ReportsController_retryLocalization",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "example": "64b7f4d8c7a4a12f9c123456"
+            },
+            "description": "MongoDB ObjectId of the target resource."
+          },
+          {
+            "name": "language",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "fr",
+                "es",
+                "yo"
+              ],
+              "example": "fr"
+            },
+            "description": "Value of the language path parameter."
+          },
+          {
+            "$ref": "#/components/parameters/RequestIdHeader"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Resource created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Effective request correlation identifier.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Explicitly retry a failed or unavailable report localization",
+        "tags": [
+          "Reports"
+        ],
+        "description": "Explicitly retry a failed or unavailable report localization. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
+        "x-verith-access": "authenticated",
+        "x-verith-response-envelope": true
       }
     },
     "/api/v1/reports/{id}/coach": {
@@ -5036,7 +5493,9 @@
           }
         ],
         "summary": "Get deterministic media-literacy coaching",
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "description": "Get deterministic media-literacy coaching. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -5111,7 +5570,9 @@
           }
         ],
         "summary": "Record that the report owner opened an evidence source",
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "description": "Record that the report owner opened an evidence source. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -5189,7 +5650,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "summary": "Update visibility",
         "description": "Update visibility. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -5254,7 +5717,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "summary": "Revoke",
         "description": "Revoke. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -5333,7 +5798,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "summary": "Create feedback",
         "description": "Create feedback. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -5353,6 +5820,21 @@
               "example": "64b7f4d8c7a4a12f9c123456"
             },
             "description": "MongoDB ObjectId of the target resource."
+          },
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "fr",
+                "es",
+                "yo"
+              ]
+            },
+            "description": "Value of the language query parameter."
           },
           {
             "$ref": "#/components/parameters/RequestIdHeader"
@@ -5384,6 +5866,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
@@ -5403,7 +5888,9 @@
           }
         ],
         "summary": "Download a real public-safe JSON report export",
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "description": "Download a real public-safe JSON report export. Requires a valid Verith access token. The successful response is returned as the documented raw media type.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": false
@@ -5422,6 +5909,21 @@
               "example": "64b7f4d8c7a4a12f9c123456"
             },
             "description": "MongoDB ObjectId of the target resource."
+          },
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "fr",
+                "es",
+                "yo"
+              ]
+            },
+            "description": "Value of the language query parameter."
           },
           {
             "$ref": "#/components/parameters/RequestIdHeader"
@@ -5453,6 +5955,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
@@ -5472,7 +5977,9 @@
           }
         ],
         "summary": "Download a real public-safe PDF report export",
-        "tags": ["Reports"],
+        "tags": [
+          "Reports"
+        ],
         "description": "Download a real public-safe PDF report export. Requires a valid Verith access token. The successful response is returned as the documented raw media type.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": false
@@ -5482,6 +5989,21 @@
       "get": {
         "operationId": "PublicReportsController_get",
         "parameters": [
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "fr",
+                "es",
+                "yo"
+              ]
+            },
+            "description": "Value of the language query parameter."
+          },
           {
             "$ref": "#/components/parameters/RequestIdHeader"
           }
@@ -5505,6 +6027,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
@@ -5516,7 +6041,9 @@
           }
         },
         "summary": "Retrieve a sanitized shared report",
-        "tags": ["Public Reports"],
+        "tags": [
+          "Public Reports"
+        ],
         "description": "Retrieve a sanitized shared report. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
         "x-verith-response-envelope": true
@@ -5567,7 +6094,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Report Feedback Admin"],
+        "tags": [
+          "Report Feedback Admin"
+        ],
         "summary": "List feedback",
         "description": "List feedback. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -5632,7 +6161,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Report Feedback Admin"],
+        "tags": [
+          "Report Feedback Admin"
+        ],
         "summary": "Get feedback",
         "description": "Get feedback. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -5712,7 +6243,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Report Feedback Admin"],
+        "tags": [
+          "Report Feedback Admin"
+        ],
         "summary": "Update resolve",
         "description": "Update resolve. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -5765,7 +6298,9 @@
           }
         ],
         "summary": "Get real operational aggregates for the last 30 days",
-        "tags": ["Admin analytics"],
+        "tags": [
+          "Admin analytics"
+        ],
         "description": "Get real operational aggregates for the last 30 days. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -5817,7 +6352,9 @@
           }
         ],
         "summary": "Get privacy-thresholded mission and pilot aggregates",
-        "tags": ["Admin analytics"],
+        "tags": [
+          "Admin analytics"
+        ],
         "description": "Get privacy-thresholded mission and pilot aggregates. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -5876,7 +6413,9 @@
           }
         ],
         "summary": "Record a privacy-safe product interaction",
-        "tags": ["Product analytics"],
+        "tags": [
+          "Product analytics"
+        ],
         "description": "Record a privacy-safe product interaction. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": false
@@ -5924,7 +6463,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification"],
+        "tags": [
+          "Gamification"
+        ],
         "summary": "Get current authenticated user",
         "description": "Get current authenticated user. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -5999,7 +6540,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification"],
+        "tags": [
+          "Gamification"
+        ],
         "summary": "Get transactions",
         "description": "Get transactions. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -6067,7 +6610,11 @@
             "schema": {
               "default": "ALL",
               "type": "string",
-              "enum": ["ALL", "EARNED", "LOCKED"]
+              "enum": [
+                "ALL",
+                "EARNED",
+                "LOCKED"
+              ]
             },
             "description": "Value of the earned query parameter."
           },
@@ -6104,7 +6651,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Gamification"],
+        "tags": [
+          "Gamification"
+        ],
         "summary": "Get badges",
         "description": "Get badges. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -6172,7 +6721,11 @@
             "schema": {
               "default": "ALL",
               "type": "string",
-              "enum": ["ALL", "EARNED", "LOCKED"]
+              "enum": [
+                "ALL",
+                "EARNED",
+                "LOCKED"
+              ]
             },
             "description": "Value of the earned query parameter."
           },
@@ -6217,7 +6770,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification"],
+        "tags": [
+          "Gamification"
+        ],
         "summary": "Get my badges",
         "description": "Get my badges. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -6235,7 +6790,11 @@
             "schema": {
               "default": "ALL_TIME",
               "type": "string",
-              "enum": ["WEEKLY", "MONTHLY", "ALL_TIME"]
+              "enum": [
+                "WEEKLY",
+                "MONTHLY",
+                "ALL_TIME"
+              ]
             },
             "description": "Value of the period query parameter."
           },
@@ -6285,7 +6844,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Gamification"],
+        "tags": [
+          "Gamification"
+        ],
         "summary": "Get leaderboard",
         "description": "Get leaderboard. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -6337,7 +6898,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification"],
+        "tags": [
+          "Gamification"
+        ],
         "summary": "Create claim celebrations",
         "description": "Create claim celebrations. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -6416,7 +6979,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification"],
+        "tags": [
+          "Gamification"
+        ],
         "summary": "Update acknowledge celebration",
         "description": "Update acknowledge celebration. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -6530,7 +7095,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification Admin"],
+        "tags": [
+          "Gamification Admin"
+        ],
         "summary": "List badges",
         "description": "List badges. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -6597,7 +7164,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification Admin"],
+        "tags": [
+          "Gamification Admin"
+        ],
         "summary": "Create badge",
         "description": "Create badge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -6666,7 +7235,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification Admin"],
+        "tags": [
+          "Gamification Admin"
+        ],
         "summary": "Create backfill existing users",
         "description": "Create backfill existing users. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -6731,7 +7302,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification Admin"],
+        "tags": [
+          "Gamification Admin"
+        ],
         "summary": "Get badge",
         "description": "Get badge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -6811,7 +7384,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification Admin"],
+        "tags": [
+          "Gamification Admin"
+        ],
         "summary": "Update badge",
         "description": "Update badge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -6891,7 +7466,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Gamification Admin"],
+        "tags": [
+          "Gamification Admin"
+        ],
         "summary": "Archive badge",
         "description": "Archive badge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -6952,7 +7529,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Get unread count",
         "description": "Get unread count. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7027,7 +7606,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "List notification",
         "description": "List notification. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7092,7 +7673,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Update read",
         "description": "Update read. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7144,7 +7727,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Update read all",
         "description": "Update read all. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7202,7 +7787,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Delete notification",
         "description": "Delete notification. Requires a valid Verith access token. A successful request returns no response body.",
         "x-verith-access": "authenticated",
@@ -7271,7 +7858,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications Admin"],
+        "tags": [
+          "Notifications Admin"
+        ],
         "summary": "Create broadcast product message",
         "description": "Create broadcast product message. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -7320,7 +7909,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Media Literacy"],
+        "tags": [
+          "Media Literacy"
+        ],
         "summary": "Get profile",
         "description": "Get profile. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7369,7 +7960,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Media Literacy"],
+        "tags": [
+          "Media Literacy"
+        ],
         "summary": "Get evidence",
         "description": "Get evidence. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7419,7 +8012,9 @@
           }
         ],
         "summary": "Get the current effective product entitlement",
-        "tags": ["Entitlements"],
+        "tags": [
+          "Entitlements"
+        ],
         "description": "Get the current effective product entitlement. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -7501,7 +8096,9 @@
           }
         ],
         "summary": "Grant a sponsored or administrative entitlement",
-        "tags": ["Entitlements"],
+        "tags": [
+          "Entitlements"
+        ],
         "description": "Grant a sponsored or administrative entitlement. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
         "x-verith-response-envelope": true
@@ -7549,7 +8146,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
             },
             "description": "Value of the difficulty query parameter."
           },
@@ -7595,7 +8196,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Learning"],
+        "tags": [
+          "Learning"
+        ],
         "summary": "List courses",
         "description": "List courses. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -7649,7 +8252,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Learning"],
+        "tags": [
+          "Learning"
+        ],
         "summary": "Get course",
         "description": "Get course. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -7703,7 +8308,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Learning"],
+        "tags": [
+          "Learning"
+        ],
         "summary": "Get lesson",
         "description": "Get lesson. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -7782,7 +8389,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning"],
+        "tags": [
+          "Learning"
+        ],
         "summary": "Update progress",
         "description": "Update progress. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7844,7 +8453,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning"],
+        "tags": [
+          "Learning"
+        ],
         "summary": "Get my progress",
         "description": "Get my progress. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7906,7 +8517,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning"],
+        "tags": [
+          "Learning"
+        ],
         "summary": "Get recommendations",
         "description": "Get recommendations. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -7955,7 +8568,12 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["DRAFT", "IN_REVIEW", "PUBLISHED", "ARCHIVED"]
+              "enum": [
+                "DRAFT",
+                "IN_REVIEW",
+                "PUBLISHED",
+                "ARCHIVED"
+              ]
             },
             "description": "Optional status used to filter results."
           },
@@ -7965,7 +8583,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
             },
             "description": "Value of the difficulty query parameter."
           },
@@ -8031,7 +8653,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "List courses",
         "description": "List courses. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8098,7 +8722,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Create course",
         "description": "Create course. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8163,7 +8789,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Get course",
         "description": "Get course. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8243,7 +8871,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Update course",
         "description": "Update course. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8323,7 +8953,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Archive course",
         "description": "Archive course. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8372,7 +9004,12 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["DRAFT", "IN_REVIEW", "PUBLISHED", "ARCHIVED"]
+              "enum": [
+                "DRAFT",
+                "IN_REVIEW",
+                "PUBLISHED",
+                "ARCHIVED"
+              ]
             },
             "description": "Optional status used to filter results."
           },
@@ -8382,7 +9019,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
             },
             "description": "Value of the difficulty query parameter."
           },
@@ -8448,7 +9089,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "List lessons",
         "description": "List lessons. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8515,7 +9158,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Create lesson",
         "description": "Create lesson. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8580,7 +9225,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Get lesson",
         "description": "Get lesson. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8660,7 +9307,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Update lesson",
         "description": "Update lesson. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8740,7 +9389,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Archive lesson",
         "description": "Archive lesson. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8822,7 +9473,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Update course status",
         "description": "Update course status. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8904,7 +9557,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Learning Admin"],
+        "tags": [
+          "Learning Admin"
+        ],
         "summary": "Update lesson status",
         "description": "Update lesson status. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -8958,7 +9613,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Quizzes"],
+        "tags": [
+          "Quizzes"
+        ],
         "summary": "Get quizze",
         "description": "Get quizze. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -9012,7 +9669,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Quizzes"],
+        "tags": [
+          "Quizzes"
+        ],
         "summary": "Get by lesson",
         "description": "Get by lesson. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -9074,7 +9733,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes"],
+        "tags": [
+          "Quizzes"
+        ],
         "summary": "Get attempts",
         "description": "Get attempts. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -9151,7 +9812,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes"],
+        "tags": [
+          "Quizzes"
+        ],
         "summary": "Submit",
         "description": "Submit. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -9200,7 +9863,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"]
+              "enum": [
+                "DRAFT",
+                "PUBLISHED",
+                "ARCHIVED"
+              ]
             },
             "description": "Optional status used to filter results."
           },
@@ -9267,7 +9934,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes Admin"],
+        "tags": [
+          "Quizzes Admin"
+        ],
         "summary": "List quizze",
         "description": "List quizze. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -9334,7 +10003,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes Admin"],
+        "tags": [
+          "Quizzes Admin"
+        ],
         "summary": "Create quizze",
         "description": "Create quizze. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -9399,7 +10070,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes Admin"],
+        "tags": [
+          "Quizzes Admin"
+        ],
         "summary": "Get quizze",
         "description": "Get quizze. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -9479,7 +10152,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes Admin"],
+        "tags": [
+          "Quizzes Admin"
+        ],
         "summary": "Update quizze",
         "description": "Update quizze. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -9559,7 +10234,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes Admin"],
+        "tags": [
+          "Quizzes Admin"
+        ],
         "summary": "Archive quizze",
         "description": "Archive quizze. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -9641,7 +10318,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Quizzes Admin"],
+        "tags": [
+          "Quizzes Admin"
+        ],
         "summary": "Update status",
         "description": "Update status. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -9690,7 +10369,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
             },
             "description": "Value of the difficulty query parameter."
           },
@@ -9736,7 +10419,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Challenges"],
+        "tags": [
+          "Challenges"
+        ],
         "summary": "List challenge",
         "description": "List challenge. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -9777,7 +10462,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Challenges"],
+        "tags": [
+          "Challenges"
+        ],
         "summary": "Get today's challenge",
         "description": "Get today's challenge. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -9831,7 +10518,9 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "tags": ["Challenges"],
+        "tags": [
+          "Challenges"
+        ],
         "summary": "Get challenge",
         "description": "Get challenge. This operation is publicly accessible. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "public",
@@ -9910,7 +10599,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges"],
+        "tags": [
+          "Challenges"
+        ],
         "summary": "Submit challenge attempt",
         "description": "Submit challenge attempt. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -9970,7 +10661,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges"],
+        "tags": [
+          "Challenges"
+        ],
         "summary": "Get attempts",
         "description": "Get attempts. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -10019,7 +10712,13 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["DRAFT", "SCHEDULED", "PUBLISHED", "EXPIRED", "ARCHIVED"]
+              "enum": [
+                "DRAFT",
+                "SCHEDULED",
+                "PUBLISHED",
+                "EXPIRED",
+                "ARCHIVED"
+              ]
             },
             "description": "Optional status used to filter results."
           },
@@ -10029,7 +10728,11 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"]
+              "enum": [
+                "BEGINNER",
+                "INTERMEDIATE",
+                "ADVANCED"
+              ]
             },
             "description": "Value of the difficulty query parameter."
           },
@@ -10086,7 +10789,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges Admin"],
+        "tags": [
+          "Challenges Admin"
+        ],
         "summary": "List challenge",
         "description": "List challenge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -10153,7 +10858,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges Admin"],
+        "tags": [
+          "Challenges Admin"
+        ],
         "summary": "Create challenge",
         "description": "Create challenge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -10218,7 +10925,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges Admin"],
+        "tags": [
+          "Challenges Admin"
+        ],
         "summary": "Get challenge",
         "description": "Get challenge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -10298,7 +11007,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges Admin"],
+        "tags": [
+          "Challenges Admin"
+        ],
         "summary": "Update challenge",
         "description": "Update challenge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -10378,7 +11089,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges Admin"],
+        "tags": [
+          "Challenges Admin"
+        ],
         "summary": "Archive challenge",
         "description": "Archive challenge. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -10460,7 +11173,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Challenges Admin"],
+        "tags": [
+          "Challenges Admin"
+        ],
         "summary": "Update status",
         "description": "Update status. Requires an authenticated account with the endpoint’s administrative role. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated-admin",
@@ -10513,7 +11228,9 @@
           }
         ],
         "summary": "Request an encrypted asynchronous account export",
-        "tags": ["Privacy"],
+        "tags": [
+          "Privacy"
+        ],
         "description": "Request an encrypted asynchronous account export. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -10575,7 +11292,9 @@
           }
         ],
         "summary": "Get account export preparation status",
-        "tags": ["Privacy"],
+        "tags": [
+          "Privacy"
+        ],
         "description": "Get account export preparation status. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": true
@@ -10653,7 +11372,9 @@
           }
         ],
         "summary": "Download a completed account export",
-        "tags": ["Privacy"],
+        "tags": [
+          "Privacy"
+        ],
         "description": "Download a completed account export. Requires a valid Verith access token. The successful response is returned as the documented raw media type.",
         "x-verith-access": "authenticated",
         "x-verith-response-envelope": false
@@ -10701,7 +11422,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Community Missions"],
+        "tags": [
+          "Community Missions"
+        ],
         "summary": "List mission",
         "description": "List mission. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -10763,7 +11486,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Community Missions"],
+        "tags": [
+          "Community Missions"
+        ],
         "summary": "Get mission",
         "description": "Get mission. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -10842,7 +11567,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Community Missions"],
+        "tags": [
+          "Community Missions"
+        ],
         "summary": "Create join",
         "description": "Create join. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -10914,7 +11641,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Community Missions"],
+        "tags": [
+          "Community Missions"
+        ],
         "summary": "Get assessment",
         "description": "Get assessment. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -11003,7 +11732,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Community Missions"],
+        "tags": [
+          "Community Missions"
+        ],
         "summary": "Submit",
         "description": "Submit. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -11082,7 +11813,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Community Missions"],
+        "tags": [
+          "Community Missions"
+        ],
         "summary": "Create scenario",
         "description": "Create scenario. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -11144,7 +11877,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Community Missions"],
+        "tags": [
+          "Community Missions"
+        ],
         "summary": "Get impact",
         "description": "Get impact. Requires a valid Verith access token. Successful JSON is returned in the standard Verith response envelope.",
         "x-verith-access": "authenticated",
@@ -11322,7 +12057,13 @@
             "type": "string"
           },
           "preferredLanguage": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "en",
+              "fr",
+              "es",
+              "yo"
+            ]
           },
           "timezone": {
             "type": "string"
@@ -11370,7 +12111,11 @@
             "type": "string"
           }
         },
-        "required": ["email", "username", "password"]
+        "required": [
+          "email",
+          "username",
+          "password"
+        ]
       },
       "GoogleAuthConfigDto": {
         "type": "object",
@@ -11383,7 +12128,10 @@
             "nullable": true
           }
         },
-        "required": ["enabled", "clientId"]
+        "required": [
+          "enabled",
+          "clientId"
+        ]
       },
       "GoogleAuthDto": {
         "type": "object",
@@ -11394,13 +12142,19 @@
           },
           "intent": {
             "type": "string",
-            "enum": ["LOGIN", "REGISTER"]
+            "enum": [
+              "LOGIN",
+              "REGISTER"
+            ]
           },
           "deviceName": {
             "type": "string"
           }
         },
-        "required": ["credential", "intent"]
+        "required": [
+          "credential",
+          "intent"
+        ]
       },
       "TokenDto": {
         "type": "object",
@@ -11409,7 +12163,9 @@
             "type": "string"
           }
         },
-        "required": ["token"]
+        "required": [
+          "token"
+        ]
       },
       "EmailDto": {
         "type": "object",
@@ -11418,7 +12174,9 @@
             "type": "string"
           }
         },
-        "required": ["email"]
+        "required": [
+          "email"
+        ]
       },
       "LoginDto": {
         "type": "object",
@@ -11433,7 +12191,10 @@
             "type": "string"
           }
         },
-        "required": ["identifier", "password"]
+        "required": [
+          "identifier",
+          "password"
+        ]
       },
       "RefreshDto": {
         "type": "object",
@@ -11455,7 +12216,10 @@
             "minLength": 12
           }
         },
-        "required": ["token", "newPassword"]
+        "required": [
+          "token",
+          "newPassword"
+        ]
       },
       "ChangePasswordDto": {
         "type": "object",
@@ -11468,7 +12232,10 @@
             "minLength": 12
           }
         },
-        "required": ["currentPassword", "newPassword"]
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
       },
       "CreateUploadSignatureDto": {
         "type": "object",
@@ -11489,7 +12256,9 @@
             ]
           }
         },
-        "required": ["assetType"]
+        "required": [
+          "assetType"
+        ]
       },
       "ConfirmUploadDto": {
         "type": "object",
@@ -11504,19 +12273,33 @@
             "type": "string"
           }
         },
-        "required": ["assetId", "version", "signature"]
+        "required": [
+          "assetId",
+          "version",
+          "signature"
+        ]
       },
       "CreateVerificationDto": {
         "type": "object",
         "properties": {
           "mode": {
             "type": "string",
-            "enum": ["STANDARD", "GUIDED"],
+            "enum": [
+              "STANDARD",
+              "GUIDED"
+            ],
             "default": "STANDARD"
           },
           "sourceType": {
             "type": "string",
-            "enum": ["TEXT", "URL", "IMAGE", "SCREENSHOT", "AUDIO", "VIDEO"]
+            "enum": [
+              "TEXT",
+              "URL",
+              "IMAGE",
+              "SCREENSHOT",
+              "AUDIO",
+              "VIDEO"
+            ]
           },
           "text": {
             "type": "string",
@@ -11538,15 +12321,27 @@
           },
           "requestedLanguage": {
             "type": "string",
-            "default": "en"
+            "default": "en",
+            "enum": [
+              "en",
+              "fr",
+              "es",
+              "yo"
+            ]
           },
           "visibility": {
             "type": "string",
-            "enum": ["PRIVATE", "UNLISTED", "PUBLIC"],
+            "enum": [
+              "PRIVATE",
+              "UNLISTED",
+              "PUBLIC"
+            ],
             "default": "PRIVATE"
           }
         },
-        "required": ["sourceType"]
+        "required": [
+          "sourceType"
+        ]
       },
       "Object": {
         "type": "object",
@@ -11569,7 +12364,9 @@
             "maxLength": 2000
           }
         },
-        "required": ["questionId"]
+        "required": [
+          "questionId"
+        ]
       },
       "SubmitGuidedResponsesDto": {
         "type": "object",
@@ -11581,17 +12378,42 @@
             }
           }
         },
-        "required": ["responses"]
+        "required": [
+          "responses"
+        ]
       },
       "UpdateVerificationVisibilityDto": {
         "type": "object",
         "properties": {
           "visibility": {
             "type": "string",
-            "enum": ["PRIVATE", "UNLISTED", "PUBLIC"]
+            "enum": [
+              "PRIVATE",
+              "UNLISTED",
+              "PUBLIC"
+            ]
           }
         },
-        "required": ["visibility"]
+        "required": [
+          "visibility"
+        ]
+      },
+      "ConfirmVerificationLanguageDto": {
+        "type": "object",
+        "properties": {
+          "sourceLanguage": {
+            "type": "string",
+            "enum": [
+              "en",
+              "fr",
+              "es",
+              "yo"
+            ]
+          }
+        },
+        "required": [
+          "sourceLanguage"
+        ]
       },
       "CreatePromptVersionDto": {
         "type": "object",
@@ -11626,17 +12448,27 @@
         "properties": {
           "visibility": {
             "type": "string",
-            "enum": ["PRIVATE", "UNLISTED", "PUBLIC"]
+            "enum": [
+              "PRIVATE",
+              "UNLISTED",
+              "PUBLIC"
+            ]
           }
         },
-        "required": ["visibility"]
+        "required": [
+          "visibility"
+        ]
       },
       "ReportFeedbackDto": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["HELPFUL", "NOT_HELPFUL", "PROBLEM_REPORTED"]
+            "enum": [
+              "HELPFUL",
+              "NOT_HELPFUL",
+              "PROBLEM_REPORTED"
+            ]
           },
           "category": {
             "type": "string",
@@ -11653,7 +12485,9 @@
             "type": "string"
           }
         },
-        "required": ["type"]
+        "required": [
+          "type"
+        ]
       },
       "ResolveReportFeedbackDto": {
         "type": "object",
@@ -11699,7 +12533,9 @@
             "minimum": 0
           }
         },
-        "required": ["unreadCount"]
+        "required": [
+          "unreadCount"
+        ]
       },
       "ProductMessageDto": {
         "type": "object",
@@ -11722,7 +12558,11 @@
             "example": "learning-catalog-august-2026"
           }
         },
-        "required": ["title", "message", "reference"]
+        "required": [
+          "title",
+          "message",
+          "reference"
+        ]
       },
       "GrantEntitlementDto": {
         "type": "object",
@@ -11738,7 +12578,9 @@
             "type": "number"
           }
         },
-        "required": ["progress"]
+        "required": [
+          "progress"
+        ]
       },
       "CreateCourseDto": {
         "type": "object",
@@ -11761,20 +12603,34 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["DRAFT", "IN_REVIEW", "PUBLISHED", "ARCHIVED"]
+            "enum": [
+              "DRAFT",
+              "IN_REVIEW",
+              "PUBLISHED",
+              "ARCHIVED"
+            ]
           }
         },
-        "required": ["status"]
+        "required": [
+          "status"
+        ]
       },
       "UpdateLessonStatusDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["DRAFT", "IN_REVIEW", "PUBLISHED", "ARCHIVED"]
+            "enum": [
+              "DRAFT",
+              "IN_REVIEW",
+              "PUBLISHED",
+              "ARCHIVED"
+            ]
           }
         },
-        "required": ["status"]
+        "required": [
+          "status"
+        ]
       },
       "SubmitQuizDto": {
         "type": "object",
@@ -11822,7 +12678,10 @@
       },
       "ApiResponseMeta": {
         "type": "object",
-        "required": ["requestId", "timestamp"],
+        "required": [
+          "requestId",
+          "timestamp"
+        ],
         "properties": {
           "requestId": {
             "type": "string",
@@ -11838,11 +12697,18 @@
       },
       "ApiSuccessResponse": {
         "type": "object",
-        "required": ["success", "message", "data", "meta"],
+        "required": [
+          "success",
+          "message",
+          "data",
+          "meta"
+        ],
         "properties": {
           "success": {
             "type": "boolean",
-            "enum": [true],
+            "enum": [
+              true
+            ],
             "example": true
           },
           "message": {
@@ -11859,7 +12725,10 @@
       },
       "ApiError": {
         "type": "object",
-        "required": ["code", "details"],
+        "required": [
+          "code",
+          "details"
+        ],
         "properties": {
           "code": {
             "type": "string",
@@ -11874,11 +12743,18 @@
       },
       "ApiErrorResponse": {
         "type": "object",
-        "required": ["success", "message", "error", "meta"],
+        "required": [
+          "success",
+          "message",
+          "error",
+          "meta"
+        ],
         "properties": {
           "success": {
             "type": "boolean",
-            "enum": [false],
+            "enum": [
+              false
+            ],
             "example": false
           },
           "message": {

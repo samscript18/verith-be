@@ -14,6 +14,32 @@ import { GuidedInvestigationService } from './guided-investigation.service';
 import type { CompetencyService } from '../../mil/services/competency.service';
 
 describe('GuidedInvestigationService', () => {
+  it('localizes all questions while keeping language-independent IDs and answers', () => {
+    const service = setup(sessionFixture(GuidedInvestigationStatus.READY));
+    const builder = service as unknown as {
+      questions(language: 'en' | 'fr' | 'es' | 'yo'): Array<{
+        id: string;
+        prompt: string;
+        options: Array<{ id: string; label: string }>;
+        correctOptionIds: string[];
+      }>;
+    };
+    const english = builder.questions('en');
+    for (const language of ['fr', 'es', 'yo'] as const) {
+      const localized = builder.questions(language);
+      expect(localized.map((question) => question.id)).toEqual(
+        english.map((question) => question.id),
+      );
+      expect(localized.map((question) => question.correctOptionIds)).toEqual(
+        english.map((question) => question.correctOptionIds),
+      );
+      expect(localized[0]!.prompt).not.toBe(english[0]!.prompt);
+      expect(localized[0]!.options.map((option) => option.id)).toEqual(
+        english[0]!.options.map((option) => option.id),
+      );
+    }
+  });
+
   it('never exposes stored correct option IDs in the read payload', async () => {
     const session = sessionFixture(GuidedInvestigationStatus.READY);
     const service = setup(session);

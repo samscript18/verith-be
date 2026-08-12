@@ -15,6 +15,7 @@ export interface AiRouterRequest<TOutput> {
   preferredProvider?: AiProviderName;
   temperature?: number;
   maxOutputTokens?: number;
+  reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
   maxProviderCalls?: number;
   allowSchemaCorrection?: boolean;
   media?: { mimeType: string; base64Data: string };

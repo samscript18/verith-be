@@ -180,7 +180,7 @@ const challengeSeeds = [
           },
           {
             id: 'c',
-            text: 'Assume it is false because it arrived on WhatsApp',
+            text: 'Assume it is false because it was shared on social media',
           },
         ],
         correctOptionIds: ['b'],
@@ -354,6 +354,56 @@ async function upsertOwned(
   return collection.findOne(query, { projection: { _id: 1 } });
 }
 
+async function migrateCommunityMission(missions, adminId) {
+  const legacySlug = 'safe-sharing-on-whatsapp';
+  const currentSlug = 'safe-sharing-on-social-media';
+  const legacy = await missions.findOne(
+    { slug: legacySlug },
+    { projection: { _id: 1, createdBy: 1 } },
+  );
+  if (!legacy) return;
+  if (legacy.createdBy && !sameId(legacy.createdBy, adminId)) {
+    throw new Error(
+      `Refusing to migrate mission ${legacySlug}: the record belongs to another creator.`,
+    );
+  }
+
+  const current = await missions.findOne(
+    { slug: currentSlug },
+    { projection: { _id: 1, createdBy: 1 } },
+  );
+  if (current) {
+    if (current.createdBy && !sameId(current.createdBy, adminId)) {
+      throw new Error(
+        `Refusing to migrate mission ${currentSlug}: the record belongs to another creator.`,
+      );
+    }
+    await missions.updateOne(
+      { _id: legacy._id },
+      {
+        $set: {
+          slug: `archived-community-sharing-${String(legacy._id)}`,
+          title: 'Archived Community Sharing Practice',
+          status: 'ARCHIVED',
+          updatedAt: new Date(),
+        },
+      },
+    );
+    return;
+  }
+
+  await missions.updateOne(
+    { _id: legacy._id },
+    {
+      $set: {
+        slug: currentSlug,
+        title: 'Safe Sharing on Social Media',
+        updatedAt: new Date(),
+      },
+    },
+  );
+}
+
 async function seed() {
   await mongoose.connect(DATABASE_URI, { serverSelectionTimeoutMS: 10_000 });
   const database = mongoose.connection.db;
@@ -490,11 +540,12 @@ async function seed() {
     });
   }
 
+  await migrateCommunityMission(missions, admin._id);
   await assertSeedOwnership(
     missions,
-    { slug: 'safe-sharing-on-whatsapp' },
+    { slug: 'safe-sharing-on-social-media' },
     admin._id,
-    'mission safe-sharing-on-whatsapp',
+    'mission safe-sharing-on-social-media',
   );
   const learningCourse = await courses.findOne({
     slug: 'evidence-before-sharing',
@@ -504,11 +555,11 @@ async function seed() {
   });
   const mission = await upsertOwned(
     missions,
-    { slug: 'safe-sharing-on-whatsapp' },
+    { slug: 'safe-sharing-on-social-media' },
     {
-      title: 'Safe Sharing on WhatsApp',
+      title: 'Safe Sharing on Social Media',
       summary:
-        'Practise a calm, evidence-first response to urgent forwards, voice notes, screenshots, and unsupported authority claims.',
+        'Practise calm, evidence-first responses to urgent posts, direct messages, voice notes, screenshots, and unsupported authority claims across social platforms.',
       topic: 'Responsible community sharing',
       audience: 'Young people, families, schools, and community groups',
       difficulty: 'BEGINNER',
@@ -571,7 +622,7 @@ async function seed() {
   }
   seeded.missions.push({
     id: String(mission._id),
-    slug: 'safe-sharing-on-whatsapp',
+    slug: 'safe-sharing-on-social-media',
   });
 
   console.log(

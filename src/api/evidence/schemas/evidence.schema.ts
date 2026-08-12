@@ -28,6 +28,12 @@ export class Evidence {
   @Prop({ required: true, enum: SearchQueryCategory })
   queryCategory!: SearchQueryCategory;
 
+  @Prop()
+  searchQueryLanguage?: string;
+
+  @Prop()
+  searchQuerySource?: string;
+
   @Prop({ required: true })
   sourceUrl!: string;
 
@@ -60,6 +66,9 @@ export class Evidence {
 
   @Prop()
   relevantExcerpt?: string;
+
+  @Prop()
+  originalExcerpt?: string;
 
   @Prop()
   contentHash?: string;
