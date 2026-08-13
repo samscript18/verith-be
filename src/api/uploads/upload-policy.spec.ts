@@ -12,10 +12,9 @@ describe('getUploadPolicy', () => {
   });
 
   it('uses video-resource audio constraints for voice notes', () => {
-    expect(
-      getUploadPolicy(AssetType.VERIFICATION_AUDIO, 1000, 2000),
-    ).toMatchObject({
+    expect(getUploadPolicy(AssetType.VERIFICATION_AUDIO, 1000, 2000)).toEqual({
       resourceType: 'video',
+      allowedFormats: ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'flac', 'opus'],
       maxBytes: 2000,
     });
   });

@@ -40,11 +40,27 @@ describe('AiRouterService', () => {
           ],
         }),
       } as never,
+      {
+        allows: jest.fn().mockResolvedValue(true),
+        estimate: jest.fn().mockReturnValue({
+          costEstimateSource: 'UNAVAILABLE',
+        }),
+        invalidate: jest.fn(),
+        mode: jest.fn().mockResolvedValue('NORMAL'),
+      } as never,
+      {
+        run: jest.fn(
+          (_provider: unknown, _capability: unknown, execute: () => unknown) =>
+            execute(),
+        ),
+      } as never,
       new ConfigService({
         ai: {
           maxRetries: 0,
+          maxProviderCalls: 2,
           healthCacheSeconds: 300,
           executionRetentionDays: 30,
+          capabilityRoutes: {},
         },
       }),
     );

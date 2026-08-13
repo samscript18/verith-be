@@ -117,6 +117,7 @@ export class MediaProcessingService {
       verificationId: verification.id,
       temperature: 0.1,
       maxOutputTokens: 5000,
+      reasoningEffort: 'minimal',
       media,
     });
     const output = result.output;
@@ -221,6 +222,10 @@ export class MediaProcessingService {
       verificationId: verification.id,
       temperature: 0.1,
       maxOutputTokens: 7000,
+      // Video extraction is an observational/transcription task. Hidden
+      // thinking consumes the same output budget and can leave a successful
+      // Vertex response with no presentation part, so disable it here.
+      reasoningEffort: 'none',
       media,
     });
     const output = result.output;
@@ -290,11 +295,11 @@ export class MediaProcessingService {
 
   private videoJoiSchema(): Joi.ObjectSchema<VideoOutput> {
     const strings = Joi.array()
-      .items(Joi.string().max(2000))
-      .max(200)
+      .items(Joi.string().max(1000))
+      .max(64)
       .required();
     return Joi.object<VideoOutput>({
-      spokenText: Joi.string().allow('').max(100000).required(),
+      spokenText: Joi.string().allow('').max(20000).required(),
       onScreenText: strings,
       language: Joi.string().max(20).required(),
       keyMoments: Joi.array()
@@ -303,13 +308,13 @@ export class MediaProcessingService {
             timestamp: Joi.string()
               .pattern(/^\d{2}:\d{2}(?::\d{2})?$/)
               .required(),
-            description: Joi.string().max(2000).required(),
+            description: Joi.string().max(1000).required(),
             evidenceType: Joi.string()
               .valid('VISUAL', 'AUDIO', 'BOTH')
               .required(),
           }),
         )
-        .max(200)
+        .max(60)
         .required(),
       visibleDates: strings,
       visibleUrls: strings,
@@ -320,7 +325,11 @@ export class MediaProcessingService {
   }
 
   private videoJsonSchema(): Record<string, unknown> {
-    const strings = { type: 'array', items: { type: 'string' } };
+    const strings = {
+      type: 'array',
+      maxItems: 64,
+      items: { type: 'string', maxLength: 1000 },
+    };
     return {
       type: 'object',
       additionalProperties: false,
@@ -336,18 +345,19 @@ export class MediaProcessingService {
         'limitations',
       ],
       properties: {
-        spokenText: { type: 'string' },
+        spokenText: { type: 'string', maxLength: 20000 },
         onScreenText: strings,
         language: { type: 'string' },
         keyMoments: {
           type: 'array',
+          maxItems: 60,
           items: {
             type: 'object',
             additionalProperties: false,
             required: ['timestamp', 'description', 'evidenceType'],
             properties: {
               timestamp: { type: 'string' },
-              description: { type: 'string' },
+              description: { type: 'string', maxLength: 1000 },
               evidenceType: {
                 type: 'string',
                 enum: ['VISUAL', 'AUDIO', 'BOTH'],

@@ -1,94 +1,272 @@
-# Provider Routing
+# AI Provider Routing and Review-Period Capacity
 
-## AI providers
+## Architecture
 
-Phase 5 implements Gemini, Groq, and OpenRouter through one `AiProvider`
-contract. Verith pins no-cost defaults in code so deployments need only API
-keys:
+Verith keeps one `AiProvider` contract and one capability router. Gemini Direct,
+Groq, OpenRouter, Google Vertex AI, and Amazon Bedrock all normalize into the
+same provider result and then pass the same Joi/domain validation. Tavily and
+Wikipedia remain evidence discovery providers; model output never becomes
+evidence by itself.
 
-- Gemini uses `gemini-3.5-flash` for text, image, OCR, and audio reasoning.
-- Groq uses `openai/gpt-oss-120b` for text and
-  `whisper-large-v3-turbo` for transcription.
-- OpenRouter uses concrete zero-price models instead of the random free-model
-  router: Nemotron 3 Super for reasoning and reporting, and Gemma 4 for image
-  fallback. Model selection is owned in code so deployments only configure
-  provider credentials.
+Vertex and Bedrock are reliability layers, not a migration and not speculative
+parallel requests. Each capability selects one eligible provider, records the
+attempt, classifies failure, and may call one different provider sequentially.
+Video is deliberately limited to one provider call.
 
-The router filters providers by configuration, capability, configured model, cached live health, and published prompt compatibility. A requested preferred provider is tried first only when it satisfies those constraints.
+## Default capability routes
 
-Daily Practice uses `DAILY_CHALLENGE_GENERATION`. Gemini, Groq, and OpenRouter
-advertise this capability; the existing configured order chooses candidates.
-One request generates all ten questions, and the caller caps the route at two
-provider calls with schema-correction retries disabled. Provider or content
-failure therefore falls to at most one alternate provider and then the
-deterministic bank. Tavily is not a Daily Practice question generator.
+| Capability | Default eligible order | Maximum calls |
+| --- | --- | ---: |
+| Claim extraction | Vertex → Bedrock → Groq → Gemini Direct → OpenRouter | 2 |
+| Other structured extraction | Groq → Gemini Direct → Vertex → Bedrock → OpenRouter | 2 |
+| Evidence/context analysis | Vertex → Bedrock → Gemini Direct → OpenRouter | 3 |
+| Report generation | Vertex → Bedrock → OpenRouter → Gemini Direct | 2 |
+| Report localization | Vertex → Bedrock → Groq → Gemini Direct → OpenRouter | 2 |
+| Image/screenshot/OCR | Vertex → Gemini Direct → OpenRouter | 2 |
+| Video understanding | Vertex, or Gemini Direct when Vertex is not enabled | 1 |
+| Audio reasoning | Existing Gemini path; Groq transcription remains separate | 1 |
+| Daily Practice | Groq → Gemini Direct → Vertex → OpenRouter → deterministic bank | 2 |
+
+The route is filtered by runtime provider eligibility, adapter capability,
+configured model, published prompt compatibility, and budget mode. An optional
+`AI_CAPABILITY_ROUTES_JSON` object can override individual routes in staging or
+production without adding scattered conditionals. The administrative legacy
+default order remains a fallback only for future capabilities without an
+explicit route.
+
+Claim extraction deliberately keeps Vertex and Bedrock within its two-attempt
+window. Production evidence showed that a Groq failure followed by malformed
+Gemini JSON could otherwise end an investigation before either reliability
+provider was reached. The claim-output ceiling is 6,000 tokens so a complete
+eight-claim schema is not cut off mid-JSON. In conserve/critical budget modes,
+the existing budget policy may still move eligible free capacity ahead.
+
+Evidence synthesis is the one three-attempt exception. Its larger analysis
+schema receives Vertex and Bedrock first, then one Gemini Direct fallback. Its
+10,000-token ceiling matches the service contract so the router does not
+silently truncate the structured document. Providers remain sequential and the
+router stops after the first validated result.
+
+## Failure and retry policy
+
+Provider calls are classified as authentication, rate-limit/quota, temporary,
+invalid request, invalid response, billing, or unknown failures.
+
+- Authentication failures disable the affected direct-provider credential;
+  another legitimately issued credential or the next provider may be used.
+- Rate limits cool down the affected key/provider and allow bounded failover.
+- Timeouts, network failures, and 5xx failures allow bounded failover.
+- Invalid request/schema/model-option failures never rotate through credentials
+  for the same provider because another key cannot repair an adapter payload.
+- Invalid provider JSON/domain output is rejected before persistence and may
+  fall through to one different provider.
+
+There is no provider racing. A normal capability has at most two sequential
+calls. The router records the primary provider, fallback destination, attempt,
+safe failure code, and failure class.
 
 ## Structured output
 
-All provider requests use schema-constrained JSON output. Gemini receives `responseMimeType: application/json` and `responseJsonSchema`. Groq and OpenRouter receive strict `response_format: json_schema`; OpenRouter also receives `require_parameters: true`.
+Gemini Direct uses its JSON schema response configuration. Groq and OpenRouter
+use OpenAI-compatible strict JSON schema output. Vertex uses `generateContent`
+with a response schema. Bedrock uses the official Converse structured-output
+configuration. Every response is parsed into the same internal DTO and then
+validated again; fallback providers do not bypass evidence-ID, relationship,
+or report-integrity checks.
 
-Provider JSON is parsed and validated again with the task's Joi schema. Invalid output is recorded and may receive a bounded corrective retry. A fallback is attempted only after an explicit failure and is identified in the router result.
+## Concurrency and queue behavior
 
-The `verification.analysis` prompt explicitly excludes verdict, risk, and
-confidence from model authority. It returns evidence relationships and textual
-findings only; stored IDs and offsets are revalidated before deterministic
-application calculations.
+BullMQ continues to persist and queue one complete investigation orchestration
+job. Verith does not create a Redis job for every AI step. An in-process FIFO
+gate additionally enforces both provider-class and capability limits.
 
-Gemini image analysis uses an inline image part plus a schema-constrained text
-instruction. If Gemini is unavailable, OpenRouter receives the image as a data
-URL and uses its configured multimodal model. Short-video
-understanding uses Gemini inline video with a 12 MiB/60-second application
-boundary and has no silent provider fallback. Groq
-transcription is a separate speech-to-text adapter rather than a text-reasoning
-capability. Its official
-[speech-to-text contract](https://console.groq.com/docs/speech-to-text) supplies
-verbose segment metadata. Gemini inline requests follow the official
-[image-understanding contract](https://ai.google.dev/gemini-api/docs/generate-content/image-understanding)
-and [video-understanding contract](https://ai.google.dev/gemini-api/docs/video-understanding).
+Recommended review-period starting values:
 
-The wire contracts follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content), [Groq chat-completions API](https://console.groq.com/docs/api-reference), and [OpenRouter structured-output documentation](https://openrouter.ai/docs/guides/features/structured-outputs).
-
-## Operational records and privacy
-
-`ai_provider_executions` records provider, primary/fallback relationship, model, prompt key/version, schema version, timestamps, latency, token usage, attempt, and safe failure code. It stores only a SHA-256 input fingerprint, never prompts, submitted content, or raw model output. Records expire after the code-defined 30-day retention period.
-
-Prompt definitions live in `ai_prompts`. Production resolution accepts only the latest `PUBLISHED` version compatible with the provider and model. Prompt contents are not exposed to normal users.
-
-`GET /api/v1/integrations/ai/health` is restricted to administrators. Health checks use provider model-list endpoints and return explicit provider states. Results are cached for five minutes; `force=true` bypasses the cache.
-
-## Configuration state
-
-A provider is configured only when it has an API key and at least one model. Missing or partial configuration returns `NOT_CONFIGURED`. Authentication, throttling, timeout, and availability failures remain distinct and never produce fabricated output.
-
-External generation checks are opt-in:
-
-```bash
-RUN_AI_EXTERNAL_TESTS=true npm run test:external
+```env
+AI_TEXT_CONCURRENCY=5
+AI_REPORT_CONCURRENCY=2
+AI_LOCALIZATION_CONCURRENCY=2
+AI_MEDIA_CONCURRENCY=2
+AI_AUDIO_CONCURRENCY=2
+AI_VIDEO_CONCURRENCY=1
+VERTEX_TEXT_CONCURRENCY=4
+VERTEX_MEDIA_CONCURRENCY=2
+BEDROCK_TEXT_CONCURRENCY=2
+GROQ_CONCURRENCY=4
+GEMINI_DIRECT_CONCURRENCY=2
 ```
 
-They make small real requests and consume provider free-tier quota. Keys must
-belong to free-tier projects without billing enabled.
+These ceilings are per worker process. If workers are horizontally replicated,
+the effective cloud concurrency is the configured limit multiplied by the
+number of worker processes; reduce per-process values or introduce a reviewed
+distributed lease before scaling workers.
 
-## Search providers
+## Cost telemetry and budget modes
 
-Phase 7 uses two search providers in a code-defined order:
+`ai_provider_executions` stores provider/model/capability, latency, attempt,
+token usage, estimated USD cost, estimate source, failure class, and fallback
+destination. It stores only a SHA-256 input fingerprint—not prompts, submitted
+content, raw output, or credentials.
 
-1. Tavily searches current web sources and returns ranked titles, URLs, and
-   discovery snippets when `TAVILY_API_KEY` is configured.
-2. Wikipedia REST search supplies reference material when Tavily is not
-   configured, is unavailable, or returns no results.
+Pricing is environment-owned because models and prices change:
 
-Search snippets are discovery metadata, not evidence; the application retrieves
-each selected page through its SSRF-safe fetch boundary before creating an
-available evidence record. Tavily is optional so an absent key produces an
-explicit `NOT_CONFIGURED` health state and preserves the Wikipedia fallback.
+The value is a JSON object keyed by the exact configured model ID. Every value
+contains the current `inputUsdPerMillion` and `outputUsdPerMillion` numbers from
+that model's official pricing page. Startup rejects missing, invalid, or
+all-zero pricing for enabled paid models. A `PROVIDER:*` entry may be
+used only when every configured model for that provider truly has the same
+price. Cloud invoices remain authoritative.
 
-The router retries only timeout and transient availability failures. Missing
-configuration, authentication rejection, and rate limiting remain distinct.
-`search_executions` stores a SHA-256 query fingerprint, provider request ID,
-latency, result/credit counts, primary/fallback relationship, and a safe
-failure code. It does not store the submitted query.
+The application calculates separate Vertex and Bedrock utilization plus an
+overall review allocation. Configurable thresholds produce:
 
-`GET /api/v1/integrations/search/health` is administrator-only. Results are
-cached for five minutes; normal searches do not incur a separate preflight
-call or consume an additional Tavily credit.
+- `NORMAL`: reviewed capability routes.
+- `CONSERVE`: free/low-cost providers move ahead of paid providers, AI Daily
+  Practice is disabled, and the deterministic bank remains active.
+- `CRITICAL`: free/low-cost providers are attempted first, paid capacity is
+  reserved for investigation-critical work, paid video is restricted, and
+  Bedrock is reserved for high-value reasoning.
+- `EXHAUSTED`: no ordinary paid-provider calls; free and deterministic paths
+  remain available.
+
+The execution-retention window must cover the full review period so budget
+history cannot expire while the guard is active. The deployment default is 120
+days and may be raised, up to 365 days, with
+`AI_EXECUTION_RETENTION_DAYS`.
+
+`GET /api/v1/integrations/ai/capacity` returns the cached budget projection and
+current in-process queue to administrators. `GET .../health` remains cached for
+five minutes. Vertex validates authentication but reports `CONFIGURED` until
+real inference validates model/location access. Bedrock likewise reports
+`CONFIGURED` until the first real Converse request validates credentials,
+model access, and region, avoiding paid probe calls.
+
+## Vertex authentication and rollout
+
+Use Application Default Credentials on Google Cloud. On another backend host,
+store a narrowly scoped service-account JSON object in the host's secret store
+as `GOOGLE_CLOUD_CREDENTIALS_JSON`; never commit a credential file. Grant only
+Vertex inference permissions needed by the selected models. Configure project,
+location, and each capability model explicitly, then enable `VERTEX_AI_ENABLED`.
+
+Before production, confirm the models exist in the chosen project/location,
+request quota if necessary, and run controlled text, Spanish, Yorùbá, image,
+screenshot, and short-video investigations in staging.
+
+The reviewed starting configuration uses the officially documented
+`gemini-2.5-flash` model for all Vertex capabilities and the `global` location.
+The Vertex adapter deliberately maps `global` to `aiplatform.googleapis.com`;
+regional locations continue using `<location>-aiplatform.googleapis.com`.
+
+Current setup references: [Vertex AI quickstart and ADC](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/quickstart),
+[Vertex Model Garden](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/explore-models),
+and [Google Cloud Budget API setup](https://docs.cloud.google.com/billing/docs/how-to/budget-api-setup).
+
+## Bedrock authentication and rollout
+
+The AWS SDK uses its normal credential chain. Prefer an execution IAM role; on
+hosts without roles, use secret-managed `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, and optional `AWS_SESSION_TOKEN`. Grant only
+`bedrock:InvokeModel` for the selected model or inference-profile ARNs. Confirm
+model access and region, configure text/reasoning/localization model IDs, then
+enable `BEDROCK_ENABLED`.
+
+Current setup references: [Bedrock model and regional availability](https://docs.aws.amazon.com/bedrock/latest/userguide/models.html),
+[model-inference IAM prerequisites](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-prereq.html),
+and [creating an AWS cost budget](https://docs.aws.amazon.com/cost-management/latest/userguide/create-cost-budget.html).
+
+The reviewed starting model is Claude Haiku 4.5 through the US geographic
+inference profile:
+
+```text
+us.anthropic.claude-haiku-4-5-20251001-v1:0
+```
+
+This model/profile supports the Bedrock Runtime Converse path and the structured
+output used by Verith. The `us.` profile is intentional: it provides independent
+US cross-region capacity while keeping Bedrock a bounded secondary failover.
+
+## Development environment
+
+Copy `.env.example` to the ignored backend `.env`, preserve the application's
+existing database/auth/provider settings, and add the following. Do not put a
+service-account JSON or AWS secret in a committed file.
+
+```env
+VERTEX_AI_ENABLED=true
+VERTEX_PROJECT_ID=<your-google-cloud-project-id>
+VERTEX_LOCATION=global
+GOOGLE_CLOUD_CREDENTIALS_JSON=
+VERTEX_MODEL_TEXT=gemini-2.5-flash
+VERTEX_MODEL_REASONING=gemini-2.5-flash
+VERTEX_MODEL_LOCALIZATION=gemini-2.5-flash
+VERTEX_MODEL_VISION=gemini-2.5-flash
+VERTEX_MODEL_VIDEO=gemini-2.5-flash
+
+BEDROCK_ENABLED=true
+BEDROCK_REGION=us-east-1
+BEDROCK_MODEL_TEXT=us.anthropic.claude-haiku-4-5-20251001-v1:0
+BEDROCK_MODEL_REASONING=us.anthropic.claude-haiku-4-5-20251001-v1:0
+BEDROCK_MODEL_LOCALIZATION=us.anthropic.claude-haiku-4-5-20251001-v1:0
+
+AI_COST_GUARD_ENABLED=true
+AI_REVIEW_PERIOD_START=2026-08-01T00:00:00.000Z
+AI_REVIEW_BUDGET_USD=250
+VERTEX_REVIEW_BUDGET_USD=220
+BEDROCK_REVIEW_BUDGET_USD=30
+AI_MODEL_PRICING_JSON={"VERTEX:gemini-2.5-flash":{"inputUsdPerMillion":0.30,"outputUsdPerMillion":2.50},"BEDROCK:us.anthropic.claude-haiku-4-5-20251001-v1:0":{"inputUsdPerMillion":1.10,"outputUsdPerMillion":5.50}}
+```
+
+Authenticate locally without copying credential JSON into the repository:
+
+```bash
+gcloud auth application-default login
+gcloud config set project <your-google-cloud-project-id>
+aws configure --profile verith-development
+export AWS_PROFILE=verith-development
+```
+
+The AWS profile must belong to an IAM principal with only the required Bedrock
+inference permission. If only one cloud account is ready, leave the other
+provider disabled; the router filters it safely.
+
+## Render production environment
+
+Add the same non-secret values in **Render → backend service → Environment**,
+but supply these account-owned secrets separately:
+
+```env
+NODE_ENV=production
+VERTEX_AI_ENABLED=true
+VERTEX_PROJECT_ID=<your-google-cloud-project-id>
+GOOGLE_CLOUD_CREDENTIALS_JSON=<single-line-service-account-json>
+
+BEDROCK_ENABLED=true
+AWS_ACCESS_KEY_ID=<iam-access-key-id>
+AWS_SECRET_ACCESS_KEY=<iam-secret-access-key>
+# Only set this for temporary STS credentials:
+AWS_SESSION_TOKEN=
+```
+
+All safe model, location, concurrency, budget, and pricing values can be pasted
+from the development block. Use Render's environment UI or a private environment
+group; never commit the secret values to `render.yaml`. After saving, choose
+**Save, rebuild, and deploy**, then run one controlled text investigation before
+media tests. Keep `AI_VIDEO_CONCURRENCY=1`.
+
+`GOOGLE_CLOUD_CREDENTIALS_JSON` must be the complete JSON object on one line.
+Render also supports a secret file, but the current Verith adapter directly
+consumes the JSON environment variable, so the environment variable is the
+least surprising configuration for this deployment.
+
+Create Google Cloud Billing and AWS Budget alerts independently. Suggested
+notifications are 25%, 50%, 75%, 90%, and 100%; alerts do not synchronously stop
+usage, so the application guard remains necessary.
+
+## Evidence and deterministic safety
+
+Tavily/Wikipedia discovery, SSRF protection, redirect/DNS validation, bounded
+retrieval, and evidence normalization are unchanged. Daily Practice falls back
+to the deterministic challenge bank. When every eligible investigation model
+is unavailable, Verith returns an honest provider-unavailable state rather than
+fabricating a report.

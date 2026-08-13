@@ -143,9 +143,38 @@ export abstract class OpenAiCompatibleProvider implements AiProvider {
             },
           );
         }
-        const output = parseJsonText(content, this.provider);
-        lease.succeed();
         const usage = readObject(body?.usage);
+        const finishReason =
+          typeof choice?.finish_reason === 'string'
+            ? choice.finish_reason
+            : null;
+        const output = parseJsonText(content, this.provider, {
+          ...(finishReason === 'length'
+            ? { invalidCode: `${this.provider}_OUTPUT_TRUNCATED` }
+            : {}),
+          operatorDetails: {
+            finishReason,
+            nativeFinishReason:
+              typeof choice?.native_finish_reason === 'string'
+                ? choice.native_finish_reason
+                : null,
+            inputTokens:
+              typeof usage?.prompt_tokens === 'number'
+                ? usage.prompt_tokens
+                : null,
+            outputTokens:
+              typeof usage?.completion_tokens === 'number'
+                ? usage.completion_tokens
+                : null,
+            totalTokens:
+              typeof usage?.total_tokens === 'number'
+                ? usage.total_tokens
+                : null,
+            providerRequestId:
+              typeof body?.id === 'string' ? body.id.slice(0, 160) : null,
+          },
+        });
+        lease.succeed();
         return {
           output,
           model: typeof body?.model === 'string' ? body.model : request.model,

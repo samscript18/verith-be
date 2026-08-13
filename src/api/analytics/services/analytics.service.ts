@@ -54,65 +54,164 @@ export class AnalyticsService {
 
   async overview() {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [users, activeUsers, verificationGroups, providerGroups] =
-      await Promise.all([
-        this.users.countDocuments({ deletedAt: { $exists: false } }),
-        this.users.countDocuments({ lastActiveAt: { $gte: since } }),
-        this.verifications.aggregate<{
-          _id: VerificationStatus;
-          count: number;
-          averageDurationMs: number | null;
-        }>([
-          { $match: { createdAt: { $gte: since } } },
-          {
-            $group: {
-              _id: '$status',
-              count: { $sum: 1 },
-              averageDurationMs: {
-                $avg: {
-                  $cond: [
-                    {
-                      $and: [
-                        { $ne: ['$processingStartedAt', null] },
-                        { $ne: ['$processingCompletedAt', null] },
-                      ],
-                    },
-                    {
-                      $subtract: [
-                        '$processingCompletedAt',
-                        '$processingStartedAt',
-                      ],
-                    },
-                    null,
-                  ],
-                },
+    const [
+      users,
+      activeUsers,
+      verificationGroups,
+      providerGroups,
+      investigationCostGroups,
+      localizationCostGroups,
+    ] = await Promise.all([
+      this.users.countDocuments({ deletedAt: { $exists: false } }),
+      this.users.countDocuments({ lastActiveAt: { $gte: since } }),
+      this.verifications.aggregate<{
+        _id: VerificationStatus;
+        count: number;
+        averageDurationMs: number | null;
+      }>([
+        { $match: { createdAt: { $gte: since } } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            averageDurationMs: {
+              $avg: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$processingStartedAt', null] },
+                      { $ne: ['$processingCompletedAt', null] },
+                    ],
+                  },
+                  {
+                    $subtract: [
+                      '$processingCompletedAt',
+                      '$processingStartedAt',
+                    ],
+                  },
+                  null,
+                ],
               },
             },
           },
-        ]),
-        this.providerExecutions.aggregate<{
-          _id: string;
-          count: number;
-          successful: number;
-          averageLatencyMs: number | null;
-          totalInputTokens: number;
-          totalOutputTokens: number;
-        }>([
-          { $match: { createdAt: { $gte: since } } },
-          {
-            $group: {
-              _id: '$provider',
-              count: { $sum: 1 },
-              successful: {
-                $sum: { $cond: ['$success', 1, 0] },
+        },
+      ]),
+      this.providerExecutions.aggregate<{
+        _id: string;
+        count: number;
+        successful: number;
+        averageLatencyMs: number | null;
+        totalInputTokens: number;
+        totalOutputTokens: number;
+        estimatedCostUsd: number;
+        fallbackCount: number;
+        pricedExecutions: number;
+      }>([
+        { $match: { createdAt: { $gte: since } } },
+        {
+          $group: {
+            _id: '$provider',
+            count: { $sum: 1 },
+            successful: {
+              $sum: { $cond: ['$success', 1, 0] },
+            },
+            averageLatencyMs: { $avg: '$latencyMs' },
+            totalInputTokens: { $sum: { $ifNull: ['$inputTokens', 0] } },
+            totalOutputTokens: { $sum: { $ifNull: ['$outputTokens', 0] } },
+            estimatedCostUsd: {
+              $sum: { $ifNull: ['$estimatedCostUsd', 0] },
+            },
+            fallbackCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$primaryProvider', null] },
+                      { $ne: ['$provider', '$primaryProvider'] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
               },
-              averageLatencyMs: { $avg: '$latencyMs' },
-              totalInputTokens: { $sum: { $ifNull: ['$inputTokens', 0] } },
-              totalOutputTokens: { $sum: { $ifNull: ['$outputTokens', 0] } },
+            },
+            pricedExecutions: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$costEstimateSource', 'CONFIGURED_PRICING'] },
+                  1,
+                  0,
+                ],
+              },
             },
           },
-        ]),
-      ]);
+        },
+      ]),
+      this.providerExecutions.aggregate<{
+        _id: string;
+        averageCostUsd: number;
+        averageProviderAttempts: number;
+        averageLatencyMs: number;
+        investigations: number;
+      }>([
+        {
+          $match: {
+            createdAt: { $gte: since },
+            verificationId: { $exists: true },
+          },
+        },
+        {
+          $lookup: {
+            from: 'verifications',
+            localField: 'verificationId',
+            foreignField: '_id',
+            as: 'verification',
+          },
+        },
+        { $unwind: '$verification' },
+        {
+          $group: {
+            _id: {
+              verificationId: '$verificationId',
+              sourceType: '$verification.sourceType',
+            },
+            costUsd: { $sum: { $ifNull: ['$estimatedCostUsd', 0] } },
+            attempts: { $sum: 1 },
+            latencyMs: { $sum: '$latencyMs' },
+          },
+        },
+        {
+          $group: {
+            _id: '$_id.sourceType',
+            averageCostUsd: { $avg: '$costUsd' },
+            averageProviderAttempts: { $avg: '$attempts' },
+            averageLatencyMs: { $avg: '$latencyMs' },
+            investigations: { $sum: 1 },
+          },
+        },
+      ]),
+      this.providerExecutions.aggregate<{
+        _id: null;
+        executions: number;
+        averageCostUsd: number;
+      }>([
+        {
+          $match: {
+            createdAt: { $gte: since },
+            capability: 'TRANSLATION',
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            executions: { $sum: 1 },
+            averageCostUsd: {
+              $avg: { $ifNull: ['$estimatedCostUsd', 0] },
+            },
+          },
+        },
+      ]),
+    ]);
 
     const volume = verificationGroups.reduce(
       (sum, group) => sum + group.count,
@@ -148,11 +247,30 @@ export class AnalyticsService {
         averageLatencyMs: group.averageLatencyMs,
         inputTokens: group.totalInputTokens,
         outputTokens: group.totalOutputTokens,
+        estimatedCostUsd: group.estimatedCostUsd,
+        fallbackRate: group.count ? group.fallbackCount / group.count : 0,
         cost: {
-          state: 'UNAVAILABLE',
-          reason: 'Provider cost is not stored',
+          state: group.pricedExecutions ? 'ESTIMATED' : 'UNAVAILABLE',
+          reason: group.pricedExecutions
+            ? 'Calculated from recorded token usage and configured model pricing; cloud invoices remain authoritative.'
+            : 'No configured price matched the recorded model executions.',
         },
       })),
+      aiEconomics: {
+        byInvestigationType: investigationCostGroups.map((group) => ({
+          sourceType: group._id,
+          investigations: group.investigations,
+          averageCostUsd: group.averageCostUsd,
+          averageProviderAttempts: group.averageProviderAttempts,
+          averageLatencyMs: group.averageLatencyMs,
+        })),
+        localization: localizationCostGroups[0] ?? {
+          executions: 0,
+          averageCostUsd: 0,
+        },
+        limitation:
+          'Costs are application estimates from configured per-model prices and may differ from provider billing.',
+      },
     };
   }
 

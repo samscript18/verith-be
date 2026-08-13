@@ -86,6 +86,21 @@ secrets in the platform secret manager. Rotate JWT, hashing, encryption,
 Cloudinary, mail, and model-provider credentials through a rehearsed
 dual-key/cutover process.
 
+For the UNESCO review-period reliability layer, keep Vertex and Bedrock off
+until model access has been verified in staging. Vertex should use workload
+identity/Application Default Credentials where the host supports it; otherwise
+store `GOOGLE_CLOUD_CREDENTIALS_JSON` as one backend-only secret. Bedrock should
+use an execution IAM role where possible, or backend-only AWS SDK credentials.
+Never add either credential to the separate frontend repository.
+
+Concurrency gates are per worker process. Before increasing worker replicas,
+multiply each configured provider limit by the proposed replica count and
+confirm the result fits Google/AWS quota and the review budget. Configure Google
+Cloud Billing and AWS Budget notifications independently; neither alert system
+is treated as an immediate API kill switch. The application-side model-pricing
+and budget configuration is documented in
+[provider-routing.md](provider-routing.md).
+
 Before routing traffic:
 
 1. run `npm run db:indexes:application && npm run db:indexes:catalog` from a

@@ -102,13 +102,35 @@ function failureState(status: number): string {
   return ProviderState.UNAVAILABLE;
 }
 
-export function parseJsonText(value: string, codePrefix: string): unknown {
+export function parseJsonText(
+  value: string,
+  codePrefix: string,
+  context: {
+    invalidCode?: string;
+    operatorDetails?: Record<string, unknown>;
+  } = {},
+): unknown {
+  const trimmed = value.trim();
+  // Some best-effort providers wrap an otherwise valid JSON value in one
+  // Markdown fence despite being instructed not to. Unwrap only a complete
+  // fence; never guess at or repair a partial JSON document.
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const candidate = fenced?.[1]?.trim() ?? trimmed;
   try {
-    return JSON.parse(value) as unknown;
+    return JSON.parse(candidate) as unknown;
   } catch {
     throw new ExternalProviderException(
       'The AI provider returned invalid JSON',
-      `${codePrefix}_INVALID_JSON`,
+      context.invalidCode ?? `${codePrefix}_INVALID_JSON`,
+      undefined,
+      null,
+      {
+        outputCharacters: value.length,
+        startsWithJsonContainer: /^[\s`]*(?:json\s*)?[{[]/i.test(value),
+        endsWithJsonContainer: /[}\]][\s`]*$/.test(value),
+        markdownFenceRemoved: Boolean(fenced),
+        ...context.operatorDetails,
+      },
     );
   }
 }

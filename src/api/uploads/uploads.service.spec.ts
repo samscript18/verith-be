@@ -154,6 +154,7 @@ describe('UploadsService video confirmation', () => {
     [AssetType.VERIFICATION_IMAGE, 'image', 'jpg'],
     [AssetType.VERIFICATION_SCREENSHOT, 'image', 'png'],
     [AssetType.VERIFICATION_AUDIO, 'video', 'mp3'],
+    [AssetType.VERIFICATION_AUDIO, 'video', 'opus'],
     [AssetType.VERIFICATION_VIDEO, 'video', 'mp4'],
     [AssetType.VERIFICATION_VIDEO, 'video', 'webm'],
   ])(
@@ -169,6 +170,45 @@ describe('UploadsService video confirmation', () => {
       ).resolves.toMatchObject({ resourceType, format });
     },
   );
+
+  it('accepts Cloudinary Opus metadata only for an audio investigation', async () => {
+    const { findOneAndUpdate, service } = setup(
+      { resourceType: 'video', format: 'opus' },
+      AssetType.VERIFICATION_AUDIO,
+    );
+
+    await expect(
+      service.confirm(ownerId, {
+        assetId,
+        signature: 'upload-response-signature',
+        version: 7,
+      }),
+    ).resolves.toMatchObject({ resourceType: 'video', format: 'opus' });
+
+    const update = (
+      findOneAndUpdate.mock.calls as unknown as Array<
+        [unknown, { $set: Record<string, unknown> }, unknown]
+      >
+    )[0]?.[1];
+    expect(update).toMatchObject({
+      $set: { format: 'opus', mimeType: 'audio/opus' },
+    });
+
+    const video = setup(
+      { resourceType: 'video', format: 'opus' },
+      AssetType.VERIFICATION_VIDEO,
+    );
+    await expect(
+      video.service.confirm(ownerId, {
+        assetId,
+        signature: 'upload-response-signature',
+        version: 7,
+      }),
+    ).rejects.toMatchObject({
+      code: 'UPLOAD_POLICY_MISMATCH',
+      details: { field: 'format' },
+    });
+  });
 
   it('rejects an invalid signature before provider lookup', async () => {
     const { getAsset, service, verifyUploadSignature } = setup();

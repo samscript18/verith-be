@@ -82,6 +82,7 @@ export class ClaimExtractionService {
       verificationId,
       temperature: 0.1,
       maxOutputTokens: 6000,
+      reasoningEffort: 'low',
     });
     const claims = extraction.output.claims.flatMap((claim) => {
       const sourceSpan = this.resolveSourceSpan(content, claim);
@@ -132,6 +133,7 @@ export class ClaimExtractionService {
         verificationId,
         temperature: 0.1,
         maxOutputTokens: 4000,
+        reasoningEffort: 'minimal',
       });
       queryPromptVersion = queryResult.promptVersion;
       for (const item of queryResult.output.claims) {

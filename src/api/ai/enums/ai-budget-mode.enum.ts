@@ -1,0 +1,6 @@
+export enum AiBudgetMode {
+  NORMAL = 'NORMAL',
+  CONSERVE = 'CONSERVE',
+  CRITICAL = 'CRITICAL',
+  EXHAUSTED = 'EXHAUSTED',
+}

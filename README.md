@@ -58,9 +58,10 @@ Normal test runs never call external AI or messaging providers. Live provider ve
 
 ## Providers
 
-Only deployment-specific addresses and secrets remain in `.env.example`; limits,
-retention, provider URLs, provider order, and no-cost model names are defaults
-in code. AI keys must belong to free-tier projects without billing enabled.
+No-cost provider URLs and models remain code defaults. Vertex and Bedrock model
+IDs, regions, concurrency ceilings, and review-period budgets remain explicit
+deployment configuration because availability, quota, and pricing vary by
+account and region.
 Search uses Tavily when `TAVILY_API_KEY` is configured and falls back to
 Wikipedia when Tavily is unavailable or returns no results. Cloudinary remains
 optional at application startup, but upload requests return
@@ -73,6 +74,14 @@ through `GEMINI_API_KEYS`, `GROQ_API_KEYS`, `OPENROUTER_API_KEYS`, and
 failure cools down or disables only the affected key and immediately tries the
 next healthy key from the same provider. Keys must be legitimately issued and
 must not be used to evade provider terms or billing limits.
+
+Vertex uses Google Application Default Credentials (or secret-managed inline
+service-account JSON on hosts without workload identity). Bedrock uses the AWS
+SDK credential chain and should run with a least-privilege execution role. They
+are sequential paid reliability layers inside the existing capability router,
+not replacements for the existing providers. See
+[docs/provider-routing.md](docs/provider-routing.md) for the routing matrix,
+budget modes, concurrency limits, rollout steps, and manual cloud controls.
 
 ## Hybrid Daily Practice generation
 

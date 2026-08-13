@@ -11,6 +11,8 @@ import {
 import { GeminiProvider } from './providers/gemini.provider';
 import { GroqProvider } from './providers/groq.provider';
 import { OpenRouterProvider } from './providers/openrouter.provider';
+import { VertexProvider } from './providers/vertex.provider';
+import { BedrockProvider } from './providers/bedrock.provider';
 import { AiPrompt, AiPromptSchema } from './schemas/prompt.schema';
 import {
   ProviderExecution,
@@ -25,6 +27,8 @@ import { PromptRegistryService } from './services/prompt-registry.service';
 import { ProviderHealthService } from './services/provider-health.service';
 import { CorePromptSeedService } from './services/core-prompt-seed.service';
 import { ProviderConfigService } from './services/provider-config.service';
+import { AiBudgetService } from './services/ai-budget.service';
+import { AiConcurrencyService } from './services/ai-concurrency.service';
 
 @Module({
   imports: [
@@ -47,20 +51,32 @@ import { ProviderConfigService } from './services/provider-config.service';
     GeminiProvider,
     GroqProvider,
     OpenRouterProvider,
+    VertexProvider,
+    BedrockProvider,
     {
       provide: AI_PROVIDERS,
-      inject: [GeminiProvider, GroqProvider, OpenRouterProvider],
+      inject: [
+        GeminiProvider,
+        GroqProvider,
+        OpenRouterProvider,
+        VertexProvider,
+        BedrockProvider,
+      ],
       useFactory: (
         gemini: GeminiProvider,
         groq: GroqProvider,
         openRouter: OpenRouterProvider,
-      ): AiProvider[] => [gemini, groq, openRouter],
+        vertex: VertexProvider,
+        bedrock: BedrockProvider,
+      ): AiProvider[] => [gemini, groq, openRouter, vertex, bedrock],
     },
     PromptRegistryService,
     ProviderHealthService,
     AiRouterService,
     CorePromptSeedService,
     ProviderConfigService,
+    AiBudgetService,
+    AiConcurrencyService,
   ],
   exports: [
     AI_PROVIDERS,
@@ -68,6 +84,8 @@ import { ProviderConfigService } from './services/provider-config.service';
     PromptRegistryService,
     ProviderHealthService,
     ProviderConfigService,
+    AiBudgetService,
+    AiConcurrencyService,
     MongooseModule,
   ],
 })

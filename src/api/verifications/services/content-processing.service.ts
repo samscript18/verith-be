@@ -333,6 +333,18 @@ export class ContentProcessingService {
         error instanceof ApplicationException
           ? error.code
           : 'CONTENT_PROCESSING_FAILED';
+      this.logger.error({
+        event: 'verification_processing_failed',
+        verificationId: verification.id,
+        requestId,
+        jobId,
+        sourceType: verification.sourceType,
+        stage: verification.currentStage,
+        progress: verification.progress,
+        failureCode: code,
+        errorClass:
+          error instanceof Error ? error.constructor.name : typeof error,
+      });
       verification.status = VerificationStatus.FAILED;
       verification.failedAt = new Date();
       verification.failureCode = code;
@@ -654,6 +666,15 @@ export class ContentProcessingService {
       requestId,
       jobId,
     );
+    this.logger.log({
+      event: 'verification_processing_completed',
+      verificationId: verification.id,
+      requestId,
+      jobId,
+      sourceType: verification.sourceType,
+      reportId: report.id,
+      reportVersion: report.version,
+    });
   }
 
   private async publishDomainEvent<TName extends DomainEventName>(

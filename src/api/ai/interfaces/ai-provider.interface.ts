@@ -18,6 +18,7 @@ export interface AiExecutionRequest {
 export interface AiTokenUsage {
   inputTokens?: number;
   outputTokens?: number;
+  reasoningTokens?: number;
   totalTokens?: number;
 }
 

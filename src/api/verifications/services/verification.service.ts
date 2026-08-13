@@ -296,8 +296,7 @@ export class VerificationService {
       status: VerificationEventStatus.COMPLETED,
       progress: verification.progress,
       messageCode: 'SOURCE_LANGUAGE_CONFIRMED',
-      safeMessage:
-        'The source language was confirmed for the next investigation pass',
+      safeMessage: 'The source language was confirmed',
       requestId,
     });
     return this.toResponse(verification);
@@ -527,7 +526,8 @@ export class VerificationService {
       sourceLanguageNeedsConfirmation:
         !record.confirmedSourceLanguage &&
         typeof record.languageDetectionConfidence === 'number' &&
-        record.languageDetectionConfidence < 0.6,
+        record.languageDetectionConfidence < 0.6 &&
+        record.detectedLanguage !== record.requestedLanguage,
       sourceLanguageExperimental: record.sourceLanguageExperimental,
       urlMetadata: record.urlMetadata,
       mediaAssetIds: record.mediaAssetIds.map(String),

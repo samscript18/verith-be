@@ -66,7 +66,7 @@ const outputJsonSchema = {
 
 @Injectable()
 export class ReportLocalizationService {
-  static readonly VERSION = 'report-localization.v1';
+  static readonly VERSION = 'report-localization.v2';
   private readonly logger = new Logger(ReportLocalizationService.name);
 
   constructor(
@@ -191,7 +191,7 @@ export class ReportLocalizationService {
         source,
         generated.output.translations,
       );
-      if (!this.languageMatches(translations, language)) {
+      if (!this.languageMatches(translations, language, report, requestId)) {
         if (generated.fallbackUsed) {
           throw new Error('REPORT_LOCALIZATION_LANGUAGE_MISMATCH');
         }
@@ -208,7 +208,7 @@ export class ReportLocalizationService {
           source,
           generated.output.translations,
         );
-        if (!this.languageMatches(translations, language)) {
+        if (!this.languageMatches(translations, language, report, requestId)) {
           throw new Error('REPORT_LOCALIZATION_LANGUAGE_MISMATCH');
         }
       }
@@ -303,6 +303,7 @@ export class ReportLocalizationService {
       promptKey: 'report.localization',
       variables: {
         targetLanguage: SUPPORTED_LANGUAGE_LABELS[language],
+        targetLanguageCode: language,
         repairInstruction,
         content: JSON.stringify({ translations: items }),
       },
@@ -321,9 +322,10 @@ export class ReportLocalizationService {
   }
 
   private alternateProvider(provider: AiProviderName): AiProviderName {
-    if (provider === AiProviderName.GROQ) return AiProviderName.OPENROUTER;
-    if (provider === AiProviderName.OPENROUTER) return AiProviderName.GEMINI;
-    return AiProviderName.GROQ;
+    if (provider === AiProviderName.VERTEX) return AiProviderName.BEDROCK;
+    if (provider === AiProviderName.BEDROCK) return AiProviderName.GROQ;
+    if (provider === AiProviderName.GROQ) return AiProviderName.VERTEX;
+    return AiProviderName.VERTEX;
   }
 
   private cachedProjection(
@@ -382,6 +384,7 @@ export class ReportLocalizationService {
       code.endsWith('UNAVAILABLE') ||
       code.endsWith('INVALID_RESPONSE') ||
       code.endsWith('INVALID_JSON') ||
+      code.endsWith('OUTPUT_TRUNCATED') ||
       code === 'AI_OUTPUT_VALIDATION_FAILED' ||
       code === 'REPORT_LOCALIZATION_PATH_MISMATCH' ||
       code === 'REPORT_LOCALIZATION_LANGUAGE_MISMATCH' ||
@@ -458,13 +461,34 @@ export class ReportLocalizationService {
   private languageMatches(
     translations: TranslationItem[],
     language: SupportedLanguage,
+    report: Report & { _id: Types.ObjectId },
+    requestId: string,
   ): boolean {
     const sample = translations
       .map((item) => item.text)
       .join(' ')
       .slice(0, 20000);
     if (sample.length < 80) return true;
-    return this.languages.detect(sample).language === String(language);
+    const compliance = this.languages.assessExpectedLanguage(sample, language);
+    this.logger.log({
+      event: 'report_localization_language_validated',
+      requestId,
+      reportId: report._id.toString(),
+      verificationId: report.verificationId.toString(),
+      expectedLanguage: language,
+      detectedLanguage: compliance.language,
+      detectedConfidence: Number(compliance.confidence.toFixed(3)),
+      expectedLexicalConfidence: Number(
+        compliance.expectedLexicalConfidence.toFixed(3),
+      ),
+      detectedLexicalConfidence: Number(
+        compliance.detectedLexicalConfidence.toFixed(3),
+      ),
+      matches: compliance.matches,
+      translatedItemCount: translations.length,
+      sampleCharacters: sample.length,
+    });
+    return compliance.matches;
   }
 
   private applyTranslations(

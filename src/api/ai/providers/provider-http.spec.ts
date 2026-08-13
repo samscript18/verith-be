@@ -1,4 +1,33 @@
-import { providerFetch } from './provider-http';
+import { parseJsonText, providerFetch } from './provider-http';
+
+describe('parseJsonText', () => {
+  it('accepts a single fenced JSON document without guessing at partial data', () => {
+    expect(parseJsonText('```json\n{"value":"ok"}\n```', 'TEST')).toEqual({
+      value: 'ok',
+    });
+  });
+
+  it('preserves provider stop diagnostics and a specific truncation code', () => {
+    let failure: unknown;
+    try {
+      parseJsonText('{"value":', 'TEST', {
+        invalidCode: 'TEST_OUTPUT_TRUNCATED',
+        operatorDetails: { stopReason: 'max_tokens', outputTokens: 10000 },
+      });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({
+      code: 'TEST_OUTPUT_TRUNCATED',
+      operatorDetails: {
+        stopReason: 'max_tokens',
+        outputTokens: 10000,
+        startsWithJsonContainer: true,
+        endsWithJsonContainer: false,
+      },
+    });
+  });
+});
 
 describe('providerFetch', () => {
   afterEach(() => jest.restoreAllMocks());

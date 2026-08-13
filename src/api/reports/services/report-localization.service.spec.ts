@@ -92,32 +92,39 @@ describe('ReportLocalizationService', () => {
     expect(ai.execute).not.toHaveBeenCalled();
   });
 
-  it('makes existing invalid-response fallbacks explicitly retryable', async () => {
-    const exec = jest.fn().mockResolvedValue({
-      status: ReportLocalizationStatus.FALLBACK,
-      content: { translations: [] },
-      limitations: ['Canonical English is shown.'],
-      retryable: false,
-      failureCode: 'OPENROUTER_INVALID_RESPONSE',
-    });
-    const service = new ReportLocalizationService(
-      { findOne: jest.fn(() => ({ lean: () => ({ exec }) })) } as never,
-      { execute: jest.fn() } as never,
-      {} as never,
-    );
+  it.each([
+    'OPENROUTER_INVALID_RESPONSE',
+    'BEDROCK_OUTPUT_TRUNCATED',
+    'VERTEX_OUTPUT_TRUNCATED',
+  ])(
+    'makes an existing %s fallback explicitly retryable',
+    async (failureCode) => {
+      const exec = jest.fn().mockResolvedValue({
+        status: ReportLocalizationStatus.FALLBACK,
+        content: { translations: [] },
+        limitations: ['Canonical English is shown.'],
+        retryable: false,
+        failureCode,
+      });
+      const service = new ReportLocalizationService(
+        { findOne: jest.fn(() => ({ lean: () => ({ exec }) })) } as never,
+        { execute: jest.fn() } as never,
+        {} as never,
+      );
 
-    await expect(
-      service.present(
-        report,
-        { summary: 'Canonical English.' },
-        SupportedLanguage.YORUBA,
-      ),
-    ).resolves.toMatchObject({
-      localizationStatus: ReportLocalizationStatus.FALLBACK,
-      localizationRetryable: true,
-      localizationFailureCode: 'OPENROUTER_INVALID_RESPONSE',
-    });
-  });
+      await expect(
+        service.present(
+          report,
+          { summary: 'Canonical English.' },
+          SupportedLanguage.YORUBA,
+        ),
+      ).resolves.toMatchObject({
+        localizationStatus: ReportLocalizationStatus.FALLBACK,
+        localizationRetryable: true,
+        localizationFailureCode: failureCode,
+      });
+    },
+  );
 
   it('performs one bounded repair when the first output uses the wrong language', async () => {
     const exec = jest.fn().mockResolvedValue(null);
@@ -145,8 +152,8 @@ describe('ReportLocalizationService', () => {
               },
             ],
           },
-          provider: 'GEMINI',
-          primaryProvider: 'GEMINI',
+          provider: 'VERTEX',
+          primaryProvider: 'VERTEX',
           fallbackUsed: false,
           model: 'model-a',
         })
@@ -166,10 +173,22 @@ describe('ReportLocalizationService', () => {
         }),
     };
     const languages = {
-      detect: jest
+      assessExpectedLanguage: jest
         .fn()
-        .mockReturnValueOnce({ language: 'en' })
-        .mockReturnValueOnce({ language: 'fr' }),
+        .mockReturnValueOnce({
+          language: 'en',
+          confidence: 0.9,
+          expectedLexicalConfidence: 0,
+          detectedLexicalConfidence: 0.9,
+          matches: false,
+        })
+        .mockReturnValueOnce({
+          language: 'fr',
+          confidence: 0.9,
+          expectedLexicalConfidence: 0.9,
+          detectedLexicalConfidence: 0.9,
+          matches: true,
+        }),
     };
     const service = new ReportLocalizationService(
       model as never,
@@ -193,6 +212,14 @@ describe('ReportLocalizationService', () => {
       expect.objectContaining({
         reasoningEffort: 'none',
         maxProviderCalls: 2,
+        maxOutputTokens: 8000,
+      }),
+    );
+    expect(ai.execute).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        preferredProvider: 'BEDROCK',
+        maxProviderCalls: 1,
       }),
     );
     expect(result).toMatchObject({

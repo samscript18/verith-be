@@ -31,6 +31,7 @@ export interface AiRouterResult<TOutput> {
   usage: {
     inputTokens?: number;
     outputTokens?: number;
+    reasoningTokens?: number;
     totalTokens?: number;
   };
 }

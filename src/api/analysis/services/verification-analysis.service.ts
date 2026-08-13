@@ -116,11 +116,11 @@ export class VerificationAnalysisService {
       capability: AiCapability.EVIDENCE_SYNTHESIS,
       promptKey: 'verification.analysis',
       variables: {
-        sourceLanguage: verification?.detectedLanguage ?? 'und',
-        requestedLanguage: verification?.requestedLanguage ?? 'en',
-        content: content?.normalizedText ?? '',
-        claims: JSON.stringify(
-          claims.map((claim) => ({
+        analysisInput: JSON.stringify({
+          sourceLanguage: verification?.detectedLanguage ?? 'und',
+          requestedLanguage: verification?.requestedLanguage ?? 'en',
+          submittedContent: content?.normalizedText ?? '',
+          claims: claims.map((claim) => ({
             id: claim.id,
             originalText: claim.text,
             originalLanguage: claim.originalLanguage,
@@ -130,9 +130,7 @@ export class VerificationAnalysisService {
             verifiability: claim.verifiability,
             timeSensitivity: claim.timeSensitivity,
           })),
-        ),
-        evidence: JSON.stringify(
-          evidence.map((item) => ({
+          evidence: evidence.map((item) => ({
             id: item.id,
             claimId: item.claimId.toString(),
             title: item.title,
@@ -148,16 +146,17 @@ export class VerificationAnalysisService {
             directnessScore: item.directnessScore,
             lineageType: item.lineageType,
           })),
-        ),
+        }),
       },
       outputSchemaName: 'verification_analysis',
-      outputSchemaVersion: 'verification-analysis.v2',
+      outputSchemaVersion: 'verification-analysis.v3',
       outputJsonSchema: this.jsonSchema(),
       outputValidator: this.joiSchema(),
       requestId,
       verificationId,
       temperature: 0.1,
       maxOutputTokens: 10000,
+      reasoningEffort: 'low',
     });
     const safe = this.validateReferences(
       output.output,

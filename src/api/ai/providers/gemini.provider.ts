@@ -17,6 +17,7 @@ import type {
   ProviderHealthResult,
 } from '../interfaces/ai-provider.interface';
 import { parseJsonText, providerFetch, readObject } from './provider-http';
+import { geminiThinkingConfig } from './gemini-thinking';
 
 @Injectable()
 export class GeminiProvider implements AiProvider {
@@ -82,6 +83,10 @@ export class GeminiProvider implements AiProvider {
       const lease = this.keyPool.acquire();
       if (!lease) break;
       try {
+        const thinkingConfig = geminiThinkingConfig(
+          request.model,
+          request.reasoningEffort,
+        );
         const response = await providerFetch(
           `${this.config.baseUrl}/v1beta/models/${encodeURIComponent(request.model)}:generateContent?key=${encodeURIComponent(lease.key)}`,
           {
@@ -113,6 +118,7 @@ export class GeminiProvider implements AiProvider {
                   : {}),
                 responseMimeType: 'application/json',
                 responseJsonSchema: request.outputJsonSchema,
+                ...(thinkingConfig ? { thinkingConfig } : {}),
               },
             }),
           },
@@ -133,9 +139,36 @@ export class GeminiProvider implements AiProvider {
             'GEMINI_INVALID_RESPONSE',
           );
         }
-        const output = parseJsonText(firstPart.text, this.provider);
-        lease.succeed();
         const usage = readObject(body?.usageMetadata);
+        const finishReason =
+          typeof candidate?.finishReason === 'string'
+            ? candidate.finishReason
+            : null;
+        const output = parseJsonText(firstPart.text, this.provider, {
+          ...(finishReason === 'MAX_TOKENS'
+            ? { invalidCode: 'GEMINI_OUTPUT_TRUNCATED' }
+            : {}),
+          operatorDetails: {
+            finishReason,
+            inputTokens:
+              typeof usage?.promptTokenCount === 'number'
+                ? usage.promptTokenCount
+                : null,
+            outputTokens:
+              typeof usage?.candidatesTokenCount === 'number'
+                ? usage.candidatesTokenCount
+                : null,
+            reasoningTokens:
+              typeof usage?.thoughtsTokenCount === 'number'
+                ? usage.thoughtsTokenCount
+                : null,
+            totalTokens:
+              typeof usage?.totalTokenCount === 'number'
+                ? usage.totalTokenCount
+                : null,
+          },
+        });
+        lease.succeed();
         return {
           output,
           model: request.model,
@@ -145,6 +178,9 @@ export class GeminiProvider implements AiProvider {
               : {}),
             ...(typeof usage?.candidatesTokenCount === 'number'
               ? { outputTokens: usage.candidatesTokenCount }
+              : {}),
+            ...(typeof usage?.thoughtsTokenCount === 'number'
+              ? { reasoningTokens: usage.thoughtsTokenCount }
               : {}),
             ...(typeof usage?.totalTokenCount === 'number'
               ? { totalTokens: usage.totalTokenCount }

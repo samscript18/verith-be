@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { AiCapability } from '../enums/ai-capability.enum';
 import { AiProviderName } from '../enums/ai-provider-name.enum';
+import { AiFailureClass } from '../enums/ai-failure-class.enum';
 
 @Schema({
   timestamps: true,
@@ -64,7 +65,25 @@ export class ProviderExecution {
   outputTokens?: number;
 
   @Prop()
+  reasoningTokens?: number;
+
+  @Prop()
   totalTokens?: number;
+
+  @Prop({ enum: ['PROVIDER_REPORTED', 'CHARACTER_ESTIMATE', 'UNAVAILABLE'] })
+  tokenUsageSource?: 'PROVIDER_REPORTED' | 'CHARACTER_ESTIMATE' | 'UNAVAILABLE';
+
+  @Prop({ min: 0 })
+  estimatedCostUsd?: number;
+
+  @Prop({ enum: ['CONFIGURED_PRICING', 'UNAVAILABLE'] })
+  costEstimateSource?: 'CONFIGURED_PRICING' | 'UNAVAILABLE';
+
+  @Prop({ enum: AiFailureClass })
+  failureClass?: AiFailureClass;
+
+  @Prop({ enum: AiProviderName })
+  fallbackProvider?: AiProviderName;
 
   @Prop({ required: true })
   attempt!: number;
@@ -81,4 +100,5 @@ export const ProviderExecutionSchema =
   SchemaFactory.createForClass(ProviderExecution);
 ProviderExecutionSchema.index({ verificationId: 1, createdAt: -1 });
 ProviderExecutionSchema.index({ provider: 1, success: 1, createdAt: -1 });
+ProviderExecutionSchema.index({ provider: 1, capability: 1, createdAt: -1 });
 ProviderExecutionSchema.index({ deleteAfter: 1 }, { expireAfterSeconds: 0 });

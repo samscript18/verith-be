@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -24,6 +24,8 @@ export interface AppendEventInput {
 
 @Injectable()
 export class VerificationEventService {
+  private readonly logger = new Logger(VerificationEventService.name);
+
   constructor(
     @InjectModel(VerificationEvent.name)
     private readonly eventModel: Model<VerificationEvent>,
@@ -60,6 +62,18 @@ export class VerificationEventService {
       this.channel(input.verificationId),
       this.toResponse(event),
     );
+    this.logger.log({
+      event: 'verification_audit_event_recorded',
+      verificationId: input.verificationId,
+      requestId: input.requestId,
+      jobId: input.jobId ?? null,
+      sequence: verification.eventSequence,
+      stage: input.stage,
+      status: input.status,
+      progress: input.progress,
+      messageCode: input.messageCode,
+      metrics: input.metrics ?? null,
+    });
     return event;
   }
 

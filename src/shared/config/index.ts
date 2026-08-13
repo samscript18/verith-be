@@ -14,7 +14,11 @@ export {
   default as aiConfig,
   FREE_AI_MODELS,
   type AiConfig,
+  type AiBudgetConfig,
+  type AiModelPricing,
   type AiProviderConfig,
+  type BedrockAiConfig,
+  type VertexAiConfig,
 } from './ai.config';
 export {
   default as processingConfig,

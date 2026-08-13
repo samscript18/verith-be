@@ -140,6 +140,7 @@ export class AiDailyChallengeGenerator implements DailyChallengeGenerator {
       requestId: `daily-challenge:${blueprint.date}`,
       temperature: 0.65,
       maxOutputTokens: 7000,
+      reasoningEffort: 'minimal',
       maxProviderCalls: this.config.maxAiAttempts,
       allowSchemaCorrection: false,
     });
