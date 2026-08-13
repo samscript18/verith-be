@@ -31,5 +31,7 @@ describe('ReportService multilingual PDF export', () => {
     expect(bytes.subarray(0, 4).toString()).toBe('%PDF');
     expect(bytes.length).toBeGreaterThan(500);
     expect(bytes.includes(Buffer.from('/ToUnicode'))).toBe(true);
+    expect(bytes.includes(Buffer.from('/FontFile2'))).toBe(true);
+    expect(bytes.includes(Buffer.from('/FontFile3'))).toBe(false);
   });
 });

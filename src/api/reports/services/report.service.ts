@@ -45,8 +45,8 @@ import {
   supportedLanguageOrEnglish,
 } from '../../../shared/language/supported-language';
 
-const notoSansFont = createRequire(__filename).resolve(
-  '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff',
+const verithPdfFont = createRequire(__filename).resolve(
+  'dejavu-fonts-ttf/ttf/DejaVuSans.ttf',
 );
 
 @Injectable()
@@ -904,7 +904,11 @@ export class ReportService {
     }[language];
     return new Promise((resolve, reject) => {
       const document = new PDFDocument({ margin: 48, size: 'A4' });
-      document.registerFont('VerithUnicode', notoSansFont);
+      // PDFKit can parse webfonts, but embedding the previous WOFF produced an
+      // unusable character map in browser PDF viewers (every glyph rendered as
+      // a box). Embed a real Unicode TrueType font so text remains both visible
+      // and extractable across English, French, Spanish, and Yorùbá exports.
+      document.registerFont('VerithUnicode', verithPdfFont);
       document.font('VerithUnicode');
       const chunks: Buffer[] = [];
       document.on('data', (chunk: Buffer) => chunks.push(chunk));
