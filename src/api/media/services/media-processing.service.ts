@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import Joi from 'joi';
 import { Model, Types } from 'mongoose';
@@ -52,8 +52,16 @@ interface VideoOutput {
   limitations: string[];
 }
 
+interface AudioOutput {
+  text: string;
+  language: string;
+  segments: Array<{ start: number; end: number; text: string }>;
+}
+
 @Injectable()
 export class MediaProcessingService {
+  private readonly logger = new Logger(MediaProcessingService.name);
+
   constructor(
     private readonly ai: AiRouterService,
     private readonly trusted: TrustedMediaService,
@@ -83,7 +91,7 @@ export class MediaProcessingService {
       );
     this.trusted.assertTrustedUrl(asset.secureUrl);
     if (verification.sourceType === VerificationSourceType.AUDIO)
-      return this.processAudio(verification, asset, asset.secureUrl);
+      return this.processAudio(verification, asset, asset.secureUrl, requestId);
     if (verification.sourceType === VerificationSourceType.VIDEO)
       return this.processVideo(verification, asset, asset.secureUrl, requestId);
     return this.processImage(verification, asset, asset.secureUrl, requestId);
@@ -167,8 +175,54 @@ export class MediaProcessingService {
     verification: VerificationDocument,
     asset: MediaAssetDocument,
     url: string,
+    requestId: string,
   ): Promise<{ text: string; language: string }> {
-    const result = await this.transcription.transcribe(url);
+    let provider = 'GROQ';
+    let result: {
+      text: string;
+      language: string;
+      duration?: number;
+      segments: Array<{
+        start: number;
+        end: number;
+        text: string;
+        confidence?: number;
+      }>;
+    };
+    try {
+      result = await this.transcription.transcribe(url);
+    } catch (error) {
+      const failureCode =
+        error instanceof ExternalProviderException
+          ? error.code
+          : 'TRANSCRIPTION_UNAVAILABLE';
+      this.logger.warn({
+        event: 'audio_transcription_fallback_selected',
+        verificationId: verification.id,
+        requestId,
+        primaryProvider: 'GROQ',
+        fallbackProvider: 'GEMINI',
+        failureCode,
+      });
+      const fallback = await this.ai.execute<AudioOutput>({
+        capability: AiCapability.AUDIO_REASONING,
+        promptKey: 'verification.audio-transcription',
+        variables: {},
+        outputSchemaName: 'audio_transcription',
+        outputSchemaVersion: 'audio-transcription.v1',
+        outputJsonSchema: this.audioJsonSchema(),
+        outputValidator: this.audioJoiSchema(),
+        requestId,
+        verificationId: verification.id,
+        temperature: 0,
+        maxOutputTokens: 8000,
+        reasoningEffort: 'none',
+        maxProviderCalls: 1,
+        media: await this.trusted.audioBytes(url),
+      });
+      provider = fallback.provider;
+      result = fallback.output;
+    }
     const confidences = result.segments.flatMap((item) =>
       item.confidence === undefined ? [] : [item.confidence],
     );
@@ -178,7 +232,7 @@ export class MediaProcessingService {
         $set: {
           verificationId: verification._id,
           mediaAssetId: asset._id,
-          provider: 'GROQ',
+          provider,
           language: result.language,
           ...(result.duration !== undefined
             ? { duration: result.duration }
@@ -201,6 +255,49 @@ export class MediaProcessingService {
       { upsert: true, returnDocument: 'after', runValidators: true },
     );
     return { text: result.text, language: result.language };
+  }
+
+  private audioJoiSchema(): Joi.ObjectSchema<AudioOutput> {
+    return Joi.object<AudioOutput>({
+      text: Joi.string().min(1).max(50000).required(),
+      language: Joi.string().max(20).required(),
+      segments: Joi.array()
+        .items(
+          Joi.object({
+            start: Joi.number().min(0).required(),
+            end: Joi.number().min(Joi.ref('start')).required(),
+            text: Joi.string().min(1).max(2000).required(),
+          }),
+        )
+        .max(500)
+        .required(),
+    }).required();
+  }
+
+  private audioJsonSchema(): Record<string, unknown> {
+    return {
+      type: 'object',
+      additionalProperties: false,
+      required: ['text', 'language', 'segments'],
+      properties: {
+        text: { type: 'string', maxLength: 50000 },
+        language: { type: 'string' },
+        segments: {
+          type: 'array',
+          maxItems: 500,
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['start', 'end', 'text'],
+            properties: {
+              start: { type: 'number', minimum: 0 },
+              end: { type: 'number', minimum: 0 },
+              text: { type: 'string', maxLength: 2000 },
+            },
+          },
+        },
+      },
+    };
   }
 
   private async processVideo(

@@ -93,4 +93,39 @@ export class TrustedMediaService {
       );
     return { mimeType, base64Data: bytes.toString('base64') };
   }
+
+  async audioBytes(
+    value: string,
+  ): Promise<{ mimeType: string; base64Data: string }> {
+    const url = this.assertTrustedUrl(value);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(60000),
+      redirect: 'error',
+    });
+    if (!response.ok)
+      throw new ApplicationException(
+        'The audio asset could not be retrieved',
+        503,
+        'MEDIA_RETRIEVAL_FAILED',
+      );
+    const mimeType = response.headers.get('content-type')?.split(';')[0] ?? '';
+    if (
+      !mimeType.startsWith('audio/') &&
+      !['application/ogg', 'video/webm'].includes(mimeType)
+    )
+      throw new ApplicationException(
+        'The media asset is not supported audio',
+        422,
+        'MEDIA_CONTENT_TYPE_UNSUPPORTED',
+      );
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const inlineLimit = Math.min(this.config.maxAudioBytes, 15_000_000);
+    if (bytes.length > inlineLimit)
+      throw new ApplicationException(
+        'The audio exceeds the fallback inline analysis limit',
+        422,
+        'MEDIA_TOO_LARGE',
+      );
+    return { mimeType, base64Data: bytes.toString('base64') };
+  }
 }

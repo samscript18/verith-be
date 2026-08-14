@@ -11,7 +11,7 @@ import type { ProviderExecution } from '../schemas/provider-execution.schema';
 import { AiRouterService } from './ai-router.service';
 
 describe('AiRouterService reliability routing', () => {
-  it('keeps reliable structured-output providers inside the two-call claim extraction circuit', async () => {
+  it('uses a low-cost claim provider before bounded funded fallbacks', async () => {
     const vertex = provider(
       AiProviderName.VERTEX,
       new ExternalProviderException(
@@ -20,7 +20,13 @@ describe('AiRouterService reliability routing', () => {
       ),
     );
     const bedrock = provider(AiProviderName.BEDROCK, { value: 'claims' });
-    const groq = provider(AiProviderName.GROQ, { value: 'cheap' });
+    const groq = provider(
+      AiProviderName.GROQ,
+      new ExternalProviderException(
+        'Groq returned invalid output',
+        'GROQ_INVALID_JSON',
+      ),
+    );
     const gemini = provider(AiProviderName.GEMINI, { value: 'direct' });
     const { router } = createRouter([groq, gemini, vertex, bedrock]);
 
@@ -31,15 +37,58 @@ describe('AiRouterService reliability routing', () => {
       }),
     ).resolves.toMatchObject({
       provider: AiProviderName.BEDROCK,
-      primaryProvider: AiProviderName.VERTEX,
+      primaryProvider: AiProviderName.GROQ,
       fallbackUsed: true,
     });
     expect(vertex.executeMock).toHaveBeenCalledWith(
       expect.objectContaining({ maxOutputTokens: 6000 }),
     );
     expect(bedrock.executeMock).toHaveBeenCalledTimes(1);
-    expect(groq.executeMock).not.toHaveBeenCalled();
+    expect(groq.executeMock).toHaveBeenCalledTimes(1);
     expect(gemini.executeMock).not.toHaveBeenCalled();
+  });
+
+  it('uses the third image provider only after the first two fail', async () => {
+    const vertex = provider(
+      AiProviderName.VERTEX,
+      new ExternalProviderException('Vertex failed', 'VERTEX_UNAVAILABLE'),
+    );
+    const gemini = provider(
+      AiProviderName.GEMINI,
+      new ExternalProviderException('Gemini failed', 'GEMINI_UNAVAILABLE'),
+    );
+    const openRouter = provider(AiProviderName.OPENROUTER, {
+      value: 'visible text',
+    });
+    const { router } = createRouter([vertex, gemini, openRouter]);
+
+    await expect(
+      router.execute(request(AiCapability.IMAGE_UNDERSTANDING)),
+    ).resolves.toMatchObject({ provider: AiProviderName.OPENROUTER });
+    expect(vertex.executeMock).toHaveBeenCalledTimes(1);
+    expect(gemini.executeMock).toHaveBeenCalledTimes(1);
+    expect(openRouter.executeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes an unavailable provider from later attempt windows while its circuit is open', async () => {
+    const vertex = provider(
+      AiProviderName.VERTEX,
+      new ExternalProviderException('Vertex failed', 'VERTEX_UNAVAILABLE'),
+    );
+    const gemini = provider(AiProviderName.GEMINI, { value: 'direct' });
+    const openRouter = provider(AiProviderName.OPENROUTER, { value: 'spare' });
+    const { router } = createRouter([vertex, gemini, openRouter]);
+
+    await router.execute(request(AiCapability.IMAGE_UNDERSTANDING));
+    await expect(
+      router.execute(request(AiCapability.IMAGE_UNDERSTANDING)),
+    ).resolves.toMatchObject({
+      provider: AiProviderName.GEMINI,
+      primaryProvider: AiProviderName.GEMINI,
+      fallbackUsed: false,
+    });
+    expect(vertex.executeMock).toHaveBeenCalledTimes(1);
+    expect(gemini.executeMock).toHaveBeenCalledTimes(2);
   });
 
   it('uses Vertex first for evidence comparison when it succeeds', async () => {

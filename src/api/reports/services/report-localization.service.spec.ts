@@ -211,7 +211,7 @@ describe('ReportLocalizationService', () => {
       1,
       expect.objectContaining({
         reasoningEffort: 'none',
-        maxProviderCalls: 2,
+        maxProviderCalls: 3,
         maxOutputTokens: 8000,
       }),
     );

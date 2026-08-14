@@ -8,6 +8,7 @@ export interface AiProviderConfig {
   models: Record<string, string>;
   textConcurrency: number;
   mediaConcurrency: number;
+  credentialAttempts: number;
 }
 
 export interface VertexAiConfig {
@@ -56,6 +57,15 @@ export interface AiConcurrencyConfig {
   video: number;
 }
 
+export interface AiCircuitBreakerConfig {
+  enabled: boolean;
+  failureThreshold: number;
+  temporaryCooldownMs: number;
+  rateLimitCooldownMs: number;
+  authenticationCooldownMs: number;
+  invalidRequestCooldownMs: number;
+}
+
 export interface AiConfig {
   maxRetries: number;
   maxProviderCalls: number;
@@ -63,6 +73,7 @@ export interface AiConfig {
   executionRetentionDays: number;
   capabilityRoutes: Record<string, string[]>;
   concurrency: AiConcurrencyConfig;
+  circuitBreaker: AiCircuitBreakerConfig;
   budget: AiBudgetConfig;
   gemini: AiProviderConfig;
   groq: AiProviderConfig;
@@ -140,9 +151,8 @@ export default registerAs('ai', (): AiConfig => {
   );
   return {
     maxRetries: 1,
-    // Capability policy still caps normal work at two attempts and video at
-    // one. The third slot is available only to exceptional high-value routes
-    // such as evidence synthesis.
+    // Critical structured and media capabilities may use three sequential
+    // providers. Video remains single-provider to avoid duplicate processing.
     maxProviderCalls: 3,
     healthCacheSeconds: 300,
     executionRetentionDays: numberValue('AI_EXECUTION_RETENTION_DAYS', 120),
@@ -154,6 +164,14 @@ export default registerAs('ai', (): AiConfig => {
       media: numberValue('AI_MEDIA_CONCURRENCY', 2),
       audio: numberValue('AI_AUDIO_CONCURRENCY', 2),
       video: numberValue('AI_VIDEO_CONCURRENCY', 1),
+    },
+    circuitBreaker: {
+      enabled: true,
+      failureThreshold: 1,
+      temporaryCooldownMs: 60_000,
+      rateLimitCooldownMs: 60_000,
+      authenticationCooldownMs: 15 * 60_000,
+      invalidRequestCooldownMs: 5 * 60_000,
     },
     budget: {
       enabled: booleanValue('AI_COST_GUARD_ENABLED'),
@@ -180,6 +198,7 @@ export default registerAs('ai', (): AiConfig => {
       },
       textConcurrency: numberValue('GEMINI_DIRECT_CONCURRENCY', 2),
       mediaConcurrency: numberValue('GEMINI_DIRECT_MEDIA_CONCURRENCY', 1),
+      credentialAttempts: 3,
     },
     groq: {
       apiKey: groqKeys[0] ?? '',
@@ -192,6 +211,7 @@ export default registerAs('ai', (): AiConfig => {
       },
       textConcurrency: numberValue('GROQ_CONCURRENCY', 4),
       mediaConcurrency: numberValue('GROQ_MEDIA_CONCURRENCY', 2),
+      credentialAttempts: 3,
     },
     openRouter: {
       apiKey: openRouterKeys[0] ?? '',
@@ -205,6 +225,7 @@ export default registerAs('ai', (): AiConfig => {
       },
       textConcurrency: numberValue('OPENROUTER_CONCURRENCY', 2),
       mediaConcurrency: numberValue('OPENROUTER_MEDIA_CONCURRENCY', 1),
+      credentialAttempts: 3,
       siteUrl: process.env.OPENROUTER_SITE_URL ?? '',
       appName: 'Verith',
     },

@@ -29,6 +29,7 @@ import { CorePromptSeedService } from './services/core-prompt-seed.service';
 import { ProviderConfigService } from './services/provider-config.service';
 import { AiBudgetService } from './services/ai-budget.service';
 import { AiConcurrencyService } from './services/ai-concurrency.service';
+import { AiProviderCircuitService } from './services/ai-provider-circuit.service';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { AiConcurrencyService } from './services/ai-concurrency.service';
     ProviderConfigService,
     AiBudgetService,
     AiConcurrencyService,
+    AiProviderCircuitService,
   ],
   exports: [
     AI_PROVIDERS,
@@ -86,6 +88,7 @@ import { AiConcurrencyService } from './services/ai-concurrency.service';
     ProviderConfigService,
     AiBudgetService,
     AiConcurrencyService,
+    AiProviderCircuitService,
     MongooseModule,
   ],
 })

@@ -77,7 +77,10 @@ export class GeminiProvider implements AiProvider {
   }
 
   async execute(request: AiExecutionRequest): Promise<AiProviderResult> {
-    const keyCount = this.keyPool.status().configuredKeys;
+    const keyCount = Math.min(
+      this.keyPool.status().configuredKeys,
+      this.config.credentialAttempts ?? 3,
+    );
     let lastError: ExternalProviderException | undefined;
     for (let keyAttempt = 0; keyAttempt < keyCount; keyAttempt += 1) {
       const lease = this.keyPool.acquire();

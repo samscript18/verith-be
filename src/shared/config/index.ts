@@ -15,6 +15,7 @@ export {
   FREE_AI_MODELS,
   type AiConfig,
   type AiBudgetConfig,
+  type AiCircuitBreakerConfig,
   type AiModelPricing,
   type AiProviderConfig,
   type BedrockAiConfig,

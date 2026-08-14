@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'node:crypto';
@@ -29,12 +29,14 @@ import type {
 import { ProviderExecution } from '../schemas/provider-execution.schema';
 import { AiBudgetService } from './ai-budget.service';
 import { AiConcurrencyService } from './ai-concurrency.service';
+import { AiProviderCircuitService } from './ai-provider-circuit.service';
 import { PromptRegistryService } from './prompt-registry.service';
 import { ProviderConfigService } from './provider-config.service';
 
 @Injectable()
 export class AiRouterService {
   private readonly config: AiConfig;
+  private readonly circuit: AiProviderCircuitService;
   private readonly logger = new Logger(AiRouterService.name);
 
   constructor(
@@ -46,8 +48,10 @@ export class AiRouterService {
     private readonly budget: AiBudgetService,
     private readonly concurrency: AiConcurrencyService,
     configService: ConfigService,
+    @Optional() circuit?: AiProviderCircuitService,
   ) {
     this.config = configService.getOrThrow<AiConfig>('ai');
+    this.circuit = circuit ?? new AiProviderCircuitService(configService);
   }
 
   async execute<TOutput>(
@@ -195,6 +199,11 @@ export class AiRouterService {
             fallbackProvider: fallbackProvider ?? null,
             ...measured.usage,
           });
+          this.circuit.fail(
+            provider.provider,
+            request.capability,
+            AiFailureClass.INVALID_RESPONSE,
+          );
           continue;
         }
         const measured = this.measuredUsage(
@@ -232,6 +241,7 @@ export class AiRouterService {
           tokenUsageSource: measured.source,
           ...measured.usage,
         });
+        this.circuit.succeed(provider.provider, request.capability);
         return {
           output: validation.value,
           provider: provider.provider,
@@ -249,6 +259,7 @@ export class AiRouterService {
         if (error instanceof ExternalProviderException)
           lastOperatorDetails = error.operatorDetails;
         const failureClass = classifyAiFailure(lastCode);
+        this.circuit.fail(provider.provider, request.capability, failureClass);
         const operatorMetadata = this.safeOperatorMetadata(error);
         await this.record(request, {
           provider: provider.provider,
@@ -366,7 +377,9 @@ export class AiRouterService {
       )
       .filter((provider): provider is AiProvider =>
         Boolean(
-          provider?.supports(capability) && provider.modelFor(capability),
+          provider?.supports(capability) &&
+          provider.modelFor(capability) &&
+          this.circuit.allows(provider.provider, capability),
         ),
       );
   }

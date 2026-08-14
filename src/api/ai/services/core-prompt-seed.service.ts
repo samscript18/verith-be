@@ -230,6 +230,32 @@ export class CorePromptSeedService implements OnModuleInit {
         .exec(),
       this.model
         .updateOne(
+          { key: 'verification.audio-transcription', version: 1 },
+          {
+            $setOnInsert: {
+              key: 'verification.audio-transcription',
+              task: 'AUDIO_REASONING',
+              version: 1,
+              status: PromptStatus.PUBLISHED,
+              systemPrompt:
+                'Transcribe the supplied audio faithfully. Put only audible speech in text, preserve the spoken language, and do not summarize, translate, correct claims, identify speakers, or add inaudible words. Include timestamped segments only where timing is reasonably supported. Return only schema-valid JSON.',
+              userPromptTemplate:
+                'Transcribe this verification audio faithfully. Use an empty segments array when reliable timestamps are unavailable.',
+              supportedProviders: [AiProviderName.GEMINI],
+              supportedModels: [],
+              outputSchemaVersion: 'audio-transcription.v1',
+              createdBy: 'SYSTEM',
+              publishedBy: 'SYSTEM',
+              publishedAt: new Date(),
+              changeSummary:
+                'Add a bounded Gemini fallback for unavailable Groq transcription',
+            },
+          },
+          { upsert: true },
+        )
+        .exec(),
+      this.model
+        .updateOne(
           { key: 'verification.analysis', version: 1 },
           {
             $setOnInsert: {

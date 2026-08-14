@@ -6,9 +6,9 @@ export const DEFAULT_CAPABILITY_ROUTES: Record<
   readonly AiProviderName[]
 > = {
   [AiCapability.CLAIM_EXTRACTION]: [
+    AiProviderName.GROQ,
     AiProviderName.VERTEX,
     AiProviderName.BEDROCK,
-    AiProviderName.GROQ,
     AiProviderName.GEMINI,
     AiProviderName.OPENROUTER,
   ],
@@ -102,10 +102,18 @@ export const PAID_AI_PROVIDERS = new Set<AiProviderName>([
 
 export function maxProviderCallsFor(capability: AiCapability): number {
   if (capability === AiCapability.VIDEO_UNDERSTANDING) return 1;
-  // Evidence synthesis is a high-value investigation stage with a large
-  // schema. It gets one exceptional tertiary route after the two funded
-  // reliability providers fail; normal capabilities remain bounded to two.
-  if (capability === AiCapability.EVIDENCE_SYNTHESIS) return 3;
+  if (
+    [
+      AiCapability.CLAIM_EXTRACTION,
+      AiCapability.STRUCTURED_EXTRACTION,
+      AiCapability.EVIDENCE_SYNTHESIS,
+      AiCapability.REPORT_GENERATION,
+      AiCapability.TRANSLATION,
+      AiCapability.IMAGE_UNDERSTANDING,
+      AiCapability.OCR_FALLBACK,
+    ].includes(capability)
+  )
+    return 3;
   return 2;
 }
 
@@ -136,5 +144,6 @@ export function defaultMaxOutputTokens(capability: AiCapability): number {
   // Short videos may need a verbatim transcript, visible text, timestamped
   // observations, and limitations in one schema-constrained response.
   if (capability === AiCapability.VIDEO_UNDERSTANDING) return 7000;
+  if (capability === AiCapability.AUDIO_REASONING) return 8000;
   return 3500;
 }

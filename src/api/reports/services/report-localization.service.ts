@@ -185,7 +185,7 @@ export class ReportLocalizationService {
         requestId,
         '',
         undefined,
-        2,
+        3,
       );
       let translations = this.validatePaths(
         source,
