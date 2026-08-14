@@ -6,6 +6,7 @@ import type { User } from '../../users/schemas/user.schema';
 import { UsageReservationStatus } from '../enums/usage-reservation-status.enum';
 import { VerificationSourceType } from '../enums/verification-source-type.enum';
 import type { DailyInvestigationUsage } from '../schemas/daily-investigation-usage.schema';
+import type { Verification } from '../schemas/verification.schema';
 import { InvestigationUsageService } from './investigation-usage.service';
 import type { EntitlementService } from '../../entitlements/services/entitlement.service';
 import { EntitlementPlan } from '../../entitlements/enums/entitlement-plan.enum';
@@ -194,12 +195,141 @@ describe('InvestigationUsageService', () => {
       UsageReservationStatus.USED,
     );
   });
+
+  it('returns a consumed attempt when the investigation later fails', async () => {
+    const usageId = new Types.ObjectId();
+    const verificationId = new Types.ObjectId();
+    const findOneAndUpdate = jest
+      .fn()
+      .mockReturnValueOnce({ exec: jest.fn().mockResolvedValue(null) })
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue({ _id: usageId }),
+      });
+    const service = setup({ findOneAndUpdate });
+    const verification = {
+      _id: verificationId,
+      usageReservation: {
+        usageId,
+        attempt: 1,
+        dateKey: '2026-08-08',
+        timezone: 'Africa/Lagos',
+        cost: 2,
+        status: UsageReservationStatus.USED,
+        resetAt: new Date('2026-08-08T23:00:00.000Z'),
+      },
+      set: jest.fn(),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    await service.release(verification as never);
+
+    const releaseCalls = findOneAndUpdate.mock.calls as unknown as Array<
+      [
+        { reservations: { $elemMatch: { status: UsageReservationStatus } } },
+        { $inc: Record<string, number> },
+      ]
+    >;
+    expect(releaseCalls[0]?.[0].reservations.$elemMatch.status).toBe(
+      UsageReservationStatus.RESERVED,
+    );
+    expect(releaseCalls[0]?.[1].$inc).toEqual({ reserved: -2, released: 2 });
+    expect(releaseCalls[1]?.[0].reservations.$elemMatch.status).toBe(
+      UsageReservationStatus.USED,
+    );
+    expect(releaseCalls[1]?.[1].$inc).toEqual({ used: -2, released: 2 });
+    expect(verification.set).toHaveBeenCalledWith(
+      'usageReservation.status',
+      UsageReservationStatus.RELEASED,
+    );
+  });
+
+  it('does not refund an attempt more than once', async () => {
+    const service = setup({ findOneAndUpdate: jest.fn() });
+    const verification = {
+      usageReservation: {
+        status: UsageReservationStatus.RELEASED,
+      },
+      set: jest.fn(),
+      save: jest.fn(),
+    };
+
+    await service.release(verification as never);
+
+    expect(verification.save).not.toHaveBeenCalled();
+  });
+
+  it("repairs today's allowance for an investigation that already failed", async () => {
+    const usageId = new Types.ObjectId();
+    const verificationId = new Types.ObjectId();
+    const usedReservation = {
+      verificationId,
+      attempt: 0,
+      cost: 1,
+      status: UsageReservationStatus.USED,
+      reservedAt: new Date(),
+    };
+    const findOne = jest
+      .fn()
+      .mockReturnValueOnce({
+        lean: () => ({
+          exec: jest.fn().mockResolvedValue({
+            _id: usageId,
+            userId: new Types.ObjectId(),
+            dateKey: '2026-08-08',
+            timezone: 'Africa/Lagos',
+            limit: 3,
+            used: 1,
+            reserved: 0,
+            released: 0,
+            reservations: [usedReservation],
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        lean: () => ({
+          exec: jest.fn().mockResolvedValue({
+            used: 0,
+            reserved: 0,
+            released: 1,
+            reservations: [
+              {
+                ...usedReservation,
+                status: UsageReservationStatus.RELEASED,
+              },
+            ],
+          }),
+        }),
+      });
+    const findOneAndUpdate = jest
+      .fn()
+      .mockReturnValueOnce({ exec: jest.fn().mockResolvedValue(null) })
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue({ _id: usageId }),
+      });
+    const service = setup({
+      findOne,
+      findOneAndUpdate,
+      verificationFind: jest.fn().mockReturnValue({
+        select: () => ({
+          lean: () => ({
+            exec: jest.fn().mockResolvedValue([{ _id: verificationId }]),
+          }),
+        }),
+      }),
+    });
+
+    const status = await service.status(new Types.ObjectId().toString());
+
+    expect(status).toMatchObject({ used: 0, reserved: 0, remaining: 3 });
+    expect(findOneAndUpdate).toHaveBeenCalledTimes(2);
+  });
 });
 
 function setup(overrides: {
   updateOne?: jest.Mock;
   findOneAndUpdate?: jest.Mock;
   findOne?: jest.Mock;
+  verificationFind?: jest.Mock;
 }): InvestigationUsageService {
   const usages = {
     updateOne: overrides.updateOne ?? jest.fn(),
@@ -215,9 +345,19 @@ function setup(overrides: {
       }),
     }),
   } as unknown as Model<User>;
+  const verifications = {
+    find:
+      overrides.verificationFind ??
+      jest.fn().mockReturnValue({
+        select: () => ({
+          lean: () => ({ exec: jest.fn().mockResolvedValue([]) }),
+        }),
+      }),
+  } as unknown as Model<Verification>;
   return new InvestigationUsageService(
     usages,
     users,
+    verifications,
     new ConfigService({ usage: { freeDailyLimit: 3, videoCost: 2 } }),
     {
       resolve: jest.fn().mockResolvedValue({

@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -15,7 +15,9 @@ import type {
   VerificationDocument,
   VerificationUsageReservation,
 } from '../schemas/verification.schema';
+import { Verification } from '../schemas/verification.schema';
 import { EntitlementService } from '../../entitlements/services/entitlement.service';
+import { VerificationStatus } from '../enums/verification-status.enum';
 
 export interface UsageReservationSnapshot {
   usageId: Types.ObjectId;
@@ -31,12 +33,15 @@ export interface UsageReservationSnapshot {
 
 @Injectable()
 export class InvestigationUsageService {
+  private readonly logger = new Logger(InvestigationUsageService.name);
   private readonly config: UsageConfig;
 
   constructor(
     @InjectModel(DailyInvestigationUsage.name)
     private readonly usages: Model<DailyInvestigationUsage>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectModel(Verification.name)
+    private readonly verifications: Model<Verification>,
     configService: ConfigService,
     private readonly entitlements: EntitlementService,
   ) {
@@ -150,13 +155,22 @@ export class InvestigationUsageService {
   async status(userId: string): Promise<Record<string, unknown>> {
     const window = await this.windowForUser(userId);
     const entitlement = await this.entitlements.resolve(userId);
-    const usage = await this.usages
+    let usage = await this.usages
       .findOne({
         userId: new Types.ObjectId(userId),
         dateKey: window.dateKey,
       })
       .lean()
       .exec();
+    if (usage && (await this.refundTerminalUsage(userId, usage))) {
+      usage = await this.usages
+        .findOne({
+          userId: new Types.ObjectId(userId),
+          dateKey: window.dateKey,
+        })
+        .lean()
+        .exec();
+    }
     const used = usage?.used ?? 0;
     const reserved = usage?.reserved ?? 0;
     const limit = entitlement.policy.dailyInvestigationLimit;
@@ -191,7 +205,13 @@ export class InvestigationUsageService {
     target: UsageReservationStatus.USED | UsageReservationStatus.RELEASED,
   ): Promise<void> {
     const stored = verification.usageReservation;
-    if (!stored || stored.status !== UsageReservationStatus.RESERVED) return;
+    if (!stored || stored.status === target) return;
+    if (
+      target === UsageReservationStatus.USED &&
+      stored.status !== UsageReservationStatus.RESERVED
+    ) {
+      return;
+    }
     const reservation: UsageReservationSnapshot = {
       usageId: stored.usageId,
       verificationId: verification._id,
@@ -205,7 +225,10 @@ export class InvestigationUsageService {
         ? { transitionedAt: stored.transitionedAt }
         : {}),
     };
-    const resolved = await this.applyTransition(reservation, target);
+    const resolved =
+      target === UsageReservationStatus.RELEASED
+        ? await this.applyRelease(reservation)
+        : await this.applyTransition(reservation, target);
     if (!resolved) return;
     verification.set('usageReservation.status', resolved);
     verification.set('usageReservation.transitionedAt', new Date());
@@ -263,6 +286,125 @@ export class InvestigationUsageService {
         (item.attempt ?? 0) === reservation.attempt,
     );
     return existing?.status ?? null;
+  }
+
+  private async applyRelease(
+    reservation: UsageReservationSnapshot,
+  ): Promise<UsageReservationStatus | null> {
+    const transitionedAt = new Date();
+    const attemptSelector =
+      reservation.attempt === 0 ? { $in: [0, null] } : reservation.attempt;
+    const selector = (status: UsageReservationStatus) => ({
+      _id: reservation.usageId,
+      reservations: {
+        $elemMatch: {
+          verificationId: reservation.verificationId,
+          attempt: attemptSelector,
+          status,
+        },
+      },
+    });
+    const update = (counter: 'reserved' | 'used') => ({
+      $inc: { [counter]: -reservation.cost, released: reservation.cost },
+      $set: {
+        'reservations.$.status': UsageReservationStatus.RELEASED,
+        'reservations.$.transitionedAt': transitionedAt,
+      },
+    });
+
+    const releasedReservation = await this.usages
+      .findOneAndUpdate(
+        selector(UsageReservationStatus.RESERVED),
+        update('reserved'),
+        { returnDocument: 'after', runValidators: true },
+      )
+      .exec();
+    if (releasedReservation) return UsageReservationStatus.RELEASED;
+
+    const refundedUsage = await this.usages
+      .findOneAndUpdate(selector(UsageReservationStatus.USED), update('used'), {
+        returnDocument: 'after',
+        runValidators: true,
+      })
+      .exec();
+    if (refundedUsage) return UsageReservationStatus.RELEASED;
+
+    const current = await this.usages
+      .findOne({
+        _id: reservation.usageId,
+        reservations: {
+          $elemMatch: {
+            verificationId: reservation.verificationId,
+            attempt: attemptSelector,
+          },
+        },
+      })
+      .lean()
+      .exec();
+    const existing = current?.reservations.find(
+      (item) =>
+        item.verificationId.toString() ===
+          reservation.verificationId.toString() &&
+        (item.attempt ?? 0) === reservation.attempt,
+    );
+    return existing?.status ?? null;
+  }
+
+  private async refundTerminalUsage(
+    userId: string,
+    usage: DailyInvestigationUsage & { _id: Types.ObjectId },
+  ): Promise<boolean> {
+    const consumed = (usage.reservations ?? []).filter(
+      (reservation) => reservation.status === UsageReservationStatus.USED,
+    );
+    if (!consumed.length) return false;
+    const terminal = await this.verifications
+      .find({
+        _id: { $in: consumed.map((reservation) => reservation.verificationId) },
+        userId: new Types.ObjectId(userId),
+        status: {
+          $in: [
+            VerificationStatus.FAILED,
+            VerificationStatus.CANCELLED,
+            VerificationStatus.DELETED,
+          ],
+        },
+      })
+      .select('_id')
+      .lean()
+      .exec();
+    const terminalIds = new Set(
+      terminal.map((verification) => verification._id.toString()),
+    );
+    const refundable = consumed.filter((reservation) =>
+      terminalIds.has(reservation.verificationId.toString()),
+    );
+    let refunded = 0;
+    for (const reservation of refundable) {
+      const result = await this.applyRelease({
+        usageId: usage._id,
+        verificationId: reservation.verificationId,
+        attempt: reservation.attempt ?? 0,
+        dateKey: usage.dateKey,
+        timezone: usage.timezone,
+        cost: reservation.cost,
+        status: reservation.status,
+        resetAt: new Date(),
+        ...(reservation.transitionedAt
+          ? { transitionedAt: reservation.transitionedAt }
+          : {}),
+      });
+      if (result === UsageReservationStatus.RELEASED) refunded += 1;
+    }
+    if (refunded) {
+      this.logger.log({
+        event: 'failed_investigation_allowance_reconciled',
+        userId,
+        dateKey: usage.dateKey,
+        refundedReservations: refunded,
+      });
+    }
+    return refunded > 0;
   }
 
   private costFor(
